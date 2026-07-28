@@ -1,0 +1,22 @@
+{
+  "entities": {
+    "Submission": {
+      "title": "Submission",
+      "description": "A student's task submission",
+      "type": "object",
+      "properties": {
+        "nama": { "type": "string" },
+        "kelas": { "type": "string" },
+        "filename": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nama", "kelas", "filename", "timestamp"]
+    }
+  },
+  "firestore": {
+    "submissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/Submission" },
+      "description": "Stores metadata of all student task submissions."
+    }
+  }
+}
