@@ -266,14 +266,14 @@ window.showCustomModal = (message, type = 'alert') => {
             if (isLink) {
                 const targetUrl = getLinkUrl(f);
                 detailCell = `
-                    <div class="flex flex-col gap-1 py-1 max-w-[280px]">
+                    <div class="flex flex-col gap-1 py-0.5 w-full pr-3">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="inline-flex items-center shrink-0 bg-purple-100 text-purple-900 text-[10px] font-black px-2 py-0.5 rounded border border-purple-300">
+                            <span class="inline-flex items-center shrink-0 bg-purple-100 text-purple-900 text-[10px] font-black px-2 py-0.5 rounded border border-purple-300 uppercase">
                                 🔗 LINK
                             </span>
-                            <span class="font-bold text-xs text-slate-800 break-words">${f.filename || 'Tautan Tugas'}</span>
+                            <span class="font-bold text-xs text-slate-800 break-all">${f.filename || 'Tautan Tugas'}</span>
                         </div>
-                        <a href="${targetUrl}" target="_blank" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs break-all hover:underline" title="${targetUrl}">
+                        <a href="${targetUrl}" target="_blank" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs break-all hover:underline leading-relaxed" title="${targetUrl}">
                             ${targetUrl} ↗
                         </a>
                     </div>
@@ -282,11 +282,11 @@ window.showCustomModal = (message, type = 'alert') => {
             } else {
                 const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(f.storage_path);
                 detailCell = `
-                    <div class="flex items-center gap-2 py-1 max-w-[280px]">
-                        <span class="inline-flex items-center shrink-0 bg-blue-100 text-blue-900 text-[10px] font-black px-2 py-0.5 rounded border border-blue-300">
+                    <div class="flex items-start gap-2 py-0.5 w-full pr-3">
+                        <span class="inline-flex items-center shrink-0 bg-blue-100 text-blue-900 text-[10px] font-black px-2 py-0.5 rounded border border-blue-300 uppercase mt-0.5">
                             📁 FILE
                         </span>
-                        <span class="font-bold text-xs text-slate-800 break-words" title="${f.filename}">${f.filename}</span>
+                        <span class="font-bold text-xs text-slate-800 break-all leading-relaxed" title="${f.filename}">${f.filename}</span>
                     </div>
                 `;
                 actionBtn = `<a href="${publicUrlData.publicUrl}" target="_blank" class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-indigo-300 whitespace-nowrap">Preview ↗</a>`;
@@ -296,7 +296,7 @@ window.showCustomModal = (message, type = 'alert') => {
                 <td class="px-4 py-3 whitespace-nowrap font-black text-black border-b-2 border-black border-r-2 text-xs sm:text-sm">${f.kelas}</td>
                 <td class="px-4 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs sm:text-sm">${f.materi}</td>
                 <td class="px-4 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs sm:text-sm">${f.nama}</td>
-                <td class="px-4 py-3 font-medium text-black border-b-2 border-black border-r-2">${detailCell}</td>
+                <td class="px-4 py-3 font-medium text-black border-b-2 border-black border-r-2 min-w-[220px]">${detailCell}</td>
                 <td class="px-4 py-3 whitespace-nowrap font-black text-xs border-b-2 border-black">
                     <div class="flex items-center gap-2">
                         ${actionBtn}
