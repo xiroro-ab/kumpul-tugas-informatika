@@ -235,29 +235,72 @@ window.showCustomModal = (message, type = 'alert') => {
     if (filterKelasSelect) filterKelasSelect.addEventListener('change', applyFilters);
     if (filterMateriSelect) filterMateriSelect.addEventListener('change', applyFilters);
 
+    function isLinkSubmission(f) {
+        return f.tipe === 'link' || 
+               (f.storage_path && (f.storage_path.startsWith('LINK:') || f.storage_path.startsWith('http://') || f.storage_path.startsWith('https://'))) || 
+               Boolean(f.link_url);
+    }
+
+    function getLinkUrl(f) {
+        if (f.link_url) return f.link_url;
+        if (f.storage_path && f.storage_path.startsWith('LINK:')) return f.storage_path.replace('LINK:', '');
+        if (f.storage_path && (f.storage_path.startsWith('http://') || f.storage_path.startsWith('https://'))) return f.storage_path;
+        return '';
+    }
+
     function renderFilesTable(filesToRender) {
         const tbody = document.getElementById('files-tbody');
         tbody.innerHTML = '';
         if (filesToRender.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-6 text-center text-slate-500 font-bold uppercase tracking-widest border-b-2 border-black">Tidak ada file.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-6 text-center text-slate-500 font-bold uppercase tracking-widest border-b-2 border-black">Tidak ada tugas.</td></tr>';
             return;
         }
         filesToRender.forEach(f => {
             const tr = document.createElement('tr');
             tr.className = "hover:bg-slate-100 transition-colors";
             
-            // Get public URL for preview
-            const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(f.storage_path);
+            const isLink = isLinkSubmission(f);
+            let detailCell = '';
+            let actionBtn = '';
+
+            if (isLink) {
+                const targetUrl = getLinkUrl(f);
+                detailCell = `
+                    <div class="flex flex-col gap-1 max-w-xs">
+                        <div class="flex items-center gap-1.5">
+                            <span class="inline-block bg-purple-100 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-purple-300">
+                                🔗 LINK
+                            </span>
+                            <span class="font-bold text-xs text-slate-700 truncate">${f.filename || 'Tautan Tugas'}</span>
+                        </div>
+                        <a href="${targetUrl}" target="_blank" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs truncate underline" title="${targetUrl}">
+                            ${targetUrl}
+                        </a>
+                    </div>
+                `;
+                actionBtn = `<a href="${targetUrl}" target="_blank" class="inline-block bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border-2 border-transparent hover:border-purple-400">Buka Link ↗</a>`;
+            } else {
+                const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(f.storage_path);
+                detailCell = `
+                    <div class="flex items-center gap-1.5">
+                        <span class="inline-block bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-blue-300">
+                            📁 FILE
+                        </span>
+                        <span class="font-medium text-black text-sm break-all">${f.filename}</span>
+                    </div>
+                `;
+                actionBtn = `<a href="${publicUrlData.publicUrl}" target="_blank" class="inline-block bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border-2 border-transparent hover:border-indigo-400">Preview ↗</a>`;
+            }
             
             tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2">${f.kelas}</td>
                 <td class="px-6 py-4 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2">${f.materi}</td>
                 <td class="px-6 py-4 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2">${f.nama}</td>
-                <td class="px-6 py-4 whitespace-nowrap font-medium text-black border-b-2 border-black border-r-2">${f.filename}</td>
+                <td class="px-6 py-4 font-medium text-black border-b-2 border-black border-r-2">${detailCell}</td>
                 <td class="px-6 py-4 whitespace-nowrap font-black text-sm border-b-2 border-black">
-                    <div class="flex gap-2">
-                        <a href="${publicUrlData.publicUrl}" target="_blank" class="inline-block bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1 rounded-lg uppercase tracking-wider transition-colors border-2 border-transparent hover:border-indigo-400">Preview</a>
-                        <button onclick="deleteFile('${f.id}', '${f.storage_path}')" class="inline-block bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1 rounded-lg uppercase tracking-wider transition-colors border-2 border-transparent hover:border-red-400">Hapus</button>
+                    <div class="flex gap-2 items-center">
+                        ${actionBtn}
+                        <button onclick="deleteFile('${f.id}', '${f.storage_path}', ${isLink})" class="inline-block bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border-2 border-transparent hover:border-red-400">Hapus</button>
                     </div>
                 </td>
             `;
@@ -265,13 +308,15 @@ window.showCustomModal = (message, type = 'alert') => {
         });
     }
 
-    window.deleteFile = async (id, path) => {
+    window.deleteFile = async (id, path, isLink = false) => {
         const confirmed = await showCustomModal('Apakah Anda yakin ingin menghapus tugas ini secara permanen?', 'confirm');
         if (!confirmed) return;
         
         try {
-            const { error: storageError } = await supabase.storage.from('uploads').remove([path]);
-            if (storageError) throw storageError;
+            if (!isLink && path && !path.startsWith('LINK:')) {
+                const { error: storageError } = await supabase.storage.from('uploads').remove([path]);
+                if (storageError) console.warn("Storage removal warning:", storageError);
+            }
 
             const { error: dbError } = await supabase.from('files').delete().eq('id', id);
             if (dbError) throw dbError;
@@ -291,15 +336,19 @@ window.showCustomModal = (message, type = 'alert') => {
         }
         
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Kelas,Materi,Nama Siswa,Nama File,Waktu Dibuat\n";
+        csvContent += "Kelas,Materi,Nama Siswa,Tipe,Rincian/Tautan/File,Waktu Dibuat\n";
         
         pendingFiles.forEach(f => {
+            const isLink = isLinkSubmission(f);
+            const tipeStr = isLink ? "Tautan / Link" : "File";
+            const detailStr = isLink ? getLinkUrl(f) : f.filename;
             const dateStr = f.created_at ? new Date(f.created_at).toLocaleString('id-ID') : '';
             const row = [
                 `"${f.kelas}"`,
                 `"${f.materi}"`,
                 `"${f.nama}"`,
-                `"${f.filename}"`,
+                `"${tipeStr}"`,
+                `"${detailStr}"`,
                 `"${dateStr}"`
             ].join(",");
             csvContent += row + "\n";
@@ -465,17 +514,62 @@ window.showCustomModal = (message, type = 'alert') => {
                 }
                 const namaFolderId = folderCache[namaKey];
 
-                // Download from Supabase Storage
-                const { data: fileBlob, error: downloadError } = await supabase.storage.from('uploads').download(f.storage_path);
-                if (downloadError) throw downloadError;
-                
-                await uploadFileToDrive(fileBlob, f.filename, fileBlob.type, namaFolderId);
-                
-                // Delete from Supabase Storage
-                await supabase.storage.from('uploads').remove([f.storage_path]);
-                
-                // Delete from DB
-                await supabase.from('files').delete().eq('id', f.id);
+                const isLink = isLinkSubmission(f);
+
+                if (isLink) {
+                    const targetUrl = getLinkUrl(f);
+                    const cleanNama = (f.nama || 'Siswa').replace(/[^a-zA-Z0-9]/g, '_');
+                    const shortcutFilename = `Tautan_${cleanNama}.html`;
+
+                    const htmlRedirect = `<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="1; url=${targetUrl}">
+    <title>Tugas ${f.nama} - ${f.materi}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f8fafc; color: #0f172a; }
+        .card { background: white; border: 3px solid #000; border-radius: 24px; padding: 32px; max-width: 520px; width: 90%; text-align: center; box-shadow: 8px 8px 0px #000; }
+        .badge { display: inline-block; padding: 4px 12px; background: #ede9fe; color: #6b21a8; border-radius: 9999px; font-weight: 800; font-size: 12px; text-transform: uppercase; margin-bottom: 16px; border: 2px solid #6b21a8; }
+        h2 { margin: 0 0 12px; font-size: 24px; text-transform: uppercase; font-weight: 900; }
+        .meta { text-align: left; background: #f1f5f9; padding: 16px; border-radius: 16px; border: 2px solid #cbd5e1; font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
+        .btn { display: inline-block; padding: 14px 28px; background: #4f46e5; color: white; text-decoration: none; border-radius: 14px; font-weight: 900; font-size: 15px; text-transform: uppercase; border: 2px solid #000; box-shadow: 4px 4px 0px #000; }
+        .btn:hover { background: #000; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge">Tautan Tugas Siswa</span>
+        <h2>${f.materi}</h2>
+        <div class="meta">
+            <div><strong>Siswa:</strong> ${f.nama}</div>
+            <div><strong>Kelas:</strong> ${f.kelas}</div>
+            <div><strong>Tautan:</strong> <a href="${targetUrl}" target="_blank" style="word-break: break-all; color: #4f46e5;">${targetUrl}</a></div>
+        </div>
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">Mengalihkan secara otomatis ke tugas siswa dalam 1 detik...</p>
+        <a class="btn" href="${targetUrl}" target="_blank">Buka Tautan Tugas ↗</a>
+    </div>
+</body>
+</html>`;
+
+                    const fileBlob = new Blob([htmlRedirect], { type: 'text/html' });
+                    await uploadFileToDrive(fileBlob, shortcutFilename, 'text/html', namaFolderId);
+
+                    // Delete from DB
+                    await supabase.from('files').delete().eq('id', f.id);
+                } else {
+                    // Download from Supabase Storage
+                    const { data: fileBlob, error: downloadError } = await supabase.storage.from('uploads').download(f.storage_path);
+                    if (downloadError) throw downloadError;
+                    
+                    await uploadFileToDrive(fileBlob, f.filename, fileBlob.type, namaFolderId);
+                    
+                    // Delete from Supabase Storage
+                    await supabase.storage.from('uploads').remove([f.storage_path]);
+                    
+                    // Delete from DB
+                    await supabase.from('files').delete().eq('id', f.id);
+                }
                 
                 successCount++;
                 await delay(1000); // Jeda sebelum file berikutnya
