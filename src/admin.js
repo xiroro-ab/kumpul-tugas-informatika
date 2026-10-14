@@ -252,12 +252,12 @@ window.showCustomModal = (message, type = 'alert') => {
         const tbody = document.getElementById('files-tbody');
         tbody.innerHTML = '';
         if (filesToRender.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-6 text-center text-slate-500 font-bold uppercase tracking-widest border-b-2 border-black">Tidak ada tugas.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500 font-bold uppercase tracking-widest border-b-2 border-black">Tidak ada tugas.</td></tr>';
             return;
         }
         filesToRender.forEach(f => {
             const tr = document.createElement('tr');
-            tr.className = "hover:bg-slate-100 transition-colors";
+            tr.className = "hover:bg-slate-50 transition-colors";
             
             const isLink = isLinkSubmission(f);
             let detailCell = '';
@@ -266,41 +266,41 @@ window.showCustomModal = (message, type = 'alert') => {
             if (isLink) {
                 const targetUrl = getLinkUrl(f);
                 detailCell = `
-                    <div class="flex flex-col gap-1 max-w-xs">
-                        <div class="flex items-center gap-1.5">
-                            <span class="inline-block bg-purple-100 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-purple-300">
+                    <div class="flex flex-col gap-1 py-1 max-w-[280px]">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="inline-flex items-center shrink-0 bg-purple-100 text-purple-900 text-[10px] font-black px-2 py-0.5 rounded border border-purple-300">
                                 🔗 LINK
                             </span>
-                            <span class="font-bold text-xs text-slate-700 truncate">${f.filename || 'Tautan Tugas'}</span>
+                            <span class="font-bold text-xs text-slate-800 break-words">${f.filename || 'Tautan Tugas'}</span>
                         </div>
-                        <a href="${targetUrl}" target="_blank" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs truncate underline" title="${targetUrl}">
-                            ${targetUrl}
+                        <a href="${targetUrl}" target="_blank" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs break-all hover:underline" title="${targetUrl}">
+                            ${targetUrl} ↗
                         </a>
                     </div>
                 `;
-                actionBtn = `<a href="${targetUrl}" target="_blank" class="inline-block bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border-2 border-transparent hover:border-purple-400">Buka Link ↗</a>`;
+                actionBtn = `<a href="${targetUrl}" target="_blank" class="inline-flex items-center gap-1 bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-purple-300 whitespace-nowrap">Buka Link ↗</a>`;
             } else {
                 const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(f.storage_path);
                 detailCell = `
-                    <div class="flex items-center gap-1.5">
-                        <span class="inline-block bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-blue-300">
+                    <div class="flex items-center gap-2 py-1 max-w-[280px]">
+                        <span class="inline-flex items-center shrink-0 bg-blue-100 text-blue-900 text-[10px] font-black px-2 py-0.5 rounded border border-blue-300">
                             📁 FILE
                         </span>
-                        <span class="font-medium text-black text-sm break-all">${f.filename}</span>
+                        <span class="font-bold text-xs text-slate-800 break-words" title="${f.filename}">${f.filename}</span>
                     </div>
                 `;
-                actionBtn = `<a href="${publicUrlData.publicUrl}" target="_blank" class="inline-block bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border-2 border-transparent hover:border-indigo-400">Preview ↗</a>`;
+                actionBtn = `<a href="${publicUrlData.publicUrl}" target="_blank" class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-indigo-300 whitespace-nowrap">Preview ↗</a>`;
             }
             
             tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2">${f.kelas}</td>
-                <td class="px-6 py-4 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2">${f.materi}</td>
-                <td class="px-6 py-4 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2">${f.nama}</td>
-                <td class="px-6 py-4 font-medium text-black border-b-2 border-black border-r-2">${detailCell}</td>
-                <td class="px-6 py-4 whitespace-nowrap font-black text-sm border-b-2 border-black">
-                    <div class="flex gap-2 items-center">
+                <td class="px-4 py-3 whitespace-nowrap font-black text-black border-b-2 border-black border-r-2 text-xs sm:text-sm">${f.kelas}</td>
+                <td class="px-4 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs sm:text-sm">${f.materi}</td>
+                <td class="px-4 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs sm:text-sm">${f.nama}</td>
+                <td class="px-4 py-3 font-medium text-black border-b-2 border-black border-r-2">${detailCell}</td>
+                <td class="px-4 py-3 whitespace-nowrap font-black text-xs border-b-2 border-black">
+                    <div class="flex items-center gap-2">
                         ${actionBtn}
-                        <button onclick="deleteFile('${f.id}', '${f.storage_path}', ${isLink})" class="inline-block bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border-2 border-transparent hover:border-red-400">Hapus</button>
+                        <button onclick="deleteFile('${f.id}', '${f.storage_path}', ${isLink})" class="inline-flex items-center bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-red-300">Hapus</button>
                     </div>
                 </td>
             `;
