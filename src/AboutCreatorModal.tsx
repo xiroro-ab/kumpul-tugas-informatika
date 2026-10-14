@@ -247,31 +247,57 @@ export function AboutCreatorModal({ isOpen, onClose }: Props) {
     };
     
     const handleResize = () => {
-      if (canvasRef.current) {
-        const rect = canvasRef.current.parentElement!.getBoundingClientRect();
+      if (canvasRef.current && canvasRef.current.parentElement) {
+        const rect = canvasRef.current.parentElement.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
         canvasRef.current.width = rect.width;
         canvasRef.current.height = rect.height;
-        // Always center the anchor in the canvas container
+
+        const newAnchorX = rect.width / 2;
+        const oldAnchorX = anchorPosRef.current.x;
+
         anchorPosRef.current = {
-          x: rect.width / 2,
+          x: newAnchorX,
           y: -20
         };
-        if (pointsRef.current[0].x === 0) {
-           for (let i = 0; i < pointsRef.current.length; i++) {
-              pointsRef.current[i].x = anchorPosRef.current.x;
-              pointsRef.current[i].oldx = anchorPosRef.current.x;
-           }
+
+        if (pointsRef.current.length > 0) {
+          if (oldAnchorX === 0) {
+            for (let i = 0; i < pointsRef.current.length; i++) {
+              pointsRef.current[i].x = newAnchorX;
+              pointsRef.current[i].oldx = newAnchorX;
+            }
+          } else {
+            const deltaX = newAnchorX - oldAnchorX;
+            if (Math.abs(deltaX) > 1) {
+              for (let i = 0; i < pointsRef.current.length; i++) {
+                pointsRef.current[i].x += deltaX;
+                pointsRef.current[i].oldx += deltaX;
+              }
+            }
+          }
         }
       }
     };
     
     handleResize();
     window.addEventListener('resize', handleResize);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && canvasRef.current && canvasRef.current.parentElement) {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize();
+      });
+      resizeObserver.observe(canvasRef.current.parentElement);
+    }
+
     loop();
 
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
+      if (resizeObserver) resizeObserver.disconnect();
     };
   }, [isOpen]);
 
@@ -419,17 +445,16 @@ export function AboutCreatorModal({ isOpen, onClose }: Props) {
       <main className="relative z-10 pt-24 md:pt-40 pb-20 px-4 w-full flex flex-col items-center gap-12 font-poppins">
          
          {/* HERO SECTION */}
-         <section id="home" className="w-full max-w-5xl bg-[#242424] rounded-[40px] shadow-2xl border border-white/5 relative flex flex-col md:flex-row overflow-hidden min-h-[700px] md:min-h-[550px] lg:min-h-[640px]">
+         <section id="home" className="w-full max-w-5xl bg-[#242424] rounded-[40px] shadow-2xl border border-white/5 relative flex flex-col md:flex-row items-center overflow-hidden min-h-[600px] md:min-h-[550px] lg:min-h-[620px]">
             
-            {/* The small top circle anchor indicator */}
-            <div className="absolute top-8 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full border-2 border-white/10 items-center justify-center z-20 pointer-events-none hidden lg:flex">
-              <div className="w-1.5 h-1.5 bg-white rounded-full opacity-50" />
-            </div>
-
             {/* LEFT/TOP: Card & Canvas Wrapper */}
-            {/* Kept canvas and card together without parent scale, so coordinates match exactly */}
-            <div className="relative w-full md:w-1/2 h-[450px] sm:h-[550px] md:h-[600px] lg:h-[640px] flex-shrink-0 z-20">
+            <div className="relative w-full md:w-1/2 h-[480px] sm:h-[540px] md:h-[580px] lg:h-[620px] flex-shrink-0 z-20 flex items-center justify-center overflow-hidden">
               
+              {/* The anchor circle indicator - exactly above the lanyard in this column */}
+              <div className="absolute top-6 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full border-2 border-white/10 flex items-center justify-center z-20 pointer-events-none">
+                <div className="w-1.5 h-1.5 bg-white rounded-full opacity-50" />
+              </div>
+
               {/* Physics Canvas */}
               <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-10" />
 
@@ -469,17 +494,17 @@ export function AboutCreatorModal({ isOpen, onClose }: Props) {
             </div>
 
             {/* RIGHT/BOTTOM: Text Content */}
-            <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-12 md:px-6 lg:pr-12 lg:pl-0 py-8 md:py-0 relative z-20 pointer-events-auto text-center lg:text-left">
+            <div className="w-full md:w-1/2 flex flex-col justify-center px-6 sm:px-10 md:px-8 lg:pr-14 lg:pl-2 py-8 md:py-0 relative z-20 pointer-events-auto text-center md:text-left">
                <h2 className="text-xl sm:text-2xl text-slate-300 mb-2 font-medium">
                  Halo! Saya <span className="font-bold text-white">Aris</span>
                </h2>
                <h1 className="text-3xl sm:text-5xl md:text-4xl lg:text-5xl xl:text-6xl font-black text-white mb-6 leading-[1.1] tracking-tight" style={{ textShadow: "0 10px 30px rgba(0,0,0,0.5)", wordBreak: "break-word" }}>
                  GURU INFORMATIKA.
                </h1>
-               <p className="text-slate-400 text-sm sm:text-base leading-relaxed mb-10 max-w-md mx-auto lg:mx-0">
+               <p className="text-slate-400 text-sm sm:text-base leading-relaxed mb-10 max-w-md mx-auto md:mx-0">
                  Menyukai design, walau tidak paham design. Berbekal antusiasme tinggi untuk terus belajar, mencoba, dan menciptakan karya. Menyelesaikan setiap baris kode dengan insting dan imajinasi. Hanya VIBE CODING.
                </p>
-               <div className="flex justify-center lg:justify-start">
+               <div className="flex justify-center md:justify-start">
                  <button onClick={() => smoothScrollTo('portofolio')} className="flex items-center gap-3 px-6 py-3.5 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform shadow-xl cursor-pointer">
                    Portofolio
                    <div className="w-6 h-6 rounded-full border-2 border-black flex items-center justify-center">
