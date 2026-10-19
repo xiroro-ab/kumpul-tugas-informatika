@@ -602,11 +602,14 @@ Berikan:
  */
 export async function aiGenerateFormQuestions({ mapel, kelas, topik, jmlSoal = 4, tipeSoal = 'campuran', tingkatKognitif = 'hots' }) {
     const system = `Anda adalah ahli pengembang instrumen lembar tugas siswa (Google Form style) untuk SMP Negeri 58 Palembang berstandar Kurikulum Merdeka.
-Tugas Anda merancang butir-butir pertanyaan penugasan yang jelas, terstruktur, mendidik, dan relevan dengan materi.
+Tugas Anda merancang butir-butir pertanyaan penugasan yang bervariasi, jelas, terstruktur, mendidik, dan relevan dengan materi.
 Tipe soal yang didukung:
 - "esai": pertanyaan uraian mendalam yang menuntut penalaran siswa. Sertakan panduan kunci jawaban / rubrik ringkas.
 - "pg": pertanyaan pilihan ganda dengan 4 opsi (A, B, C, D) dan kunci jawaban (A/B/C/D).
-- "singkat": pertanyaan isian singkat (1 frasa/kalimat) beserta kunci jawaban singkat.
+- "singkat": pertanyaan isian singkat (1 frasa/istilah) beserta kunci jawaban singkat.
+- "benar_salah": pernyataan konsep dengan kunci jawaban ("BENAR" atau "SALAH") serta penjelasan singkat.
+- "upload_foto": instruksi tugas karya/praktikum yang meminta siswa mengunggah foto catatan, screenshot, atau hasil kerja nyata.
+- "menjodohkan": pertanyaan menjodohkan konsep dengan 3-4 pasangan premis di kiri dan definisi di kanan.
 
 KEMBALIKAN HANYA JSON DENGAN STRUKTUR BERIKUT:
 {
@@ -615,13 +618,18 @@ KEMBALIKAN HANYA JSON DENGAN STRUKTUR BERIKUT:
   "questions": [
     {
       "id": 1,
-      "tipe": "esai" | "pg" | "singkat",
+      "tipe": "esai" | "pg" | "singkat" | "benar_salah" | "upload_foto" | "menjodohkan",
       "pertanyaan": "string",
       "opsi_a": "string (khusus pg)",
       "opsi_b": "string (khusus pg)",
       "opsi_c": "string (khusus pg)",
       "opsi_d": "string (khusus pg)",
-      "kunci": "string (huruf A/B/C/D jika pg, atau poin kunci jika esai/singkat)",
+      "kunci": "string (A/B/C/D untuk pg, BENAR/SALAH untuk benar_salah, frasa/rubrik untuk lainnya)",
+      "pasangan": [
+        {"kiri": "Istilah 1", "kanan": "Definisi 1"},
+        {"kiri": "Istilah 2", "kanan": "Definisi 2"},
+        {"kiri": "Istilah 3", "kanan": "Definisi 3"}
+      ],
       "bobot": number
     }
   ]
@@ -631,7 +639,7 @@ KEMBALIKAN HANYA JSON DENGAN STRUKTUR BERIKUT:
 - Mata Pelajaran: ${mapel || 'Informatika'}
 - Target Kelas: ${kelas || 'Kelas 7'}
 - Topik / Materi Pembelajaran: ${topik}
-- Preferensi Tipe Soal: ${tipeSoal} (pilihan: campuran, esai, pg, singkat)
+- Preferensi Tipe Soal: ${tipeSoal} (pilihan: campuran, esai, pg, singkat, benar_salah, menjodohkan)
 - Tingkat Kognitif: ${tingkatKognitif} (LOTS pemahaman dasar, MOTS penerapan, atau HOTS penalaran kritis)
 - Jumlah Pertanyaan: ${jmlSoal} butir soal
 Pastikan total bobot dari semua butir soal berjumlah 100 poin.`;
@@ -651,18 +659,29 @@ Pastikan total bobot dari semua butir soal berjumlah 100 poin.`;
     return {
         judul_tugas: parsed?.judul_tugas || `Tugas ${mapel} - ${topik}`,
         petunjuk: parsed?.petunjuk || `Jawablah butir pertanyaan berikut dengan teliti dan jujur.`,
-        questions: questions.map((q, idx) => ({
-            id: q.id || (idx + 1),
-            nomor: idx + 1,
-            tipe: q.tipe === 'pg' ? 'pg' : (q.tipe === 'singkat' ? 'singkat' : 'esai'),
-            pertanyaan: q.pertanyaan || q.soal || `Pertanyaan nomor ${idx + 1}`,
-            opsi_a: q.opsi_a || '',
-            opsi_b: q.opsi_b || '',
-            opsi_c: q.opsi_c || '',
-            opsi_d: q.opsi_d || '',
-            kunci: q.kunci || q.kunci_pg || q.rubrik_esai || '',
-            bobot: Number(q.bobot) || Math.round(100 / (questions.length || 1))
-        }))
+        questions: questions.map((q, idx) => {
+            const rawType = String(q.tipe || 'esai').toLowerCase();
+            let tipe = 'esai';
+            if (rawType.includes('pg') || rawType.includes('pilihan')) tipe = 'pg';
+            else if (rawType.includes('singkat') || rawType.includes('isian')) tipe = 'singkat';
+            else if (rawType.includes('benar') || rawType.includes('salah')) tipe = 'benar_salah';
+            else if (rawType.includes('foto') || rawType.includes('upload') || rawType.includes('berkas')) tipe = 'upload_foto';
+            else if (rawType.includes('jodoh') || rawType.includes('match')) tipe = 'menjodohkan';
+
+            return {
+                id: q.id || (idx + 1),
+                nomor: idx + 1,
+                tipe,
+                pertanyaan: q.pertanyaan || q.soal || `Pertanyaan nomor ${idx + 1}`,
+                opsi_a: q.opsi_a || '',
+                opsi_b: q.opsi_b || '',
+                opsi_c: q.opsi_c || '',
+                opsi_d: q.opsi_d || '',
+                kunci: q.kunci || q.kunci_pg || q.rubrik_esai || '',
+                pasangan: Array.isArray(q.pasangan) ? q.pasangan : [],
+                bobot: Number(q.bobot) || Math.round(100 / (questions.length || 1))
+            };
+        })
     };
 }
 
@@ -673,8 +692,13 @@ export async function aiEvaluateFormSubmission(mapel, judulTugas, formItems = []
     const system = `Anda adalah guru penguji profesional SMP Negeri 58 Palembang.
 Tugas Anda mengevaluasi lembar jawaban tugas siswa (Google Form response) secara objektif dan mendidik.
 Setiap butir soal memiliki bobot poin tertentu.
-Untuk Pilihan Ganda: periksa apakah jawaban siswa cocok dengan kunci.
-Untuk Esai & Isian Singkat: evaluasi kebenaran konsep, kelengkapan, dan daya nalar siswa terhadap kunci/rubrik.
+Panduan penilaian per tipe soal:
+- Pilihan Ganda (pg): jika jawaban siswa sama persis dengan kunci, berikan skor penuh; jika salah berikan skor 0.
+- Benar / Salah (benar_salah): jika jawaban sama persis dengan kunci, berikan skor penuh; jika salah berikan skor 0.
+- Isian Singkat (singkat): bandingkan kesesuaian jawaban siswa dengan kunci (toleransi variasi kata kecil).
+- Menjodohkan (menjodohkan): hitung proporsi pasangan yang cocok antara jawaban siswa dengan kunci.
+- Upload Foto (upload_foto): berikan penilaian proporsional berdasarkan kelengkapan berkas yang dikirimkan siswa.
+- Esai (esai): evaluasi kedalaman konsep, logika, dan kelengkapan terhadap rubrik.
 
 KEMBALIKAN HANYA JSON:
 {
@@ -689,12 +713,23 @@ KEMBALIKAN HANYA JSON:
   ]
 }`;
 
-    const itemsSummary = formItems.map((item, idx) => `
-Butir #${item.nomor || (idx + 1)} (${item.tipe.toUpperCase()} - Bobot Maks: ${item.bobot || 25}):
+    const itemsSummary = formItems.map((item, idx) => {
+        let studentAns = typeof item.jawaban_siswa === 'object' 
+            ? JSON.stringify(item.jawaban_siswa) 
+            : String(item.jawaban_siswa || '(Tidak dijawab / Kosong)');
+
+        let keyInfo = item.kunci || '-';
+        if (item.tipe === 'menjodohkan' && Array.isArray(item.pasangan)) {
+            keyInfo = item.pasangan.map(p => `${p.kiri} -> ${p.kanan}`).join('; ');
+        }
+
+        return `
+Butir #${item.nomor || (idx + 1)} (${String(item.tipe).toUpperCase()} - Bobot Maks: ${item.bobot || 25}):
 Pertanyaan: ${item.pertanyaan}
-Kunci / Panduan Guru: ${item.kunci || '-'}
-Jawaban Siswa: ${item.jawaban_siswa || '(Tidak dijawab / Kosong)'}
-`).join('\n---\n');
+Kunci / Panduan Guru: ${keyInfo}
+Jawaban Siswa: ${studentAns}
+`;
+    }).join('\n---\n');
 
     const prompt = `Evaluasi lembar jawaban siswa berikut:
 Mata Pelajaran: ${mapel}

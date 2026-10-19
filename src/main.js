@@ -22,26 +22,77 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
-function parseAssignmentQuestions(assignment) {
+export function parseAssignmentQuestions(assignment) {
     if (!assignment || !assignment.deskripsi) {
         return { petunjuk: '', questions: [] };
     }
     const raw = String(assignment.deskripsi).trim();
-    if (raw.startsWith('{') && raw.endsWith('}')) {
+    if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
             const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed.questions)) {
-                return {
-                    petunjuk: parsed.petunjuk || '',
-                    questions: parsed.questions
-                };
+            if (Array.isArray(parsed)) {
+                return { petunjuk: '', questions: parsed };
             }
-        } catch (e) {
-            // fallback
-        }
+            if (parsed.questions && Array.isArray(parsed.questions)) {
+                return { petunjuk: parsed.petunjuk || '', questions: parsed.questions };
+            }
+        } catch (_) {}
     }
     return { petunjuk: raw, questions: [] };
 }
+
+export function isClassMatch(targetKelas, studentKelas) {
+    if (!targetKelas || !studentKelas) return true;
+    const target = String(targetKelas).trim().toLowerCase();
+    const student = String(studentKelas).trim().toLowerCase();
+
+    if (target === 'semua' || target === 'semua kelas' || (target.includes('semua') && !target.match(/[789]|vii|viii|ix/))) {
+        return true;
+    }
+
+    const getGradeLevel = (str) => {
+        if (str.includes('9') || str.includes('ix')) return '9';
+        if (str.includes('8') || str.includes('viii')) return '8';
+        if (str.includes('7') || str.includes('vii')) return '7';
+        return '';
+    };
+
+    const studentLevel = getGradeLevel(student);
+    const isLevelTarget = (
+        target.includes('semua kelas 7') || target.includes('semua kelas vii') || target === 'kelas 7' || target === 'kelas vii' || target === '7' || target === 'vii' ||
+        target.includes('semua kelas 8') || target.includes('semua kelas viii') || target === 'kelas 8' || target === 'kelas viii' || target === '8' || target === 'viii' ||
+        target.includes('semua kelas 9') || target.includes('semua kelas ix') || target === 'kelas 9' || target === 'kelas ix' || target === '9' || target === 'ix'
+    );
+
+    if (isLevelTarget) {
+        return studentLevel === getGradeLevel(target);
+    }
+
+    const cleanTarget = target.replace(/kelas/g, '').trim();
+    const cleanStudent = student.replace(/kelas/g, '').trim();
+    return cleanTarget === cleanStudent;
+}
+
+window.handleStudentFilePreview = (qNum, inputEl) => {
+    if (!inputEl || !inputEl.files || !inputEl.files[0]) return;
+    const file = inputEl.files[0];
+    const nameEl = document.getElementById(`student_file_name_q_${qNum}`);
+    const prevEl = document.getElementById(`student_preview_q_${qNum}`);
+
+    if (nameEl) {
+        nameEl.innerText = `📎 Berkas terpilih: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+        nameEl.classList.remove('hidden');
+    }
+
+    if (file.type.startsWith('image/') && prevEl) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            prevEl.innerHTML = `<img src="${e.target.result}" class="max-h-48 rounded-xl border-2 border-black object-contain bg-white mt-1.5" />`;
+            prevEl.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+};
 
 function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
     const container = document.getElementById('student-form-questions-list');
@@ -51,41 +102,127 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
     questions.forEach((q, idx) => {
         const qNum = q.nomor || (idx + 1);
         const prevAnswer = previousAnswersMap[qNum] || '';
+        const tipe = q.tipe || 'esai';
+        const isPg = tipe === 'pg' || tipe === 'pilihan_ganda';
+        const isBs = tipe === 'benar_salah';
+        const isFoto = tipe === 'upload_foto';
+        const isMatch = tipe === 'menjodohkan';
+        const isSingkat = tipe === 'singkat' || tipe === 'isian_singkat';
 
         const card = document.createElement('div');
         card.className = "bg-white border-2 border-black rounded-2xl p-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-3";
 
         let typeLabel = 'Esai / Uraian';
         let typeBadgeClass = 'bg-purple-100 text-purple-900 border-purple-300';
-        if (q.tipe === 'pilihan_ganda') {
+        if (isPg) {
             typeLabel = 'Pilihan Ganda';
             typeBadgeClass = 'bg-blue-100 text-blue-900 border-blue-300';
-        } else if (q.tipe === 'isian_singkat') {
+        } else if (isBs) {
+            typeLabel = 'Benar / Salah';
+            typeBadgeClass = 'bg-teal-100 text-teal-900 border-teal-300';
+        } else if (isFoto) {
+            typeLabel = 'Upload Foto / Bukti';
+            typeBadgeClass = 'bg-orange-100 text-orange-900 border-orange-300';
+        } else if (isMatch) {
+            typeLabel = 'Menjodohkan';
+            typeBadgeClass = 'bg-pink-100 text-pink-900 border-pink-300';
+        } else if (isSingkat) {
             typeLabel = 'Isian Singkat';
             typeBadgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
         }
 
         let inputHtml = '';
-        if (q.tipe === 'pilihan_ganda') {
-            const options = q.opsi || { A: '', B: '', C: '', D: '' };
+        if (isPg) {
+            const optA = q.opsi_a || q.opsi?.A || '';
+            const optB = q.opsi_b || q.opsi?.B || '';
+            const optC = q.opsi_c || q.opsi?.C || '';
+            const optD = q.opsi_d || q.opsi?.D || '';
+            const options = [
+                { key: 'A', text: optA },
+                { key: 'B', text: optB },
+                { key: 'C', text: optC },
+                { key: 'D', text: optD }
+            ].filter(o => o.text || o.key === 'A' || o.key === 'B');
+
             inputHtml = `
                 <div class="space-y-2 pt-1">
-                    ${['A', 'B', 'C', 'D'].map(optKey => {
-                        const optText = options[optKey] || '';
-                        if (!optText && optKey !== 'A' && optKey !== 'B') return '';
-                        const isChecked = prevAnswer === optKey ? 'checked' : '';
+                    ${options.map(opt => {
+                        const isChecked = prevAnswer === opt.key ? 'checked' : '';
                         return `
                             <label class="flex items-start gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 hover:bg-indigo-50 cursor-pointer transition select-none has-[:checked]:bg-indigo-100 has-[:checked]:border-indigo-600">
-                                <input type="radio" name="student_q_${qNum}" value="${optKey}" ${isChecked} required class="w-4 h-4 mt-0.5 accent-indigo-600 shrink-0">
+                                <input type="radio" name="student_q_${qNum}" value="${opt.key}" ${isChecked} required class="w-4 h-4 mt-0.5 accent-indigo-600 shrink-0">
                                 <div class="text-xs font-bold text-slate-800 leading-snug">
-                                    <span class="font-black text-indigo-700 mr-1">${optKey}.</span> ${escapeHtml(optText)}
+                                    <span class="font-black text-indigo-700 mr-1">${opt.key}.</span> ${escapeHtml(opt.text)}
                                 </div>
                             </label>
                         `;
                     }).join('')}
                 </div>
             `;
-        } else if (q.tipe === 'isian_singkat') {
+        } else if (isBs) {
+            const isBenar = String(prevAnswer).toUpperCase() === 'BENAR';
+            const isSalah = String(prevAnswer).toUpperCase() === 'SALAH';
+            inputHtml = `
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 hover:bg-teal-50 cursor-pointer transition select-none has-[:checked]:bg-teal-100 has-[:checked]:border-teal-700">
+                        <input type="radio" name="student_q_${qNum}" value="BENAR" ${isBenar ? 'checked' : ''} required class="w-4 h-4 accent-teal-600 shrink-0">
+                        <span class="text-xs font-black text-teal-950">✅ BENAR (Sesuai)</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 hover:bg-red-50 cursor-pointer transition select-none has-[:checked]:bg-red-100 has-[:checked]:border-red-700">
+                        <input type="radio" name="student_q_${qNum}" value="SALAH" ${isSalah ? 'checked' : ''} required class="w-4 h-4 accent-red-600 shrink-0">
+                        <span class="text-xs font-black text-red-950">❌ SALAH (Tidak Sesuai)</span>
+                    </label>
+                </div>
+            `;
+        } else if (isFoto) {
+            const hasPrev = prevAnswer && String(prevAnswer).startsWith('http');
+            inputHtml = `
+                <div class="space-y-2 pt-1">
+                    <div class="border-2 border-dashed border-black rounded-xl p-4 bg-orange-50/50 hover:bg-orange-50 transition text-center cursor-pointer" onclick="document.getElementById('student_file_q_${qNum}').click()">
+                        <input type="file" id="student_file_q_${qNum}" accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="window.handleStudentFilePreview(${qNum}, this)">
+                        <div class="flex flex-col items-center gap-1.5">
+                            <span class="text-2xl">📸</span>
+                            <span class="text-xs font-black uppercase text-black">Pilih / Unggah Berkas Foto Pekerjaan</span>
+                            <span class="text-[10px] text-slate-600 font-bold">Maksimal 10MB (Foto, Tangkapan Layar, atau PDF)</span>
+                        </div>
+                    </div>
+                    <div id="student_file_name_q_${qNum}" class="text-xs font-black text-emerald-800 ${hasPrev ? '' : 'hidden'}">
+                        ${hasPrev ? `✅ Berkas tersimpan sebelumnya: <a href="${escapeHtml(prevAnswer)}" target="_blank" class="underline text-indigo-700">Buka Berkas Anda</a>` : ''}
+                    </div>
+                    <div id="student_preview_q_${qNum}" class="${hasPrev ? '' : 'hidden'} mt-1.5">
+                        ${hasPrev ? `<img src="${escapeHtml(prevAnswer)}" class="max-h-48 rounded-xl border-2 border-black object-contain bg-white" />` : ''}
+                    </div>
+                </div>
+            `;
+        } else if (isMatch) {
+            const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
+            const rightChoices = pairs.map(p => p.kanan).filter(Boolean);
+            const prevMatches = (typeof prevAnswer === 'object' && prevAnswer !== null) ? prevAnswer : {};
+
+            inputHtml = `
+                <div class="space-y-2.5 pt-1">
+                    <p class="text-[11px] font-bold text-slate-600">Jodohkan setiap pernyataan di sebelah kiri dengan pilihan yang tepat di sebelah kanan:</p>
+                    ${pairs.map((p, pIdx) => {
+                        const chosenVal = prevMatches[p.kiri] || '';
+                        return `
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 rounded-xl border-2 border-black bg-slate-50">
+                                <div class="sm:w-1/2 font-bold text-xs text-black">
+                                    <span class="font-black text-pink-700 mr-1.5">${pIdx + 1}.</span> ${escapeHtml(p.kiri)}
+                                </div>
+                                <div class="sm:w-1/2">
+                                    <select name="student_match_${qNum}_${pIdx}" data-premise="${escapeHtml(p.kiri)}" required class="w-full h-9 px-2.5 rounded-lg border-2 border-black bg-white font-bold text-xs cursor-pointer">
+                                        <option value="">-- Pilih Pasangan --</option>
+                                        ${rightChoices.map(opt => `
+                                            <option value="${escapeHtml(opt)}" ${chosenVal === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        } else if (isSingkat) {
             inputHtml = `
                 <div class="pt-1">
                     <input type="text" name="student_q_${qNum}" value="${escapeHtml(prevAnswer)}" required placeholder="Ketikkan jawaban singkat Anda di sini..." class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none focus:bg-white">
@@ -102,7 +239,7 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
         }
 
         card.innerHTML = `
-            <div class="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
+            <div class="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 flex-wrap">
                 <div class="flex items-center gap-2">
                     <span class="w-6 h-6 rounded-lg bg-black text-white font-black text-xs flex items-center justify-center">
                         ${qNum}
@@ -115,7 +252,7 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
                     Bobot: ${q.bobot || 10} Poin
                 </span>
             </div>
-            <div class="text-xs font-black text-slate-900 leading-relaxed">
+            <div class="text-xs font-black text-slate-900 leading-relaxed whitespace-pre-line">
                 ${escapeHtml(q.pertanyaan || '')}
             </div>
             ${inputHtml}
@@ -132,6 +269,63 @@ const DEFAULT_CLASSES = [
 ];
 
 document.addEventListener('DOMContentLoaded', async () => {
+
+    // Helper Modal Alert/Confirm Neobrutalisme (Standard LMS SMPN 58)
+    window.showCustomModal = (message, type = 'alert', title = 'Pemberitahuan', icon = '📢') => {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('custom-modal');
+            const titleEl = document.getElementById('custom-modal-title');
+            const iconEl = document.getElementById('custom-modal-icon');
+            const msgEl = document.getElementById('custom-modal-message');
+            const actionsEl = document.getElementById('custom-modal-actions');
+            if (!modal) {
+                resolve(true);
+                return;
+            }
+
+            if (titleEl) titleEl.innerText = title;
+            if (iconEl) iconEl.innerText = icon;
+            if (msgEl) msgEl.innerText = message;
+            if (actionsEl) {
+                actionsEl.innerHTML = '';
+                if (type === 'confirm') {
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.className = "bg-white border-2 border-black text-black font-black py-2.5 px-5 rounded-xl hover:bg-slate-100 transition text-xs uppercase tracking-wider";
+                    cancelBtn.innerText = "Batal";
+                    cancelBtn.onclick = () => {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                        resolve(false);
+                    };
+
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = "bg-red-500 text-white border-2 border-black font-black py-2.5 px-5 rounded-xl hover:bg-red-600 transition text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+                    confirmBtn.innerText = "Ya, Lanjutkan";
+                    confirmBtn.onclick = () => {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                        resolve(true);
+                    };
+
+                    actionsEl.appendChild(cancelBtn);
+                    actionsEl.appendChild(confirmBtn);
+                } else {
+                    const okBtn = document.createElement('button');
+                    okBtn.className = "bg-black text-white font-black py-2.5 px-6 rounded-xl hover:bg-slate-800 transition active:translate-y-0.5 uppercase tracking-wider text-xs border-2 border-black";
+                    okBtn.innerText = "OK, Mengerti";
+                    okBtn.onclick = () => {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                        resolve(true);
+                    };
+                    actionsEl.appendChild(okBtn);
+                }
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        });
+    };
 
     // ==========================================
     // 1. Inisialisasi Profil Siswa (Auto-Remember)
@@ -253,17 +447,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const studentName = globalNameInput.value.trim();
 
         // Count assignments
-        const relevantAssignments = allAssignments.filter(a => !studentKelas || a.kelas === studentKelas || a.kelas.toLowerCase().includes('semua'));
+        const relevantAssignments = allAssignments.filter(a => !studentKelas || isClassMatch(a.kelas, studentKelas));
         const statAssEl = document.getElementById('stat-assignments-count');
         if (statAssEl) statAssEl.textContent = `${relevantAssignments.length} Tugas`;
 
         // Count materials
-        const relevantMaterials = allMaterials.filter(m => !studentKelas || m.kelas === studentKelas || m.kelas.toLowerCase().includes('semua'));
+        const relevantMaterials = allMaterials.filter(m => !studentKelas || isClassMatch(m.kelas, studentKelas));
         const statMatEl = document.getElementById('stat-materials-count');
         if (statMatEl) statMatEl.textContent = `${relevantMaterials.length} Materi`;
 
         // Count quizzes
-        const relevantQuizzes = allQuizzes.filter(q => !studentKelas || q.kelas === studentKelas || q.kelas.toLowerCase().includes('semua'));
+        const relevantQuizzes = allQuizzes.filter(q => !studentKelas || isClassMatch(q.kelas, studentKelas));
         const statQuizEl = document.getElementById('stat-quizzes-count');
         if (statQuizEl) statQuizEl.textContent = `${relevantQuizzes.length} Ujian`;
 
@@ -361,7 +555,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Kumpulan tugas relevan berdasarkan filter Mapel & Kelas
         const relevant = allAssignments.filter(a => {
             const matchMapel = !filterMapel || a.mapel === filterMapel;
-            const matchKelas = !studentKelas || a.kelas === studentKelas || a.kelas.toLowerCase().includes('semua');
+            const matchKelas = !studentKelas || isClassMatch(a.kelas, studentKelas);
             return matchMapel && matchKelas;
         });
 
@@ -802,7 +996,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             for (let i = 0; i < fileInput.files.length; i++) {
                 const file = fileInput.files[i];
                 if (file.size > 10 * 1024 * 1024) {
-                    alert('Ukuran berkas melebihi batas 10MB.');
+                    showCustomModal('Ukuran berkas melebihi batas 10MB.', 'alert', 'Peringatan', '⚠️');
                     resetFileInput();
                     return;
                 }
@@ -837,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const assignmentId = subAssignIdInput.value ? Number(subAssignIdInput.value) : null;
 
         if (!nama || !kelas || !materi) {
-            alert('Lengkapi Nama Siswa, Kelas, dan Judul Tugas!');
+            await showCustomModal('Lengkapi Nama Siswa, Kelas, dan Judul Tugas!', 'alert', 'Data Belum Lengkap', '⚠️');
             return;
         }
 
@@ -850,41 +1044,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (currentSubmissionMode === 'text') {
             if (currentFormQuestions && currentFormQuestions.length > 0) {
-                let hasEmpty = false;
-                for (let i = 0; i < currentFormQuestions.length; i++) {
-                    const q = currentFormQuestions[i];
-                    const qNum = q.nomor || (i + 1);
-                    let val = '';
-                    if (q.tipe === 'pilihan_ganda') {
-                        const checked = document.querySelector(`input[name="student_q_${qNum}"]:checked`);
-                        if (checked) val = checked.value;
-                    } else {
-                        const inputEl = document.querySelector(`[name="student_q_${qNum}"]`);
-                        if (inputEl) val = inputEl.value.trim();
-                    }
-                    if (!val) {
-                        alert(`Soal Nomor ${qNum} belum dijawab! Mohon lengkapi semua butir soal terlebih dahulu.`);
-                        hasEmpty = true;
-                        break;
-                    }
-                }
-                if (hasEmpty) return;
+                // Evaluated in payload generation below
             } else {
                 const textAnswer = subTextAnswerInput.value.trim();
                 if (!textAnswer) {
-                    alert('Silakan tuliskan lembar jawaban tugas Anda terlebih dahulu.');
+                    await showCustomModal('Silakan tuliskan lembar jawaban tugas Anda terlebih dahulu.', 'alert', 'Jawaban Kosong', '⚠️');
                     return;
                 }
             }
         } else if (currentSubmissionMode === 'file') {
             if (!fileInput.files || fileInput.files.length === 0) {
-                alert('Silakan pilih setidaknya 1 berkas tugas.');
+                await showCustomModal('Silakan pilih setidaknya 1 berkas tugas.', 'alert', 'Berkas Diperlukan', '⚠️');
                 return;
             }
         } else {
             const linkUrl = linkUrlInput.value.trim();
             if (!linkUrl || (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://'))) {
-                alert('Tautan tidak valid! Mohon awali dengan http:// atau https://');
+                await showCustomModal('Tautan tidak valid! Mohon awali dengan http:// atau https://', 'alert', 'Tautan Tidak Valid', '⚠️');
                 return;
             }
         }
@@ -903,26 +1079,85 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (currentSubmissionMode === 'text') {
                 if (currentFormQuestions && currentFormQuestions.length > 0) {
-                    const studentAnswers = currentFormQuestions.map((q, i) => {
+                    const studentAnswers = [];
+                    for (let i = 0; i < currentFormQuestions.length; i++) {
+                        const q = currentFormQuestions[i];
                         const qNum = q.nomor || (i + 1);
+                        const tipe = q.tipe || 'esai';
                         let val = '';
-                        if (q.tipe === 'pilihan_ganda') {
+
+                        if (tipe === 'pg' || tipe === 'pilihan_ganda' || tipe === 'benar_salah') {
                             const checked = document.querySelector(`input[name="student_q_${qNum}"]:checked`);
                             if (checked) val = checked.value;
+                        } else if (tipe === 'upload_foto') {
+                            const fileInputEl = document.getElementById(`student_file_q_${qNum}`);
+                            if (fileInputEl && fileInputEl.files && fileInputEl.files[0]) {
+                                const file = fileInputEl.files[0];
+                                if (file.size > 10 * 1024 * 1024) {
+                                    throw new Error(`Berkas foto pada soal nomor ${qNum} melebihi batas 10MB!`);
+                                }
+                                const safeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                                const filePath = `form_${Date.now()}_${safeFilename}`;
+                                const { error: upErr } = await supabase.storage.from('uploads').upload(filePath, file);
+                                if (upErr) throw upErr;
+                                const { data: pUrl } = supabase.storage.from('uploads').getPublicUrl(filePath);
+                                val = pUrl.publicUrl;
+                            } else {
+                                // Fallback to previous submission answer if already present
+                                const mySub = studentFiles.find(f => (f.assignment_id && String(f.assignment_id) === String(assignmentId)));
+                                if (mySub && mySub.storage_path && mySub.storage_path.startsWith('FORM:')) {
+                                    try {
+                                        const parsedAnswers = JSON.parse(mySub.storage_path.replace('FORM:', ''));
+                                        if (Array.isArray(parsedAnswers)) {
+                                            const prevObj = parsedAnswers.find(pa => pa.nomor === qNum);
+                                            if (prevObj && prevObj.jawaban_siswa) val = prevObj.jawaban_siswa;
+                                        }
+                                    } catch (_) {}
+                                }
+                            }
+                        } else if (tipe === 'menjodohkan') {
+                            const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
+                            const matches = {};
+                            let allFilled = true;
+                            pairs.forEach((p, pIdx) => {
+                                const sel = document.querySelector(`[name="student_match_${qNum}_${pIdx}"]`);
+                                if (sel && sel.value) {
+                                    matches[p.kiri] = sel.value;
+                                } else {
+                                    allFilled = false;
+                                }
+                            });
+                            if (allFilled && Object.keys(matches).length > 0) {
+                                val = matches;
+                            }
                         } else {
                             const inputEl = document.querySelector(`[name="student_q_${qNum}"]`);
                             if (inputEl) val = inputEl.value.trim();
                         }
-                        return {
+
+                        if (!val || (typeof val === 'object' && Object.keys(val).length === 0)) {
+                            if (loadingPopup) {
+                                loadingPopup.classList.add('hidden');
+                                loadingPopup.classList.remove('flex');
+                            }
+                            await showCustomModal(`Soal Nomor ${qNum} belum dijawab atau belum lengkap! Mohon lengkapi semua butir soal terlebih dahulu.`, 'alert', 'Lengkapi Jawaban', '⚠️');
+                            return;
+                        }
+
+                        studentAnswers.push({
                             nomor: qNum,
-                            tipe: q.tipe || 'esai',
+                            tipe,
                             pertanyaan: q.pertanyaan || '',
-                            opsi: q.opsi || {},
+                            opsi_a: q.opsi_a || '',
+                            opsi_b: q.opsi_b || '',
+                            opsi_c: q.opsi_c || '',
+                            opsi_d: q.opsi_d || '',
                             jawaban_siswa: val,
                             kunci: q.kunci || '',
+                            pasangan: q.pasangan || [],
                             bobot: q.bobot || 10
-                        };
-                    });
+                        });
+                    }
 
                     const displayFilename = `[Form Web] ${materi} (${studentAnswers.length} Soal)`;
                     const payload = {
@@ -1042,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loadingPopup.classList.add('hidden');
                 loadingPopup.classList.remove('flex');
             }
-            alert('Gagal mengirim tugas: ' + e.message);
+            await showCustomModal('Gagal mengirim tugas: ' + e.message, 'alert', 'Gagal', '❌');
         } finally {
             subSubmitBtn.innerText = 'KIRIM TUGAS SEKARANG 🚀';
             subSubmitBtn.disabled = false;
@@ -1109,7 +1344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const filtered = allMaterials.filter(m => {
             const matchMapel = !filterVal || m.mapel === filterVal;
-            const matchKelas = !studentKelas || m.kelas === studentKelas || m.kelas.toLowerCase().includes('semua');
+            const matchKelas = !studentKelas || isClassMatch(m.kelas, studentKelas);
             return matchMapel && matchKelas;
         });
 
@@ -1193,17 +1428,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     window.showMyQuizResult = (sub, judul, mapel) => {
-        alert(
-            `📊 HASIL UJIAN SISWA LMS SMPN 58\n\n` +
+        showCustomModal(
             `Mata Pelajaran: ${mapel}\n` +
             `Judul Ujian: ${judul}\n` +
-            `Nama Siswa: ${sub.nama_siswa} (${sub.kelas})\n` +
-            `-----------------------------------------\n` +
+            `Nama Siswa: ${sub.nama_siswa} (${sub.kelas})\n\n` +
             `Skor Pilihan Ganda : ${sub.skor_pg || 0}\n` +
             `Skor Esai         : ${sub.skor_esai || 0}\n` +
-            `TOTAL NILAI AKHIR : ${sub.total_nilai || 0} / 100\n` +
-            `-----------------------------------------\n` +
-            `Status: ${sub.status_koreksi === 'selesai' ? 'Sudah Dinilai Lengkap' : 'Menunggu Koreksi Guru'}`
+            `TOTAL NILAI AKHIR : ${sub.total_nilai || 0} / 100\n\n` +
+            `Status: ${sub.status_koreksi === 'selesai' ? 'Sudah Dinilai Lengkap' : 'Menunggu Koreksi Guru'}`,
+            'alert',
+            'Hasil Ujian Siswa',
+            '📊'
         );
     };
 
@@ -1217,7 +1452,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const filtered = allQuizzes.filter(q => {
             const matchMapel = !filterMapel || q.mapel === filterMapel;
-            const matchKelas = !studentKelas || q.kelas === studentKelas || q.kelas.toLowerCase().includes('semua');
+            const matchKelas = !studentKelas || isClassMatch(q.kelas, studentKelas);
             return matchMapel && matchKelas;
         });
 
@@ -1287,15 +1522,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.startExam = async (quizId) => {
-        const studentName = globalNameInput.value.trim() || prompt("Masukkan nama lengkap Anda untuk memulai ujian:");
+        const studentName = globalNameInput.value.trim();
         if (!studentName) {
-            alert("Nama lengkap wajib diisi sebelum memulai ujian.");
+            await showCustomModal("Silakan masukkan nama lengkap siswa pada kolom identitas siswa di atas sebelum memulai ujian.", 'alert', 'Nama Siswa Diperlukan', '⚠️');
             return;
         }
 
         const mySub = studentQuizSubmissions.find(s => String(s.quiz_id) === String(quizId));
         if (mySub) {
-            const retake = confirm(`Anda sudah mengerjakan ujian ini dengan skor: ${mySub.total_nilai}/100.\n\nApakah Anda yakin ingin mengulang pengerjaan ujian ini?`);
+            const retake = await showCustomModal(`Anda sudah mengerjakan ujian ini dengan skor: ${mySub.total_nilai}/100.\n\nApakah Anda yakin ingin mengulang pengerjaan ujian ini?`, 'confirm', 'Ujian Ulang', '❓');
             if (!retake) return;
         }
 
@@ -1373,7 +1608,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (remainingSeconds <= 0) {
                     clearInterval(quizTimerInterval);
-                    alert("Waktu ujian telah habis! Jawaban Anda dikirim secara otomatis.");
+                    showCustomModal("Waktu ujian telah habis! Jawaban Anda dikirim secara otomatis.", 'alert', 'Waktu Habis', '⏰');
                     submitExamAnswers();
                 }
             }, 1000);
@@ -1381,12 +1616,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.scrollTo({ top: room.offsetTop - 50, behavior: 'smooth' });
 
         } catch (e) {
-            alert("Gagal memulai ujian: " + e.message);
+            await showCustomModal("Gagal memulai ujian: " + e.message, 'alert', 'Gagal', '❌');
         }
     };
 
-    window.cancelExam = () => {
-        if (confirm("Apakah Anda yakin ingin membatalkan dan keluar dari ujian? Jawaban Anda tidak akan tersimpan.")) {
+    window.cancelExam = async () => {
+        const confExit = await showCustomModal("Apakah Anda yakin ingin membatalkan dan keluar dari ujian? Jawaban Anda tidak akan tersimpan.", 'confirm', 'Keluar Ujian', '⚠️');
+        if (confExit) {
             if (quizTimerInterval) clearInterval(quizTimerInterval);
             activeQuizData = null;
             document.getElementById('quiz-room-container').classList.add('hidden');
@@ -1396,7 +1632,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.submitExamAnswers = async () => {
         if (!activeQuizData) return;
-        const confirmSubmit = confirm("Apakah Anda yakin ingin menyelesaikan dan mengirim jawaban ujian ini?");
+        const confirmSubmit = await showCustomModal("Apakah Anda yakin ingin menyelesaikan dan mengirim jawaban ujian ini?", 'confirm', 'Kumpulkan Ujian', '📝');
         if (!confirmSubmit) return;
 
         if (quizTimerInterval) clearInterval(quizTimerInterval);
@@ -1438,13 +1674,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (error) throw error;
 
-            alert(`Ujian berhasil dikumpulkan! Nilai Pilihan Ganda Anda: ${pgScoreTotal} poin.`);
+            await showCustomModal(`Ujian berhasil dikumpulkan! Nilai Pilihan Ganda Anda: ${pgScoreTotal} poin.`, 'alert', 'Ujian Selesai', '🎉');
             activeQuizData = null;
             document.getElementById('quiz-room-container').classList.add('hidden');
             document.getElementById('quiz-portal-landing').classList.remove('hidden');
             loadStudentQuizzes();
         } catch (e) {
-            alert("Gagal mengirim jawaban: " + e.message);
+            await showCustomModal("Gagal mengirim jawaban: " + e.message, 'alert', 'Gagal', '❌');
             btn.disabled = false;
             btn.innerText = "SELESAI & KIRIM JAWABAN";
         }
@@ -1459,7 +1695,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const summaryBox = document.getElementById('grade-summary-cards');
 
         if (!nameVal) {
-            alert("Silakan masukkan nama lengkap siswa untuk mencari nilai!");
+            await showCustomModal("Silakan masukkan nama lengkap siswa untuk mencari nilai!", 'alert', 'Pemberitahuan', '⚠️');
             return;
         }
 
