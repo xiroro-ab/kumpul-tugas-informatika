@@ -1922,14 +1922,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-black uppercase text-black mb-1">Pertanyaan / Instruksi Soal #${idx + 1}</label>
-                        <textarea rows="2" placeholder="Tuliskan pertanyaan atau instruksi soal di sini..." oninput="window.updateFormQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(cleanPertanyaan)}</textarea>
+                        <label class="block text-xs font-black uppercase text-black mb-1.5">Pertanyaan / Instruksi Soal #${idx + 1}</label>
+                        <textarea rows="5" placeholder="Tuliskan pertanyaan atau instruksi soal di sini..." oninput="window.updateFormQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full min-h-[125px] p-3.5 border-2 border-black rounded-xl font-medium text-sm text-slate-900 bg-slate-50 focus:bg-white leading-relaxed resize-y shadow-inner">${escapeHtml(cleanPertanyaan)}</textarea>
                     </div>
 
                     <!-- Lampiran Stimulus Gambar Soal -->
                     <div class="p-2.5 rounded-xl border border-dashed border-slate-400 bg-slate-50/80 space-y-2">
                         <div class="flex items-center justify-between flex-wrap gap-2">
-                            <span class="text-[11px] font-black uppercase text-slate-700 flex items-center gap-1.5">
+                            <span class="text-xs font-black uppercase text-slate-700 flex items-center gap-1.5">
                                 <span></span> Lampiran Gambar Soal (Stimulus / Ilustrasi / Diagram)
                             </span>
                             ${q.gambar_url ? `
@@ -1953,12 +1953,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
                                 <div>
                                     <input type="file" id="form_img_file_${idx}" accept="image/*" class="hidden" onchange="window.handleQuestionImageUpload(event, ${idx}, 'form')">
-                                    <button type="button" onclick="document.getElementById('form_img_file_${idx}').click()" class="w-full h-8 px-2.5 bg-white hover:bg-slate-100 border border-black rounded-lg text-xs font-black text-slate-800 flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                    <button type="button" onclick="document.getElementById('form_img_file_${idx}').click()" class="w-full h-9 px-2.5 bg-white hover:bg-slate-100 border border-black rounded-lg text-xs font-black text-slate-800 flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
                                         Pilih Gambar dari Komputer
                                     </button>
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    <input type="url" placeholder="Atau tempel URL gambar (https://...)" value="${escapeHtml(q.gambar_url || '')}" oninput="window.updateQuestionImage(${idx}, this.value, 'form')" class="w-full h-8 px-2.5 border border-black rounded-lg text-xs font-medium bg-white">
+                                    <input type="url" placeholder="Atau tempel URL gambar (https://...)" value="${escapeHtml(q.gambar_url || '')}" oninput="window.updateQuestionImage(${idx}, this.value, 'form')" class="w-full h-9 px-2.5 border border-black rounded-lg text-xs font-medium bg-white">
                                 </div>
                             </div>
                         `}
@@ -1966,28 +1966,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     ${isPg ? `
                         <div class="space-y-2 pt-1">
-                            <label class="block text-[11px] font-black uppercase text-black">Opsi Pilihan Jawaban & Kunci</label>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="w-6 text-center font-black text-xs text-slate-700">A</span>
-                                    <input type="text" placeholder="Teks opsi A..." value="${escapeHtml(q.opsi_a || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_a', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                            <label class="block text-xs font-black uppercase text-black">Opsi Pilihan Jawaban & Kunci</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 text-center font-black text-sm text-slate-700">A</span>
+                                    <input type="text" placeholder="Teks opsi A..." value="${escapeHtml(q.opsi_a || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_a', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
                                 </div>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="w-6 text-center font-black text-xs text-slate-700">B</span>
-                                    <input type="text" placeholder="Teks opsi B..." value="${escapeHtml(q.opsi_b || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_b', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 text-center font-black text-sm text-slate-700">B</span>
+                                    <input type="text" placeholder="Teks opsi B..." value="${escapeHtml(q.opsi_b || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_b', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
                                 </div>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="w-6 text-center font-black text-xs text-slate-700">C</span>
-                                    <input type="text" placeholder="Teks opsi C..." value="${escapeHtml(q.opsi_c || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_c', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 text-center font-black text-sm text-slate-700">C</span>
+                                    <input type="text" placeholder="Teks opsi C..." value="${escapeHtml(q.opsi_c || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_c', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
                                 </div>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="w-6 text-center font-black text-xs text-slate-700">D</span>
-                                    <input type="text" placeholder="Teks opsi D..." value="${escapeHtml(q.opsi_d || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_d', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 text-center font-black text-sm text-slate-700">D</span>
+                                    <input type="text" placeholder="Teks opsi D..." value="${escapeHtml(q.opsi_d || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_d', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 pt-1">
-                                <label class="text-[11px] font-black uppercase text-black">Kunci Jawaban Benar:</label>
-                                <select onchange="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="h-8 px-3 border-2 border-black rounded-lg font-black text-xs bg-yellow-200 text-black cursor-pointer">
+                                <label class="text-xs font-black uppercase text-black">Kunci Jawaban Benar:</label>
+                                <select onchange="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="h-9 px-3 border-2 border-black rounded-lg font-black text-xs bg-yellow-200 text-black cursor-pointer">
                                     <option value="A" ${q.kunci === 'A' ? 'selected' : ''}>A</option>
                                     <option value="B" ${q.kunci === 'B' ? 'selected' : ''}>B</option>
                                     <option value="C" ${q.kunci === 'C' ? 'selected' : ''}>C</option>
@@ -1997,9 +1997,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     ` : isBs ? `
                         <div class="space-y-2 pt-1">
-                            <label class="block text-[11px] font-black uppercase text-black">Kunci Jawaban Benar / Salah:</label>
+                            <label class="block text-xs font-black uppercase text-black">Kunci Jawaban Benar / Salah:</label>
                             <div class="flex items-center gap-3">
-                                <select onchange="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="h-9 px-3 border-2 border-black rounded-xl font-black text-xs bg-teal-100 text-teal-950 cursor-pointer">
+                                <select onchange="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="h-10 px-3.5 border-2 border-black rounded-xl font-black text-xs bg-teal-100 text-teal-950 cursor-pointer">
                                     <option value="BENAR" ${String(q.kunci).toUpperCase() === 'BENAR' ? 'selected' : ''}>BENAR (Pernyataan Sesuai)</option>
                                     <option value="SALAH" ${String(q.kunci).toUpperCase() === 'SALAH' ? 'selected' : ''}>SALAH (Pernyataan Keliru)</option>
                                 </select>
@@ -2012,14 +2012,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <p class="text-[11px] font-medium leading-relaxed">Siswa akan diberikan area dropzone unggah foto/dokumen hasil pekerjaan langsung di formulir.</p>
                             </div>
                             <div>
-                                <label class="block text-[11px] font-black uppercase text-purple-950 mb-1">Kriteria Foto yang Diharapkan (Acuan Penilaian AI & Guru)</label>
-                                <input type="text" placeholder="Contoh: Foto catatan tulisan tangan yang rapi dan terbaca, atau screenshot praktik coding..." value="${escapeHtml(q.kunci || '')}" oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="w-full h-9 px-3 border-2 border-purple-300 rounded-xl font-bold text-xs bg-purple-50 focus:bg-white text-purple-950">
+                                <label class="block text-xs font-black uppercase text-purple-950 mb-1.5">Kriteria Foto yang Diharapkan (Acuan Penilaian AI & Guru)</label>
+                                <input type="text" placeholder="Contoh: Foto catatan tulisan tangan yang rapi dan terbaca, atau screenshot praktik coding..." value="${escapeHtml(q.kunci || '')}" oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="w-full h-10 px-3.5 border-2 border-purple-300 rounded-xl font-bold text-sm bg-purple-50 focus:bg-white text-purple-950">
                             </div>
                         </div>
                     ` : isMatch ? `
                         <div class="space-y-2 pt-1">
                             <div class="flex items-center justify-between">
-                                <label class="text-[11px] font-black uppercase text-black">Pasangan Premis & Jodoh Jawaban:</label>
+                                <label class="text-xs font-black uppercase text-black">Pasangan Premis & Jodoh Jawaban:</label>
                                 <button type="button" onclick="window.addMatchingPair(${idx})" class="px-2.5 py-1 bg-pink-200 hover:bg-pink-300 border-2 border-black rounded-lg font-black text-[10px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
                                     Tambah Pasangan
                                 </button>
@@ -2028,9 +2028,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${(q.pasangan || []).map((p, pIdx) => `
                                     <div class="flex items-center gap-2">
                                         <span class="w-5 text-center font-black text-xs text-slate-700">${pIdx + 1}</span>
-                                        <input type="text" placeholder="Istilah / Premis (Kiri)..." value="${escapeHtml(p.kiri || '')}" oninput="window.updateMatchingPair(${idx}, ${pIdx}, 'kiri', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                                        <input type="text" placeholder="Istilah / Premis (Kiri)..." value="${escapeHtml(p.kiri || '')}" oninput="window.updateMatchingPair(${idx}, ${pIdx}, 'kiri', this.value)" class="flex-1 h-9 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
                                         <span class="font-black text-xs text-slate-500">&rarr;</span>
-                                        <input type="text" placeholder="Pasangan / Definisi (Kanan)..." value="${escapeHtml(p.kanan || '')}" oninput="window.updateMatchingPair(${idx}, ${pIdx}, 'kanan', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                                        <input type="text" placeholder="Pasangan / Definisi (Kanan)..." value="${escapeHtml(p.kanan || '')}" oninput="window.updateMatchingPair(${idx}, ${pIdx}, 'kanan', this.value)" class="flex-1 h-9 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
                                         <button type="button" onclick="window.deleteMatchingPair(${idx}, ${pIdx})" title="Hapus Pasangan" class="w-7 h-7 rounded border border-red-400 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white flex items-center justify-center font-black text-xs transition">
                                             &times;
                                         </button>
@@ -2040,8 +2040,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     ` : `
                         <div>
-                            <label class="block text-[11px] font-black uppercase text-purple-950 mb-1">Kunci Jawaban / Panduan Evaluasi AI (Acuan Penilaian)</label>
-                            <input type="text" placeholder="Tuliskan kata kunci jawaban yang diharapkan siswa..." value="${escapeHtml(q.kunci || '')}" oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="w-full h-9 px-3 border-2 border-purple-300 rounded-xl font-bold text-xs bg-purple-50 focus:bg-white text-purple-950">
+                            <label class="block text-xs font-black uppercase text-purple-950 mb-1.5">Kunci Jawaban / Panduan Evaluasi AI (Acuan Penilaian)</label>
+                            <textarea rows="3" placeholder="Tuliskan kata kunci atau kriteria jawaban yang diharapkan siswa..." oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="w-full min-h-[85px] p-3 border-2 border-purple-300 rounded-xl font-medium text-sm bg-purple-50 focus:bg-white text-purple-950 leading-relaxed resize-y">${escapeHtml(q.kunci || '')}</textarea>
                         </div>
                     `}
                 </div>
@@ -3307,19 +3307,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 specificContent = `
                     <div class="space-y-2 pt-1">
                         <div class="flex justify-between items-center">
-                            <label class="block text-[11px] font-black uppercase text-black">Pilihan Jawaban (A, B, C, D)</label>
+                            <label class="block text-xs font-black uppercase text-black">Pilihan Jawaban (A, B, C, D)</label>
                             <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">Pilih radio untuk Kunci Jawaban Benar</span>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             ${['A', 'B', 'C', 'D'].map(opt => {
                                 const key = `opsi_${opt.toLowerCase()}`;
                                 const val = q[key] || '';
                                 const isChecked = q.kunci_pg === opt;
                                 return `
-                                    <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${isChecked ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
-                                        <input type="radio" name="manual_quiz_kunci_${idx}" value="${opt}" ${isChecked ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', '${opt}'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
-                                        <span class="font-black text-xs">${opt}.</span>
-                                        <input type="text" placeholder="Pilihan ${opt}..." value="${escapeHtml(val)}" oninput="window.updateManualQuestionField(${idx}, '${key}', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
+                                    <div class="flex items-center gap-2.5 border-2 border-black rounded-xl px-3 py-2.5 ${isChecked ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
+                                        <input type="radio" name="manual_quiz_kunci_${idx}" value="${opt}" ${isChecked ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', '${opt}'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600 w-4 h-4 shrink-0">
+                                        <span class="font-black text-sm shrink-0">${opt}.</span>
+                                        <input type="text" placeholder="Pilihan ${opt}..." value="${escapeHtml(val)}" oninput="window.updateManualQuestionField(${idx}, '${key}', this.value)" class="w-full bg-transparent font-medium text-sm text-slate-900 outline-none">
                                     </div>
                                 `;
                             }).join('')}
@@ -3331,19 +3331,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 specificContent = `
                     <div class="space-y-2 pt-1">
                         <div class="flex justify-between items-center">
-                            <label class="block text-[11px] font-black uppercase text-black">Pilihan Ganda Kompleks (Bisa >1 Kunci Benar)</label>
+                            <label class="block text-xs font-black uppercase text-black">Pilihan Ganda Kompleks (Bisa >1 Kunci Benar)</label>
                             <span class="text-[10px] font-bold text-cyan-800 bg-cyan-100 px-2 py-0.5 rounded border border-cyan-300">Centang kotak untuk memilih KUNCI BENAR</span>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             ${['A', 'B', 'C', 'D'].map(opt => {
                                 const key = `opsi_${opt.toLowerCase()}`;
                                 const val = q[key] || '';
                                 const isChecked = activeKeys.includes(opt);
                                 return `
-                                    <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${isChecked ? 'bg-cyan-100 border-cyan-600 ring-2 ring-cyan-500' : 'bg-slate-50'}">
-                                        <input type="checkbox" value="${opt}" ${isChecked ? 'checked' : ''} onchange="window.toggleManualQuizComplexKey(${idx}, '${opt}')" class="cursor-pointer accent-cyan-700 w-4 h-4 rounded">
-                                        <span class="font-black text-xs">${opt}.</span>
-                                        <input type="text" placeholder="Pilihan ${opt}..." value="${escapeHtml(val)}" oninput="window.updateManualQuestionField(${idx}, '${key}', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
+                                    <div class="flex items-center gap-2.5 border-2 border-black rounded-xl px-3 py-2.5 ${isChecked ? 'bg-cyan-100 border-cyan-600 ring-2 ring-cyan-500' : 'bg-slate-50'}">
+                                        <input type="checkbox" value="${opt}" ${isChecked ? 'checked' : ''} onchange="window.toggleManualQuizComplexKey(${idx}, '${opt}')" class="cursor-pointer accent-cyan-700 w-4 h-4 rounded shrink-0">
+                                        <span class="font-black text-sm shrink-0">${opt}.</span>
+                                        <input type="text" placeholder="Pilihan ${opt}..." value="${escapeHtml(val)}" oninput="window.updateManualQuestionField(${idx}, '${key}', this.value)" class="w-full bg-transparent font-medium text-sm text-slate-900 outline-none">
                                     </div>
                                 `;
                             }).join('')}
@@ -3355,15 +3355,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isBenar = q.kunci_pg === 'Benar';
                 specificContent = `
                     <div class="space-y-2 pt-1">
-                        <label class="block text-[11px] font-black uppercase text-black">Tentukan Kunci Kebenaran Pernyataan</label>
+                        <label class="block text-xs font-black uppercase text-black">Tentukan Kunci Kebenaran Pernyataan</label>
                         <div class="grid grid-cols-2 gap-3">
-                            <label class="flex items-center gap-2.5 p-3 rounded-xl border-2 border-black cursor-pointer ${isBenar ? 'bg-emerald-200 border-black ring-2 ring-emerald-500 font-black' : 'bg-slate-50 font-bold'}">
-                                <input type="radio" name="manual_quiz_bs_${idx}" value="Benar" ${isBenar ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'Benar'); window.renderManualQuizQuestions();" class="accent-emerald-700">
-                                <span class="text-xs text-black">PERNYATAAN BENAR</span>
+                            <label class="flex items-center gap-2.5 p-3.5 rounded-xl border-2 border-black cursor-pointer ${isBenar ? 'bg-emerald-200 border-black ring-2 ring-emerald-500 font-black' : 'bg-slate-50 font-bold'}">
+                                <input type="radio" name="manual_quiz_bs_${idx}" value="Benar" ${isBenar ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'Benar'); window.renderManualQuizQuestions();" class="accent-emerald-700 w-4 h-4">
+                                <span class="text-sm text-black">PERNYATAAN BENAR</span>
                             </label>
-                            <label class="flex items-center gap-2.5 p-3 rounded-xl border-2 border-black cursor-pointer ${!isBenar ? 'bg-red-200 border-black ring-2 ring-red-500 font-black' : 'bg-slate-50 font-bold'}">
-                                <input type="radio" name="manual_quiz_bs_${idx}" value="Salah" ${!isBenar ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'Salah'); window.renderManualQuizQuestions();" class="accent-red-700">
-                                <span class="text-xs text-black">PERNYATAAN SALAH</span>
+                            <label class="flex items-center gap-2.5 p-3.5 rounded-xl border-2 border-black cursor-pointer ${!isBenar ? 'bg-red-200 border-black ring-2 ring-red-500 font-black' : 'bg-slate-50 font-bold'}">
+                                <input type="radio" name="manual_quiz_bs_${idx}" value="Salah" ${!isBenar ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'Salah'); window.renderManualQuizQuestions();" class="accent-red-700 w-4 h-4">
+                                <span class="text-sm text-black">PERNYATAAN SALAH</span>
                             </label>
                         </div>
                     </div>
@@ -3371,8 +3371,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (currentType === 'singkat') {
                 specificContent = `
                     <div class="pt-1">
-                        <label class="block text-[11px] font-black uppercase text-black mb-1">Kunci Jawaban Singkat (Kata Kunci Jawaban Benar)</label>
-                        <input type="text" placeholder="Contoh: RAM, CPU, Fotosintesis, atau angka pasti..." value="${escapeHtml(q.kunci_pg || '')}" oninput="window.updateManualQuestionField(${idx}, 'kunci_pg', this.value)" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white">
+                        <label class="block text-xs font-black uppercase text-black mb-1.5">Kunci Jawaban Singkat (Kata Kunci Jawaban Benar)</label>
+                        <input type="text" placeholder="Contoh: RAM, CPU, Fotosintesis, atau angka pasti..." value="${escapeHtml(q.kunci_pg || '')}" oninput="window.updateManualQuestionField(${idx}, 'kunci_pg', this.value)" class="w-full h-11 px-3.5 border-2 border-black rounded-xl font-bold text-sm bg-slate-50 focus:bg-white text-slate-900">
                         <p class="text-[10px] text-slate-500 font-bold mt-1">Jawaban siswa akan dicocokkan otomatis (tidak membedakan huruf besar/kecil).</p>
                     </div>
                 `;
@@ -3381,18 +3381,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 specificContent = `
                     <div class="space-y-2 pt-1">
                         <div class="flex justify-between items-center">
-                            <label class="block text-[11px] font-black uppercase text-black">Pasangan Soal Menjodohkan</label>
-                            <button type="button" onclick="window.addManualQuizPair(${idx})" class="text-[11px] bg-teal-600 hover:bg-black text-white font-black px-2.5 py-1 rounded-lg border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition">
+                            <label class="block text-xs font-black uppercase text-black">Pasangan Soal Menjodohkan</label>
+                            <button type="button" onclick="window.addManualQuizPair(${idx})" class="text-xs bg-teal-600 hover:bg-black text-white font-black px-3 py-1.5 rounded-lg border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition">
                                 Tambah Pasangan
                             </button>
                         </div>
                         <div class="space-y-2">
                             ${pairs.map((p, pIdx) => `
-                                <div class="flex items-center gap-2 bg-teal-50/60 p-2 rounded-xl border border-teal-300">
-                                    <span class="w-6 h-6 rounded-full bg-teal-700 text-white font-black text-[10px] flex items-center justify-center shrink-0">${pIdx + 1}</span>
-                                    <input type="text" placeholder="Pernyataan Kiri (Premis)..." value="${escapeHtml(p.kiri || '')}" oninput="window.updateManualQuizPair(${idx}, ${pIdx}, 'kiri', this.value)" class="flex-1 h-9 px-2.5 border-2 border-black rounded-lg font-medium text-xs bg-white">
-                                    <span class="font-black text-xs text-slate-400">&rarr;</span>
-                                    <input type="text" placeholder="Jawaban Cocok Kanan..." value="${escapeHtml(p.kanan || '')}" oninput="window.updateManualQuizPair(${idx}, ${pIdx}, 'kanan', this.value)" class="flex-1 h-9 px-2.5 border-2 border-black rounded-lg font-medium text-xs bg-white">
+                                <div class="flex items-center gap-2 bg-teal-50/60 p-2.5 rounded-xl border border-teal-300">
+                                    <span class="w-6 h-6 rounded-full bg-teal-700 text-white font-black text-xs flex items-center justify-center shrink-0">${pIdx + 1}</span>
+                                    <input type="text" placeholder="Pernyataan Kiri (Premis)..." value="${escapeHtml(p.kiri || '')}" oninput="window.updateManualQuizPair(${idx}, ${pIdx}, 'kiri', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-white text-slate-900">
+                                    <span class="font-black text-sm text-slate-400">&rarr;</span>
+                                    <input type="text" placeholder="Jawaban Cocok Kanan..." value="${escapeHtml(p.kanan || '')}" oninput="window.updateManualQuizPair(${idx}, ${pIdx}, 'kanan', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-white text-slate-900">
                                     <button type="button" onclick="window.removeManualQuizPair(${idx}, ${pIdx})" class="w-8 h-8 rounded-lg border border-red-400 text-red-600 hover:bg-red-500 hover:text-white flex items-center justify-center font-black transition text-sm shrink-0">
                                         &times;
                                     </button>
@@ -3404,24 +3404,24 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (currentType === 'upload_foto') {
                 specificContent = `
                     <div class="pt-1 space-y-1.5">
-                        <div class="p-2.5 bg-pink-50 border border-pink-300 rounded-xl text-[11px] font-bold text-pink-900 flex items-center gap-2">
+                        <div class="p-2.5 bg-pink-50 border border-pink-300 rounded-xl text-xs font-bold text-pink-900 flex items-center gap-2">
                             <span></span> Siswa akan mengunggah berkas/foto lembar jawaban fisik langsung ke server melalui kamera/galeri.
                         </div>
-                        <label class="block text-[11px] font-black uppercase text-black">Rubrik Penilaian & Ketentuan Lembar Foto</label>
-                        <textarea rows="2" placeholder="Contoh: Foto hitungan rumus step-by-step dengan tulisan tangan rapi dan jelas..." oninput="window.updateManualQuestionField(${idx}, 'rubrik_esai', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.rubrik_esai || '')}</textarea>
+                        <label class="block text-xs font-black uppercase text-black mb-1.5">Rubrik Penilaian & Ketentuan Lembar Foto</label>
+                        <textarea rows="4" placeholder="Contoh: Foto hitungan rumus step-by-step dengan tulisan tangan rapi dan jelas..." oninput="window.updateManualQuestionField(${idx}, 'rubrik_esai', this.value)" class="w-full min-h-[95px] p-3 border-2 border-black rounded-xl font-medium text-sm text-slate-900 bg-slate-50 focus:bg-white leading-relaxed resize-y">${escapeHtml(q.rubrik_esai || '')}</textarea>
                     </div>
                 `;
             } else {
                 specificContent = `
                     <div class="pt-1">
-                        <label class="block text-[11px] font-black uppercase text-black mb-1">Rubrik / Kunci Penilaian Jawaban Esai (Panduan Koreksi Guru & AI)</label>
-                        <textarea rows="2" placeholder="Tuliskan kriteria penilaian atau poin-poin yang wajib dijawab siswa..." oninput="window.updateManualQuestionField(${idx}, 'rubrik_esai', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.rubrik_esai || '')}</textarea>
+                        <label class="block text-xs font-black uppercase text-black mb-1.5">Rubrik / Kunci Penilaian Jawaban Esai (Panduan Koreksi Guru & AI)</label>
+                        <textarea rows="4" placeholder="Tuliskan kriteria penilaian atau poin-poin yang wajib dijawab siswa..." oninput="window.updateManualQuestionField(${idx}, 'rubrik_esai', this.value)" class="w-full min-h-[95px] p-3 border-2 border-black rounded-xl font-medium text-sm text-slate-900 bg-slate-50 focus:bg-white leading-relaxed resize-y">${escapeHtml(q.rubrik_esai || '')}</textarea>
                     </div>
                 `;
             }
 
             return `
-                <div class="border-2 border-black rounded-2xl p-4 bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-3">
+                <div class="border-2 border-black rounded-2xl p-4 md:p-5 bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-3.5">
                     <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2.5 flex-wrap gap-2">
                         <div class="flex items-center gap-2">
                             <span class="w-7 h-7 rounded-lg bg-black text-white font-black text-xs flex items-center justify-center">
@@ -3449,8 +3449,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-black uppercase text-black mb-1">Pertanyaan Soal #${idx + 1}</label>
-                        <textarea rows="2" placeholder="Tuliskan butir soal di sini..." oninput="window.updateManualQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(cleanPertanyaan)}</textarea>
+                        <label class="block text-xs font-black uppercase text-black mb-1.5">Pertanyaan Soal #${idx + 1}</label>
+                        <textarea rows="5" placeholder="Tuliskan butir soal di sini..." oninput="window.updateManualQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full min-h-[125px] p-3.5 border-2 border-black rounded-xl font-medium text-sm text-slate-900 bg-slate-50 focus:bg-white leading-relaxed resize-y shadow-inner">${escapeHtml(cleanPertanyaan)}</textarea>
                     </div>
 
                     <!-- Lampiran Stimulus Gambar Soal -->
