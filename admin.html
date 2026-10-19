@@ -868,6 +868,113 @@
     </div>
 
     <!-- ======================================================= -->
+    <!-- MODAL: BUAT KUIS BARU (INPUT MANUAL GURU)               -->
+    <!-- ======================================================= -->
+    <div id="manual-quiz-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-3xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[92vh] overflow-hidden my-auto">
+            
+            <!-- Header (Pinned) -->
+            <div class="px-6 py-4 border-b-2 border-black bg-yellow-300 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 bg-black text-white rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">✏️</span>
+                    <div>
+                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Buat Kuis Baru (Input Manual)</h3>
+                        <p class="text-[11px] font-bold text-black/80">Susun naskah soal Pilihan Ganda & Esai secara mandiri untuk siswa</p>
+                    </div>
+                </div>
+                <button onclick="closeManualQuizModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg">
+                    &times;
+                </button>
+            </div>
+
+            <!-- Scrollable Body -->
+            <div class="p-5 md:p-6 overflow-y-auto flex-1 space-y-5">
+                
+                <!-- Pengaturan Dasar Kuis -->
+                <div class="bg-slate-50 border-2 border-black rounded-2xl p-4 space-y-3">
+                    <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">1. Informasi Pokok Ujian</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-black uppercase text-black mb-1">Mata Pelajaran</label>
+                            <select id="manual-quiz-mapel" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                                <option value="Informatika">Informatika</option>
+                                <option value="Matematika">Matematika</option>
+                                <option value="IPA">IPA</option>
+                                <option value="IPS">IPS</option>
+                                <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                                <option value="Bahasa Inggris">Bahasa Inggris</option>
+                                <option value="PAI">PAI</option>
+                                <option value="PPKn">PPKn</option>
+                                <option value="PJOK">PJOK</option>
+                                <option value="Seni Budaya">Seni Budaya</option>
+                                <option value="Prakarya">Prakarya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black uppercase text-black mb-1">Target Kelas</label>
+                            <select id="manual-quiz-kelas" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white"></select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-black uppercase text-black mb-1">Judul Ujian / Kuis</label>
+                        <input type="text" id="manual-quiz-judul" placeholder="Contoh: Penilaian Harian Bab 3 - Algoritma Pemrograman" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-black uppercase text-black mb-1">Durasi Pengerjaan (Menit)</label>
+                            <select id="manual-quiz-durasi" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                                <option value="30">30 Menit</option>
+                                <option value="45" selected>45 Menit (Standar 1 JP)</option>
+                                <option value="60">60 Menit</option>
+                                <option value="90">90 Menit (Ujian Sumatif)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black uppercase text-black mb-1">Petunjuk Pengerjaan</label>
+                            <input type="text" id="manual-quiz-petunjuk" placeholder="Contoh: Kerjakan dengan teliti, jujur, dan mandiri." class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bagian Butir Soal -->
+                <div class="space-y-3">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <div>
+                            <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">2. Butir-Butir Soal (<span id="manual-quiz-total-count">0</span> Soal)</h4>
+                            <p class="text-[11px] text-slate-500 font-bold">Tambahkan soal Pilihan Ganda (auto-koreksi) atau Soal Esai mandiri.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="addManualQuestionItem('pg')" class="px-3 py-1.5 bg-indigo-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ Tambah Soal PG
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('esai')" class="px-3 py-1.5 bg-purple-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ Tambah Soal Esai
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Container Butir Soal Dinamis -->
+                    <div id="manual-quiz-questions-list" class="space-y-4">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer (Pinned) -->
+            <div class="px-6 py-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+                <button type="button" onclick="closeManualQuizModal()" class="px-5 h-11 bg-white border-2 border-black text-black font-black text-xs uppercase tracking-wider rounded-xl hover:bg-slate-100 transition">
+                    Batal
+                </button>
+                <button type="button" onclick="saveManualQuiz()" id="btn-save-manual-quiz" class="flex-1 h-11 bg-emerald-400 hover:bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2">
+                    <span>💾 SIMPAN & TERBITKAN KUIS</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
     <!-- MODAL: PROFIL GURU & MAPEL                              -->
     <!-- ======================================================= -->
     <div id="profile-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

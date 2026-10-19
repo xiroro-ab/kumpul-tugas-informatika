@@ -1370,8 +1370,265 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // =========================================================
+    // BUILDER KUIS INPUT MANUAL (MANDIRI TANPA AI)
+    // =========================================================
+    let manualQuizQuestions = [];
+
+    window.openManualQuizModal = () => {
+        const kelasSelect = document.getElementById('manual-quiz-kelas');
+        if (kelasSelect) {
+            kelasSelect.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
+            stateKelas.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.textContent = `Kelas ${k}`;
+                kelasSelect.appendChild(opt);
+            });
+        }
+        const mapelSelect = document.getElementById('manual-quiz-mapel');
+        if (mapelSelect && currentTeacher?.mapel) {
+            mapelSelect.value = currentTeacher.mapel;
+        }
+        document.getElementById('manual-quiz-judul').value = '';
+        document.getElementById('manual-quiz-petunjuk').value = 'Kerjakan dengan teliti, jujur, dan mandiri.';
+        document.getElementById('manual-quiz-durasi').value = '45';
+
+        manualQuizQuestions = [
+            {
+                id: Date.now(),
+                tipe: 'pg',
+                pertanyaan: '',
+                opsi_a: '',
+                opsi_b: '',
+                opsi_c: '',
+                opsi_d: '',
+                kunci_pg: 'A',
+                rubrik_esai: '',
+                bobot: 10
+            }
+        ];
+
+        renderManualQuizQuestions();
+        document.getElementById('manual-quiz-modal').classList.remove('hidden');
+    };
+
+    window.closeManualQuizModal = () => {
+        document.getElementById('manual-quiz-modal').classList.add('hidden');
+    };
+
+    window.addManualQuestionItem = (type = 'pg') => {
+        manualQuizQuestions.push({
+            id: Date.now() + Math.random(),
+            tipe: type,
+            pertanyaan: '',
+            opsi_a: '',
+            opsi_b: '',
+            opsi_c: '',
+            opsi_d: '',
+            kunci_pg: 'A',
+            rubrik_esai: '',
+            bobot: type === 'pg' ? 10 : 25
+        });
+        renderManualQuizQuestions();
+
+        setTimeout(() => {
+            const list = document.getElementById('manual-quiz-questions-list');
+            if (list && list.lastElementChild) {
+                list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, 50);
+    };
+
+    window.deleteManualQuestionItem = (idx) => {
+        if (manualQuizQuestions.length <= 1) {
+            showCustomModal("Minimal kuis harus memiliki 1 butir soal!");
+            return;
+        }
+        manualQuizQuestions.splice(idx, 1);
+        renderManualQuizQuestions();
+    };
+
+    window.updateManualQuestionField = (idx, field, value) => {
+        if (manualQuizQuestions[idx]) {
+            manualQuizQuestions[idx][field] = value;
+        }
+    };
+
+    window.changeManualQuestionType = (idx, newType) => {
+        if (manualQuizQuestions[idx]) {
+            manualQuizQuestions[idx].tipe = newType;
+            manualQuizQuestions[idx].bobot = newType === 'pg' ? 10 : 25;
+            renderManualQuizQuestions();
+        }
+    };
+
+    window.renderManualQuizQuestions = () => {
+        const countEl = document.getElementById('manual-quiz-total-count');
+        if (countEl) countEl.innerText = manualQuizQuestions.length;
+
+        const container = document.getElementById('manual-quiz-questions-list');
+        if (!container) return;
+
+        if (manualQuizQuestions.length === 0) {
+            container.innerHTML = '<div class="p-6 text-center text-xs font-bold text-slate-500 bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl">Belum ada soal. Klik tombol "Tambah Soal PG" atau "Tambah Soal Esai" di atas.</div>';
+            return;
+        }
+
+        container.innerHTML = manualQuizQuestions.map((q, idx) => {
+            const isPg = q.tipe === 'pg';
+            return `
+                <div class="border-2 border-black rounded-2xl p-4 bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-3">
+                    <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg bg-black text-white font-black text-xs flex items-center justify-center">
+                                ${idx + 1}
+                            </span>
+                            <select onchange="window.changeManualQuestionType(${idx}, this.value)" class="h-8 px-2 border-2 border-black rounded-lg font-black text-xs ${isPg ? 'bg-indigo-100 text-indigo-900' : 'bg-purple-100 text-purple-900'} cursor-pointer">
+                                <option value="pg" ${isPg ? 'selected' : ''}>Pilihan Ganda (PG)</option>
+                                <option value="esai" ${!isPg ? 'selected' : ''}>Esai / Uraian</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-[11px] font-black uppercase text-slate-600">Bobot:</label>
+                                <input type="number" min="1" max="100" value="${q.bobot || (isPg ? 10 : 25)}" oninput="window.updateManualQuestionField(${idx}, 'bobot', this.value)" class="w-14 h-8 px-1.5 border-2 border-black rounded-lg font-black text-xs text-center bg-slate-50">
+                            </div>
+                            <button type="button" onclick="window.deleteManualQuestionItem(${idx})" title="Hapus Soal" class="w-8 h-8 rounded-lg border-2 border-red-500 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white flex items-center justify-center font-black transition">
+                                &times;
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-black uppercase text-black mb-1">Pertanyaan Soal</label>
+                        <textarea rows="2" placeholder="Tuliskan butir soal di sini..." oninput="window.updateManualQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.pertanyaan)}</textarea>
+                    </div>
+
+                    ${isPg ? `
+                        <div class="space-y-2 pt-1">
+                            <div class="flex justify-between items-center">
+                                <label class="block text-[11px] font-black uppercase text-black">Pilihan Jawaban (A, B, C, D)</label>
+                                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">Pilih radio button untuk Kunci Benar</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${q.kunci_pg === 'A' ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
+                                    <input type="radio" name="kunci_${idx}" value="A" ${q.kunci_pg === 'A' ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'A'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
+                                    <span class="font-black text-xs">A.</span>
+                                    <input type="text" placeholder="Opsi A..." value="${escapeHtml(q.opsi_a)}" oninput="window.updateManualQuestionField(${idx}, 'opsi_a', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
+                                </div>
+                                <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${q.kunci_pg === 'B' ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
+                                    <input type="radio" name="kunci_${idx}" value="B" ${q.kunci_pg === 'B' ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'B'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
+                                    <span class="font-black text-xs">B.</span>
+                                    <input type="text" placeholder="Opsi B..." value="${escapeHtml(q.opsi_b)}" oninput="window.updateManualQuestionField(${idx}, 'opsi_b', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
+                                </div>
+                                <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${q.kunci_pg === 'C' ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
+                                    <input type="radio" name="kunci_${idx}" value="C" ${q.kunci_pg === 'C' ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'C'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
+                                    <span class="font-black text-xs">C.</span>
+                                    <input type="text" placeholder="Opsi C..." value="${escapeHtml(q.opsi_c)}" oninput="window.updateManualQuestionField(${idx}, 'opsi_c', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
+                                </div>
+                                <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${q.kunci_pg === 'D' ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
+                                    <input type="radio" name="kunci_${idx}" value="D" ${q.kunci_pg === 'D' ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'D'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
+                                    <span class="font-black text-xs">D.</span>
+                                    <input type="text" placeholder="Opsi D..." value="${escapeHtml(q.opsi_d)}" oninput="window.updateManualQuestionField(${idx}, 'opsi_d', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="pt-1">
+                            <label class="block text-[11px] font-black uppercase text-black mb-1">Rubrik / Kunci Penilaian Jawaban Esai (Panduan Koreksi)</label>
+                            <textarea rows="2" placeholder="Tuliskan kriteria penilaian atau poin-poin yang wajib dijawab siswa..." oninput="window.updateManualQuestionField(${idx}, 'rubrik_esai', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.rubrik_esai)}</textarea>
+                        </div>
+                    `}
+                </div>
+            `;
+        }).join('');
+    };
+
+    window.saveManualQuiz = async () => {
+        const mapel = document.getElementById('manual-quiz-mapel').value;
+        const kelas = document.getElementById('manual-quiz-kelas').value || stateKelas[0] || 'Semua Kelas';
+        const judul = document.getElementById('manual-quiz-judul').value.trim();
+        const durasi = parseInt(document.getElementById('manual-quiz-durasi').value, 10) || 45;
+        const petunjuk = document.getElementById('manual-quiz-petunjuk').value.trim() || 'Kerjakan dengan teliti, jujur, dan mandiri.';
+
+        if (!judul) {
+            showCustomModal("Judul ujian / kuis wajib diisi!");
+            return;
+        }
+
+        if (!manualQuizQuestions || manualQuizQuestions.length === 0) {
+            showCustomModal("Tambahkan minimal 1 butir soal!");
+            return;
+        }
+
+        for (let i = 0; i < manualQuizQuestions.length; i++) {
+            const q = manualQuizQuestions[i];
+            if (!q.pertanyaan || !q.pertanyaan.trim()) {
+                showCustomModal(`Pertanyaan pada soal nomor ${i + 1} belum diisi!`);
+                return;
+            }
+            if (q.tipe === 'pg') {
+                if (!q.opsi_a.trim() || !q.opsi_b.trim() || !q.opsi_c.trim() || !q.opsi_d.trim()) {
+                    showCustomModal(`Pilihan jawaban (A, B, C, D) pada soal nomor ${i + 1} harus diisi lengkap!`);
+                    return;
+                }
+            }
+        }
+
+        const btn = document.getElementById('btn-save-manual-quiz');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Menyimpan & Menerbitkan Kuis...";
+        }
+
+        try {
+            const { data: quizData, error: quizError } = await supabase.from('quizzes').insert([{
+                teacher_id: currentSession?.user?.id,
+                mapel,
+                kelas,
+                judul_kuis: judul,
+                petunjuk,
+                durasi_menit: durasi,
+                status: 'aktif'
+            }]).select().single();
+
+            if (quizError) throw quizError;
+
+            const questionsPayload = manualQuizQuestions.map((q, idx) => ({
+                quiz_id: quizData.id,
+                nomor: idx + 1,
+                tipe: q.tipe || 'pg',
+                pertanyaan: q.pertanyaan.trim(),
+                opsi_a: q.opsi_a ? q.opsi_a.trim() : '',
+                opsi_b: q.opsi_b ? q.opsi_b.trim() : '',
+                opsi_c: q.opsi_c ? q.opsi_c.trim() : '',
+                opsi_d: q.opsi_d ? q.opsi_d.trim() : '',
+                kunci_pg: q.kunci_pg || 'A',
+                rubrik_esai: q.rubrik_esai ? q.rubrik_esai.trim() : '',
+                bobot: parseInt(q.bobot, 10) || (q.tipe === 'esai' ? 25 : 10)
+            }));
+
+            const { error: qError } = await supabase.from('quiz_questions').insert(questionsPayload);
+            if (qError) throw qError;
+
+            closeManualQuizModal();
+            loadQuizzes();
+            const countPg = manualQuizQuestions.filter(q => q.tipe === 'pg').length;
+            const countEsai = manualQuizQuestions.filter(q => q.tipe === 'esai').length;
+            showCustomModal(`✅ Berhasil! Kuis manual "${judul}" (${countPg} PG & ${countEsai} Esai) telah berhasil diterbitkan untuk ${kelas}!`);
+        } catch (e) {
+            showCustomModal("Gagal menyimpan kuis manual: " + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "💾 SIMPAN & TERBITKAN KUIS";
+            }
+        }
+    };
+
     window.openQuizModal = () => {
-        openAiQuizModal();
+        openManualQuizModal();
     };
 
     window.deleteQuiz = async (id) => {
