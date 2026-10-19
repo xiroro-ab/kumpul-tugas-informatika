@@ -4036,23 +4036,23 @@ document.addEventListener('DOMContentLoaded', () => {
             // Progress bar
             const pct = Math.min(100, Math.round((sub.progress / totalQ) * 100));
             const progressHtml = `
-                <div class="flex flex-col items-center gap-1">
-                    <span class="font-black text-xs text-black">${sub.progress} / ${totalQ} Soal</span>
-                    <div class="w-24 bg-slate-200 rounded-full h-2 border border-black overflow-hidden">
+                <div class="flex flex-col items-center justify-center gap-1.5 whitespace-nowrap">
+                    <span class="font-black text-xs text-black leading-none">${sub.progress} / ${totalQ} Soal</span>
+                    <div class="w-24 bg-slate-200 rounded-full h-2 border border-black overflow-hidden shrink-0">
                         <div class="${pct === 100 ? 'bg-emerald-500' : 'bg-indigo-600'} h-full transition-all duration-300" style="width: ${pct}%"></div>
                     </div>
-                    <span class="text-[10px] font-mono font-bold text-slate-500">${pct}% Terjawab</span>
+                    <span class="text-[10px] font-mono font-bold text-slate-600 leading-none">${pct}% Terjawab</span>
                 </div>
             `;
 
-            // Score badge
+            // Score badge (Clean, single-line, bold neobrutalism badge)
             let scoreBadge = '';
             if (sub.isOngoing) {
-                scoreBadge = `<span class="px-2.5 py-1 bg-yellow-100 text-yellow-900 border border-yellow-400 rounded-xl font-bold text-xs uppercase">Sedang Ujian</span>`;
+                scoreBadge = `<span class="inline-flex items-center justify-center px-3 py-1 bg-yellow-200 text-yellow-950 border-2 border-black rounded-xl font-black text-xs uppercase whitespace-nowrap shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Sedang Ujian</span>`;
             } else if (sub.isLocked) {
-                scoreBadge = `<span class="px-3 py-1 bg-red-100 text-red-900 border-2 border-red-500 rounded-xl font-black text-sm uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">${sub.total_nilai || 0}</span>`;
+                scoreBadge = `<span class="inline-flex items-center justify-center px-3 py-1 bg-red-100 text-red-900 border-2 border-red-500 rounded-xl font-black text-sm uppercase whitespace-nowrap shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">${sub.total_nilai || 0}</span>`;
             } else {
-                scoreBadge = `<span class="px-3 py-1 bg-emerald-400 text-black border-2 border-black rounded-xl font-black text-sm uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${sub.total_nilai || 0}</span>`;
+                scoreBadge = `<span class="inline-flex items-center justify-center px-3 py-1 bg-emerald-400 text-black border-2 border-black rounded-xl font-black text-sm uppercase whitespace-nowrap shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${sub.total_nilai || 0}</span>`;
             }
 
             // Clean action buttons in 1 single horizontal row!
@@ -4085,9 +4085,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${sub.student_id ? `<div class="text-[10px] font-mono font-bold text-slate-500">NISN: ${escapeHtml(sub.student_id)}</div>` : ''}
                     </td>
                     <td class="px-3 py-3 text-center font-black text-black border-b-2 border-black border-r-2">${escapeHtml(sub.kelas || '-')}</td>
-                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">${antiCheatBadge}</td>
-                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">${progressHtml}</td>
-                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">${scoreBadge}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2 whitespace-nowrap">${antiCheatBadge}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2 whitespace-nowrap">${progressHtml}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2 whitespace-nowrap">${scoreBadge}</td>
                     <td class="px-4 py-3 text-center border-b-2 border-black whitespace-nowrap">${actionButtons}</td>
                 </tr>
             `;
