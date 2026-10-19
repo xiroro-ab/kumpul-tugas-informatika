@@ -174,10 +174,12 @@ export async function deleteStudentFromDB(studentId) {
  * Parse CSV teks dari file eksternal menjadi array objek siswa
  */
 export function parseRosterCsvText(csvText) {
-    const lines = csvText.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+    const cleanedText = csvText.replace(/^\uFEFF/, '').trim();
+    const lines = cleanedText.split(/\r?\n/).filter(l => l.trim().length > 0);
     if (lines.length < 2) return [];
 
-    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const delimiter = (lines[0].split(';').length > lines[0].split(',').length) ? ';' : ',';
+    const header = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
     const nisnIdx = header.findIndex(h => h.includes('nisn') || h.includes('id') || h.includes('nomor'));
     const namaIdx = header.findIndex(h => h.includes('nama'));
     const jkIdx = header.findIndex(h => h.includes('kelamin') || h.includes('jk') || h.includes('gender'));
@@ -185,7 +187,7 @@ export function parseRosterCsvText(csvText) {
 
     const result = [];
     for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
         if (cols.length < 2) continue;
 
         const nama = namaIdx >= 0 ? cols[namaIdx] : cols[1];

@@ -4743,32 +4743,216 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.handleRosterCsvFileUpload = async (input) => {
+    // Unduh Kerangka / Template CSV Siswa
+    window.downloadStudentTemplateCsv = () => {
+        const headers = ['No', 'NISN', 'Nama Siswa', 'Jenis Kelamin', 'Kelas'];
+        const sampleRows = [
+            ['1', '0123456781', 'AHMAD FAUZI', 'Laki-Laki', 'VII.1'],
+            ['2', '0123456782', 'SITI AMINAH', 'Perempuan', 'VII.1'],
+            ['3', '0123456783', 'BUDI SANTOSO', 'Laki-Laki', 'VII.2'],
+            ['4', '0123456784', 'DEWI SARTIKA', 'Perempuan', 'VII.2'],
+            ['5', '0123456785', 'MUHAMMAD RIZKY', 'Laki-Laki', 'VIII.1']
+        ];
+
+        const csvContent = '\uFEFF' + [
+            headers.join(','),
+            ...sampleRows.map(r => r.join(','))
+        ].join('\r\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'Template_Roster_Siswa_SMPN58.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    // Ekspor Data Siswa ke CSV Excel
+    window.exportStudentsRosterCSV = () => {
+        if (!stateStudents || stateStudents.length === 0) {
+            showCustomModal("Belum ada data siswa untuk diekspor.");
+            return;
+        }
+
+        const filterKelas = (document.getElementById('filter-roster-kelas')?.value || 'semua').trim();
+        let exportData = stateStudents;
+        if (filterKelas && filterKelas !== 'semua') {
+            exportData = exportData.filter(s => String(s.kelas).trim() === filterKelas);
+        }
+
+        if (exportData.length === 0) {
+            showCustomModal("Tidak ada data siswa pada filter kelas yang dipilih.");
+            return;
+        }
+
+        // Urutkan berdasarkan kelas lalu nama
+        exportData = [...exportData].sort((a, b) => {
+            const cmpKelas = String(a.kelas || '').localeCompare(String(b.kelas || ''));
+            if (cmpKelas !== 0) return cmpKelas;
+            return String(a.nama || '').localeCompare(String(b.nama || ''));
+        });
+
+        const headers = ['No', 'NISN', 'Nama Siswa', 'Jenis Kelamin', 'Kelas'];
+        const rows = exportData.map((s, idx) => {
+            const nisn = s.nisn || s.id || '';
+            const nama = `"${String(s.nama || '').replace(/"/g, '""')}"`;
+            const jk = s.jenis_kelamin || 'Laki-Laki';
+            const kelas = `"${String(s.kelas || '').replace(/"/g, '""')}"`;
+            return `${idx + 1},${nisn},${nama},${jk},${kelas}`;
+        });
+
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const dateStr = new Date().toISOString().split('T')[0];
+        const suffix = filterKelas && filterKelas !== 'semua' ? `_${filterKelas.replace(/\./g, '-')}` : '_Semua_Kelas';
+        link.href = url;
+        link.setAttribute('download', `Roster_Siswa_SMPN58${suffix}_${dateStr}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    // Modal Impor Siswa dengan Pratinjau
+    let pendingImportStudents = [];
+
+    window.openImportStudentModal = () => {
+        pendingImportStudents = [];
+        const fileInput = document.getElementById('import-student-csv-file');
+        if (fileInput) fileInput.value = '';
+
+        const nameDisplay = document.getElementById('import-file-name-display');
+        if (nameDisplay) {
+            nameDisplay.textContent = '';
+            nameDisplay.classList.add('hidden');
+        }
+
+        const previewSection = document.getElementById('import-preview-section');
+        if (previewSection) previewSection.classList.add('hidden');
+
+        const btnImport = document.getElementById('btn-execute-import');
+        if (btnImport) {
+            btnImport.disabled = true;
+            btnImport.innerHTML = '<span>💾 Mulai Impor Siswa</span>';
+        }
+
+        const modal = document.getElementById('import-student-modal');
+        if (modal) modal.classList.remove('hidden');
+    };
+
+    window.closeImportStudentModal = () => {
+        pendingImportStudents = [];
+        const modal = document.getElementById('import-student-modal');
+        if (modal) modal.classList.add('hidden');
+    };
+
+    window.previewImportCsvFile = (input) => {
         if (!input.files || !input.files[0]) return;
         const file = input.files[0];
+
+        const nameDisplay = document.getElementById('import-file-name-display');
+        if (nameDisplay) {
+            const kbSize = (file.size / 1024).toFixed(1);
+            nameDisplay.textContent = `📄 ${file.name} (${kbSize} KB)`;
+            nameDisplay.classList.remove('hidden');
+        }
+
         const reader = new FileReader();
-        reader.onload = async (e) => {
+        reader.onload = (e) => {
             const text = e.target.result;
             const parsed = parseRosterCsvText(text);
+
             if (parsed.length === 0) {
                 showCustomModal("Format berkas CSV tidak valid atau data kosong. Pastikan baris header memuat kolom Nama, Kelas, dan NISN.");
                 input.value = '';
+                if (nameDisplay) nameDisplay.classList.add('hidden');
                 return;
             }
-            const confirmed = await showCustomModal(
-                `Ditemukan ${parsed.length} data siswa dari file "${file.name}".\n\nApakah Anda ingin mengimpor dan menyinkronkan data ini ke database Supabase?`,
-                'confirm',
-                'Impor Data Roster CSV',
-                '📥'
-            );
-            if (confirmed) {
-                const res = await syncRosterToDB(parsed);
-                showCustomModal(`Berhasil mengimpor ${res.count || parsed.length} data siswa!`);
-                await loadStudentsRoster();
+
+            pendingImportStudents = parsed;
+
+            const previewSection = document.getElementById('import-preview-section');
+            const previewCount = document.getElementById('import-preview-count');
+            const previewTbody = document.getElementById('import-preview-tbody');
+            const btnImport = document.getElementById('btn-execute-import');
+
+            if (previewCount) {
+                previewCount.textContent = `${parsed.length} Siswa Terdeteksi`;
             }
-            input.value = '';
+
+            if (previewTbody) {
+                const sampleRows = parsed.slice(0, 5);
+                previewTbody.innerHTML = sampleRows.map((s, idx) => {
+                    const isPerempuan = String(s.jenis_kelamin || '').toLowerCase().startsWith('p');
+                    const jkBadge = isPerempuan
+                        ? `<span class="bg-pink-100 text-pink-800 text-[10px] font-black px-1.5 py-0.5 rounded">P</span>`
+                        : `<span class="bg-blue-100 text-blue-800 text-[10px] font-black px-1.5 py-0.5 rounded">L</span>`;
+
+                    return `
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-2.5 py-1.5 text-center text-slate-500">${idx + 1}</td>
+                            <td class="px-2.5 py-1.5 font-mono font-bold text-indigo-900">${escapeHtml(s.nisn || s.id)}</td>
+                            <td class="px-3 py-1.5 font-black uppercase text-black">${escapeHtml(s.nama)}</td>
+                            <td class="px-2 py-1.5 text-center">${jkBadge}</td>
+                            <td class="px-2.5 py-1.5 text-center font-black text-purple-900">${escapeHtml(s.kelas)}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            if (previewSection) previewSection.classList.remove('hidden');
+            if (btnImport) {
+                btnImport.disabled = false;
+                btnImport.innerHTML = `<span>💾 Impor ${parsed.length} Siswa ke Database</span>`;
+            }
         };
         reader.readAsText(file);
+    };
+
+    window.executeImportStudents = async () => {
+        if (!pendingImportStudents || pendingImportStudents.length === 0) {
+            showCustomModal("Silakan pilih file CSV terlebih dahulu.");
+            return;
+        }
+
+        const btnImport = document.getElementById('btn-execute-import');
+        if (btnImport) {
+            btnImport.disabled = true;
+            btnImport.innerHTML = '<span>⏳ Menyimpan ke Database...</span>';
+        }
+
+        try {
+            const res = await syncRosterToDB(pendingImportStudents);
+            showCustomModal(`Berhasil mengimpor ${res.count || pendingImportStudents.length} data siswa ke database Supabase!`);
+            closeImportStudentModal();
+            await loadStudentsRoster();
+        } catch (err) {
+            showCustomModal("Gagal mengimpor data siswa: " + err.message);
+        } finally {
+            if (btnImport) {
+                btnImport.disabled = false;
+                btnImport.innerHTML = '<span>💾 Mulai Impor Siswa</span>';
+            }
+        }
+    };
+
+    // Kompatibilitas unggah file CSV langsung jika dipanggil
+    window.handleRosterCsvFileUpload = async (input) => {
+        window.openImportStudentModal();
+        if (input.files && input.files[0]) {
+            const importInput = document.getElementById('import-student-csv-file');
+            if (importInput) {
+                const dt = new DataTransfer();
+                dt.items.add(input.files[0]);
+                importInput.files = dt.files;
+                window.previewImportCsvFile(importInput);
+            }
+        }
     };
 
 });

@@ -326,13 +326,18 @@
                             <button onclick="openAddStudentModal()" class="bg-cyan-300 hover:bg-cyan-400 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer">
                                 ➕ Tambah Siswa
                             </button>
-                            <button onclick="syncDefaultRosterBtn()" id="btn-sync-roster-csv" class="bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer">
-                                🔄 Sinkronkan Roster CSV
+                            <button onclick="openImportStudentModal()" class="bg-indigo-300 hover:bg-indigo-400 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer">
+                                📥 Impor CSV
                             </button>
-                            <button onclick="document.getElementById('input-roster-csv-file').click()" class="bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer">
-                                📁 Impor File CSV
+                            <button onclick="downloadStudentTemplateCsv()" class="bg-amber-300 hover:bg-amber-400 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer" title="Unduh format kerangka CSV untuk menambah banyak siswa">
+                                📋 Template CSV
                             </button>
-                            <input type="file" id="input-roster-csv-file" accept=".csv" class="hidden" onchange="handleRosterCsvFileUpload(this)">
+                            <button onclick="exportStudentsRosterCSV()" class="bg-emerald-300 hover:bg-emerald-400 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer" title="Ekspor data siswa saat ini ke file CSV Excel">
+                                📤 Ekspor CSV
+                            </button>
+                            <button onclick="syncDefaultRosterBtn()" id="btn-sync-roster-csv" class="bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer" title="Sinkronkan ulang 301 siswa bawaan SMPN 58 Palembang">
+                                🔄 Roster Bawaan
+                            </button>
                         </div>
                     </div>
 
@@ -1581,6 +1586,91 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- MODAL: IMPOR DATA SISWA (CSV) DENGAN TEMPLATE & PREVIEW -->
+    <!-- ======================================================= -->
+    <div id="import-student-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-2xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden my-auto max-h-[90vh]">
+            <div class="px-6 py-4 border-b-2 border-black bg-indigo-300 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 bg-black text-white rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">📥</span>
+                    <div>
+                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Impor Data Siswa (CSV)</h3>
+                        <p class="text-[11px] font-bold text-black/80">Unggah berkas CSV untuk menambah atau memperbarui siswa secara massal</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeImportStudentModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg cursor-pointer">
+                    &times;
+                </button>
+            </div>
+
+            <div class="p-5 md:p-6 space-y-4 overflow-y-auto">
+                <!-- Langkah 1: Unduh Format Kerangka / Template -->
+                <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">📋</span>
+                            <h4 class="text-xs font-black uppercase text-amber-950">1. Kerangka / Format Template CSV</h4>
+                        </div>
+                        <p class="text-[11px] font-semibold text-amber-900 mt-0.5 leading-snug">
+                            Format kolom wajib: <strong class="font-black">No, NISN, Nama Siswa, Jenis Kelamin, Kelas</strong>.<br>
+                            Unduh template resmi berikut agar tidak lupa kerangka kolomnya.
+                        </p>
+                    </div>
+                    <button type="button" onclick="downloadStudentTemplateCsv()" class="bg-amber-300 hover:bg-amber-400 text-black border-2 border-black font-black px-3.5 py-2 rounded-xl text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 shrink-0 flex items-center gap-1.5 cursor-pointer">
+                        <span>📥 Unduh Template</span>
+                    </button>
+                </div>
+
+                <!-- Langkah 2: Pilih File CSV -->
+                <div>
+                    <label class="block text-xs font-black uppercase text-black mb-1.5">2. Pilih Berkas CSV yang Telah Diisi</label>
+                    <div onclick="document.getElementById('import-student-csv-file').click()" class="border-2 border-dashed border-black rounded-2xl p-6 text-center bg-slate-50 hover:bg-slate-100 cursor-pointer transition">
+                        <div class="text-3xl mb-1">📁</div>
+                        <p class="text-xs font-black text-black uppercase">Klik untuk memilih file CSV</p>
+                        <p class="text-[11px] font-semibold text-slate-500 mt-0.5">Mendukung pemisah koma (,) maupun titik-koma (;) dari Microsoft Excel</p>
+                        <div id="import-file-name-display" class="mt-2 text-xs font-mono font-bold text-indigo-700 hidden"></div>
+                    </div>
+                    <input type="file" id="import-student-csv-file" accept=".csv" class="hidden" onchange="previewImportCsvFile(this)">
+                </div>
+
+                <!-- Langkah 3: Pratinjau Data -->
+                <div id="import-preview-section" class="hidden space-y-2 border-t-2 border-slate-200 pt-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-black uppercase text-black flex items-center gap-1.5">
+                            <span>👀</span> Pratinjau Data Siap Diimpor
+                        </h4>
+                        <span id="import-preview-count" class="bg-emerald-100 text-emerald-800 border border-emerald-400 text-[11px] font-black px-2.5 py-0.5 rounded-lg"></span>
+                    </div>
+                    <div class="overflow-x-auto border-2 border-black rounded-xl max-h-48">
+                        <table class="w-full text-left border-collapse bg-white text-xs">
+                            <thead>
+                                <tr class="bg-black text-white text-[10px] font-black uppercase">
+                                    <th class="px-2.5 py-1.5 text-center">No</th>
+                                    <th class="px-2.5 py-1.5">NISN / ID</th>
+                                    <th class="px-3 py-1.5">Nama Siswa</th>
+                                    <th class="px-2 py-1.5 text-center">L/P</th>
+                                    <th class="px-2.5 py-1.5 text-center">Kelas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="import-preview-tbody" class="divide-y divide-slate-200 font-bold"></tbody>
+                        </table>
+                    </div>
+                    <p class="text-[10px] text-slate-500 font-semibold italic text-right">* Menampilkan sampel data awal dari file yang dipilih.</p>
+                </div>
+            </div>
+
+            <div class="p-4 md:px-6 md:py-4 border-t-2 border-black bg-slate-50 flex items-center justify-end gap-2.5 shrink-0">
+                <button type="button" onclick="closeImportStudentModal()" class="px-4 h-11 bg-white hover:bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase cursor-pointer">
+                    Batal
+                </button>
+                <button type="button" id="btn-execute-import" onclick="executeImportStudents()" disabled class="px-5 h-11 bg-emerald-400 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer flex items-center gap-2">
+                    <span>💾 Mulai Impor Siswa</span>
+                </button>
+            </div>
         </div>
     </div>
 
