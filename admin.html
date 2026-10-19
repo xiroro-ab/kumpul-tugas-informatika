@@ -26,26 +26,63 @@
             </a>
         </div>
 
-        <!-- Login Section Guru -->
-        <div id="login-section" class="bg-yellow-400 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-8 md:p-12 text-center shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] mb-8 hidden">
-            <span class="inline-block bg-white text-black text-xs font-black px-3 py-1 rounded-full border-2 border-black uppercase tracking-wider mb-4">
-                Khusus Bapak / Ibu Guru
-            </span>
-            <h2 class="text-3xl md:text-4xl font-black text-black mb-3 uppercase tracking-tight">Login Portal Guru</h2>
-            <p class="text-black font-bold mb-8 max-w-lg mx-auto text-sm md:text-base">
-                Masuk dengan akun Google Anda untuk mengelola materi ajar, bank soal ujian, dan koreksi tugas otomatis dengan bantuan AI.
-            </p>
-            
-            <button onclick="loginWithGoogle()" class="inline-flex items-center justify-center gap-3 bg-white border-[3px] border-black text-black font-black py-4 px-8 rounded-2xl hover:bg-slate-100 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all text-sm md:text-base uppercase tracking-wider">
-                <svg viewBox="0 0 48 48" class="w-6 h-6">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                    <path fill="none" d="M0 0h48v48H0z"></path>
-                </svg>
-                Masuk dengan Akun Google
-            </button>
+        <!-- Login Section Guru (Email & Password Supabase) -->
+        <div id="login-section" class="bg-yellow-400 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] mb-8 hidden max-w-lg mx-auto w-full">
+            <div class="text-center mb-6">
+                <span class="inline-block bg-white text-black text-xs font-black px-3 py-1 rounded-full border-2 border-black uppercase tracking-wider mb-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    Khusus Bapak / Ibu Guru
+                </span>
+                <h2 class="text-3xl font-black text-black uppercase tracking-tight">Portal Guru SMPN 58</h2>
+                <p class="text-black font-bold text-xs mt-1">Masuk dengan Email dan Password yang terdaftar di Supabase.</p>
+            </div>
+
+            <!-- Switcher Tab: Masuk vs Daftar Akun -->
+            <div class="grid grid-cols-2 gap-2 p-1.5 bg-black/10 border-2 border-black rounded-2xl mb-6">
+                <button type="button" id="auth-tab-login" onclick="toggleAuthMode('login')" class="py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition">
+                    Masuk (Login)
+                </button>
+                <button type="button" id="auth-tab-register" onclick="toggleAuthMode('register')" class="py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-black hover:bg-white/50 transition">
+                    Daftar Akun Baru
+                </button>
+            </div>
+
+            <!-- Form 1: Login -->
+            <form id="form-login" onsubmit="loginWithEmail(event)" class="space-y-4">
+                <div class="space-y-1 text-left">
+                    <label for="login-email" class="text-xs font-black uppercase text-black ml-1">Email Guru</label>
+                    <input type="email" id="login-email" required placeholder="nama@gmail.com / email sekolah" class="w-full h-12 px-4 rounded-xl border-2 border-black bg-white font-bold text-xs outline-none focus:ring-2 focus:ring-black">
+                </div>
+                <div class="space-y-1 text-left">
+                    <label for="login-password" class="text-xs font-black uppercase text-black ml-1">Password</label>
+                    <input type="password" id="login-password" required placeholder="Masukkan password Anda" class="w-full h-12 px-4 rounded-xl border-2 border-black bg-white font-bold text-xs outline-none focus:ring-2 focus:ring-black">
+                </div>
+                <button type="submit" id="btn-login-submit" class="w-full h-14 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] active:translate-y-0.5 mt-2">
+                    MASUK KE DASHBOARD
+                </button>
+            </form>
+
+            <!-- Form 2: Register (Hidden by default) -->
+            <form id="form-register" onsubmit="registerWithEmail(event)" class="space-y-3 hidden">
+                <div class="space-y-1 text-left">
+                    <label for="reg-nama" class="text-xs font-black uppercase text-black ml-1">Nama Lengkap & Gelar</label>
+                    <input type="text" id="reg-nama" required placeholder="Contoh: Bpk. Budi Santoso, S.Pd." class="w-full h-11 px-4 rounded-xl border-2 border-black bg-white font-bold text-xs outline-none">
+                </div>
+                <div class="space-y-1 text-left">
+                    <label for="reg-mapel" class="text-xs font-black uppercase text-black ml-1">Mata Pelajaran (Mapel)</label>
+                    <input type="text" id="reg-mapel" required placeholder="Contoh: Matematika / IPA / Informatika" class="w-full h-11 px-4 rounded-xl border-2 border-black bg-white font-bold text-xs outline-none">
+                </div>
+                <div class="space-y-1 text-left">
+                    <label for="reg-email" class="text-xs font-black uppercase text-black ml-1">Email</label>
+                    <input type="email" id="reg-email" required placeholder="nama@gmail.com" class="w-full h-11 px-4 rounded-xl border-2 border-black bg-white font-bold text-xs outline-none">
+                </div>
+                <div class="space-y-1 text-left">
+                    <label for="reg-password" class="text-xs font-black uppercase text-black ml-1">Password (Min. 6 Karakter)</label>
+                    <input type="password" id="reg-password" minlength="6" required placeholder="Buat password baru" class="w-full h-11 px-4 rounded-xl border-2 border-black bg-white font-bold text-xs outline-none">
+                </div>
+                <button type="submit" id="btn-reg-submit" class="w-full h-14 bg-emerald-500 hover:bg-emerald-600 text-black border-2 border-black rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 mt-2">
+                    DAFTAR AKUN SEKARANG
+                </button>
+            </form>
         </div>
 
         <!-- Dashboard Section Guru (Aktif setelah Login) -->

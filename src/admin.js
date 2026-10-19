@@ -91,17 +91,99 @@ document.addEventListener('DOMContentLoaded', () => {
         handleSession(session);
     });
 
-    window.loginWithGoogle = async () => {
+    window.toggleAuthMode = (mode) => {
+        const tabLogin = document.getElementById('auth-tab-login');
+        const tabRegister = document.getElementById('auth-tab-register');
+        const formLogin = document.getElementById('form-login');
+        const formRegister = document.getElementById('form-register');
+
+        if (mode === 'login') {
+            tabLogin.className = "py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition";
+            tabRegister.className = "py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-black hover:bg-white/50 transition";
+            formLogin.classList.remove('hidden');
+            formRegister.classList.add('hidden');
+        } else {
+            tabRegister.className = "py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition";
+            tabLogin.className = "py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-black hover:bg-white/50 transition";
+            formRegister.classList.remove('hidden');
+            formLogin.classList.add('hidden');
+        }
+    };
+
+    window.loginWithEmail = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        const btn = document.getElementById('btn-login-submit');
+
+        btn.disabled = true;
+        btn.innerText = "MEMERIKSA...";
+
         try {
-            await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + '/admin.html'
-                }
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
             });
+
+            if (error) throw error;
         } catch (error) {
             console.error("Login failed", error);
-            showCustomModal("Login gagal: " + error.message);
+            showCustomModal("Login gagal: " + (error.message || "Email atau password salah."));
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "MASUK KE DASHBOARD";
+        }
+    };
+
+    window.registerWithEmail = async (e) => {
+        e.preventDefault();
+        const nama = document.getElementById('reg-nama').value.trim();
+        const mapel = document.getElementById('reg-mapel').value.trim();
+        const email = document.getElementById('reg-email').value.trim();
+        const password = document.getElementById('reg-password').value;
+        const btn = document.getElementById('btn-reg-submit');
+
+        if (!nama || !mapel || !email || !password) {
+            showCustomModal("Mohon lengkapi semua kolom pendaftaran.");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "MENDAFTARKAN...";
+
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: nama,
+                        nama_guru: nama,
+                        mapel: mapel
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            if (data.session) {
+                await supabase.from('teachers').upsert([{
+                    id: data.user.id,
+                    email: data.user.email,
+                    nama_guru: nama,
+                    mapel: mapel
+                }]);
+                showCustomModal("Pendaftaran berhasil! Selamat datang di LMS SMPN 58.");
+            } else {
+                showCustomModal("Akun berhasil didaftarkan! Jika fitur konfirmasi email aktif di Supabase, silakan periksa inbox email Anda, atau matikan 'Confirm email' di menu Auth Supabase agar bisa langsung login.");
+                toggleAuthMode('login');
+            }
+        } catch (error) {
+            console.error("Registration failed", error);
+            showCustomModal("Gagal mendaftar: " + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "DAFTAR AKUN SEKARANG";
         }
     };
 
