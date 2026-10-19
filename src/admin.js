@@ -23,6 +23,7 @@ let activeGradeItem = null;
 let activeQuizForResults = null;
 let activeQuizSubmissions = [];
 let activeReviewSubmission = null;
+let activeAssignmentForSubmissions = null;
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -650,11 +651,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 studentContent = activeGradeItem.filename;
             }
 
+            let rubricToUse = 'Kesesuaian tugas dengan instruksi, kelengkapan pembahasan, dan kerapian pengerjaan.';
+            let assignmentTitle = activeGradeItem.materi;
+            let assignmentInstructions = activeGradeItem.materi;
+
+            const relatedAssign = assignmentsList.find(a => 
+                (activeGradeItem.assignment_id && String(a.id) === String(activeGradeItem.assignment_id)) ||
+                (a.judul_tugas && a.judul_tugas.toLowerCase().trim() === (activeGradeItem.materi || '').toLowerCase().trim())
+            );
+
+            if (relatedAssign) {
+                assignmentTitle = relatedAssign.judul_tugas;
+                assignmentInstructions = relatedAssign.deskripsi || relatedAssign.judul_tugas;
+                if (relatedAssign.rubrik_ai) rubricToUse = relatedAssign.rubrik_ai;
+            }
+
             const result = await aiEvaluateSubmission(
                 currentTeacher?.mapel || 'Informatika',
-                activeGradeItem.materi,
-                activeGradeItem.materi,
-                'Kesesuaian tugas dengan instruksi, kelengkapan pembahasan, dan kerapian pengerjaan.',
+                assignmentTitle,
+                assignmentInstructions,
+                rubricToUse,
                 studentContent
             );
 
@@ -706,6 +722,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             closeGradeModal();
             applyFilters();
+
+            // Refresh modal pengumpulan penugasan aktif jika sedang terbuka
+            if (activeAssignmentForSubmissions) {
+                renderAssignmentSubmissionsTable(activeAssignmentForSubmissions);
+                loadAssignments();
+            }
+
             showCustomModal("Nilai dan catatan evaluasi berhasil disimpan!");
         } catch (e) {
             showCustomModal("Gagal menyimpan nilai: " + e.message);
@@ -913,6 +936,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             assignmentsList = data || [];
 
+            // Pastikan data pengumpulan siswa termutakhir tersedia untuk penghitungan
+            if (!pendingFiles || pendingFiles.length === 0) {
+                try {
+                    const { data: fileData } = await supabase.from('files').select('*').order('created_at', { ascending: false });
+                    if (fileData) pendingFiles = fileData;
+                } catch (_) {}
+            }
+
             container.innerHTML = '';
             if (assignmentsList.length === 0) {
                 container.innerHTML = '<div class="col-span-2 bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">Belum ada tugas/PR yang dibuat guru.</div>';
@@ -924,22 +955,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
                 const deadlineText = a.deadline ? new Date(a.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tidak ada batas waktu';
 
+                const matchingSubs = pendingFiles.filter(f => 
+                    (f.assignment_id && String(f.assignment_id) === String(a.id)) ||
+                    (f.materi && f.materi.toLowerCase().trim() === a.judul_tugas.toLowerCase().trim())
+                );
+                const gradedCount = matchingSubs.filter(f => f.nilai !== null && f.nilai !== undefined && f.nilai !== '').length;
+
                 card.innerHTML = `
                     <div>
                         <div class="flex justify-between items-start gap-2 mb-2 flex-wrap">
                             <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                Kelas ${a.kelas} &bull; ${a.mapel}
+                                Kelas ${escapeHtml(a.kelas)} &bull; ${escapeHtml(a.mapel)}
                             </span>
                             <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                                 Batas: ${deadlineText}
                             </span>
                         </div>
-                        <h4 class="font-black text-lg text-black mb-1">${a.judul_tugas}</h4>
-                        <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line line-clamp-3">${a.deskripsi}</p>
-                        ${a.rubrik_ai ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3">🎯 <strong>Rubrik AI:</strong> ${a.rubrik_ai}</div>` : ''}
+                        <h4 class="font-black text-lg text-black mb-1">${escapeHtml(a.judul_tugas)}</h4>
+                        <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line line-clamp-3">${escapeHtml(a.deskripsi)}</p>
+                        ${a.rubrik_ai ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3">🎯 <strong>Rubrik AI:</strong> ${escapeHtml(a.rubrik_ai)}</div>` : ''}
                     </div>
-                    <div class="flex justify-end pt-2 border-t border-slate-200">
-                        <button onclick="deleteAssignment('${a.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase">Hapus Tugas</button>
+                    <div class="pt-3 border-t-2 border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                        <span class="text-xs font-black text-slate-800 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-xl">
+                            👥 ${matchingSubs.length} Siswa (${gradedCount} Dinilai)
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openAssignmentSubmissionsModal('${a.id}')" class="px-3.5 py-2 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
+                                📋 Periksa & Koreksi (${matchingSubs.length})
+                            </button>
+                            <button onclick="deleteAssignment('${a.id}')" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-300 rounded-xl font-black text-xs uppercase transition">
+                                Hapus
+                            </button>
+                        </div>
                     </div>
                 `;
                 container.appendChild(card);
@@ -948,6 +995,284 @@ document.addEventListener('DOMContentLoaded', () => {
             container.innerHTML = `<div class="col-span-2 text-center text-red-600 font-bold">Gagal memuat tugas: ${e.message}</div>`;
         }
     }
+
+    // Modal Hasil Pengumpulan Per Tugas (LMS)
+    window.openAssignmentSubmissionsModal = (assignId) => {
+        const a = assignmentsList.find(item => String(item.id) === String(assignId));
+        if (!a) {
+            showCustomModal("Penugasan tidak ditemukan.");
+            return;
+        }
+        activeAssignmentForSubmissions = a;
+
+        const titleEl = document.getElementById('assign-sub-modal-title');
+        const metaEl = document.getElementById('assign-sub-modal-meta');
+        const descEl = document.getElementById('assign-sub-modal-desc');
+        const rubrikEl = document.getElementById('assign-sub-modal-rubrik');
+
+        if (titleEl) titleEl.textContent = a.judul_tugas;
+        if (metaEl) {
+            const dlText = a.deadline ? new Date(a.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tanpa Batas Waktu';
+            metaEl.textContent = `Kelas: ${a.kelas} • Mapel: ${a.mapel} • Tenggat: ${dlText}`;
+        }
+        if (descEl) descEl.textContent = a.deskripsi || 'Tidak ada petunjuk khusus.';
+        if (rubrikEl) {
+            rubrikEl.innerHTML = a.rubrik_ai 
+                ? `🎯 <strong>Rubrik Penilaian AI:</strong> ${escapeHtml(a.rubrik_ai)}` 
+                : '🎯 <strong>Rubrik Penilaian:</strong> Kesesuaian tugas, kelengkapan pengerjaan, dan kerapian penyajian.';
+        }
+
+        renderAssignmentSubmissionsTable(a);
+
+        const modal = document.getElementById('assignment-submissions-modal');
+        if (modal) modal.classList.remove('hidden');
+    };
+
+    function renderAssignmentSubmissionsTable(assignment) {
+        const tbody = document.getElementById('assign-submissions-tbody');
+        const countBadge = document.getElementById('assign-sub-count-badge');
+        if (!tbody) return;
+
+        const matchingSubs = pendingFiles.filter(f => 
+            (f.assignment_id && String(f.assignment_id) === String(assignment.id)) ||
+            (f.materi && f.materi.toLowerCase().trim() === assignment.judul_tugas.toLowerCase().trim())
+        );
+
+        if (countBadge) {
+            const gradedCount = matchingSubs.filter(f => f.nilai !== null && f.nilai !== undefined && f.nilai !== '').length;
+            countBadge.textContent = `${matchingSubs.length} Siswa Mengumpulkan (${gradedCount} Telah Dinilai)`;
+        }
+
+        tbody.innerHTML = '';
+        if (matchingSubs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-6 py-8 text-center text-slate-500 font-bold uppercase tracking-wider">
+                        Belum ada siswa yang mengumpulkan tugas ini.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        matchingSubs.forEach((f) => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors";
+
+            const isText = isTextSubmission(f);
+            const isLink = isLinkSubmission(f);
+            let detailHtml = '';
+
+            if (isText) {
+                const textSnippet = getTextContent(f);
+                detailHtml = `
+                    <div class="space-y-1 py-1 max-w-xs md:max-w-sm">
+                        <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded border border-amber-300 uppercase">
+                            📝 Form Web
+                        </span>
+                        <p class="text-xs text-slate-700 italic bg-amber-50/70 p-2 rounded-lg border border-amber-200 line-clamp-3">
+                            ${escapeHtml(textSnippet)}
+                        </p>
+                    </div>
+                `;
+            } else if (isLink) {
+                const url = getLinkUrl(f);
+                detailHtml = `
+                    <div class="space-y-1 py-1 max-w-xs">
+                        <span class="inline-flex items-center gap-1 bg-purple-100 text-purple-900 text-[10px] font-black px-2 py-0.5 rounded border border-purple-300 uppercase">
+                            🔗 Link Online
+                        </span>
+                        <a href="${url}" target="_blank" class="text-indigo-600 font-bold text-xs underline block truncate" title="${url}">
+                            ${url} ↗
+                        </a>
+                    </div>
+                `;
+            } else {
+                const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(f.storage_path);
+                const fileUrl = publicUrlData.publicUrl;
+                detailHtml = `
+                    <div class="flex items-center gap-2 py-1">
+                        <span class="inline-flex items-center gap-1 bg-blue-100 text-blue-900 text-[10px] font-black px-2 py-0.5 rounded border border-blue-300 uppercase">
+                            📁 Berkas
+                        </span>
+                        <a href="${fileUrl}" target="_blank" class="text-indigo-700 font-bold text-xs underline truncate max-w-[180px]" title="${escapeHtml(f.filename)}">
+                            ${escapeHtml(f.filename)} ↗
+                        </a>
+                    </div>
+                `;
+            }
+
+            let statusHtml = '';
+            if (f.nilai !== null && f.nilai !== undefined && f.nilai !== '') {
+                statusHtml = `
+                    <div class="flex flex-col items-center gap-1">
+                        <span class="inline-block bg-emerald-100 text-emerald-950 font-black text-sm px-3 py-1 rounded-xl border border-emerald-400">
+                            ${f.nilai}/100
+                        </span>
+                        ${f.catatan_guru ? `<span class="text-[10px] text-slate-600 line-clamp-1 italic max-w-[140px]" title="${escapeHtml(f.catatan_guru)}">"${escapeHtml(f.catatan_guru)}"</span>` : ''}
+                    </div>
+                `;
+            } else {
+                statusHtml = `
+                    <div class="text-center">
+                        <span class="inline-block bg-amber-100 text-amber-900 font-bold text-[11px] px-2.5 py-1 rounded-lg border border-amber-300 uppercase">
+                            ⏳ Belum Dinilai
+                        </span>
+                    </div>
+                `;
+            }
+
+            const dateStr = f.created_at ? new Date(f.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-';
+
+            tr.innerHTML = `
+                <td class="px-4 py-3 font-black text-slate-900 border-b-2 border-black border-r-2 text-xs">
+                    <div>${escapeHtml(f.nama)}</div>
+                    <div class="text-[10px] text-slate-500 font-medium">Dikirim: ${dateStr} WIB</div>
+                </td>
+                <td class="px-4 py-3 font-bold text-black border-b-2 border-black border-r-2 text-xs">${escapeHtml(f.kelas)}</td>
+                <td class="px-4 py-3 border-b-2 border-black border-r-2">${detailHtml}</td>
+                <td class="px-4 py-3 border-b-2 border-black border-r-2 text-center">${statusHtml}</td>
+                <td class="px-4 py-3 border-b-2 border-black text-center whitespace-nowrap">
+                    <button onclick="openGradeModal('${f.id}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                        Koreksi & Nilai ✏️
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    window.closeAssignmentSubmissionsModal = () => {
+        const modal = document.getElementById('assignment-submissions-modal');
+        if (modal) modal.classList.add('hidden');
+        activeAssignmentForSubmissions = null;
+    };
+
+    window.printCurrentAssignmentReport = () => {
+        if (!activeAssignmentForSubmissions) {
+            showCustomModal("Pilih tugas terlebih dahulu sebelum mencetak rekap.");
+            return;
+        }
+
+        const a = activeAssignmentForSubmissions;
+        const matchingSubs = pendingFiles.filter(f => 
+            (f.assignment_id && String(f.assignment_id) === String(a.id)) ||
+            (f.materi && f.materi.toLowerCase().trim() === a.judul_tugas.toLowerCase().trim())
+        );
+
+        if (matchingSubs.length === 0) {
+            showCustomModal("Belum ada data pengumpulan siswa untuk tugas ini.");
+            return;
+        }
+
+        const mapel = a.mapel || currentTeacher?.mapel || 'Informatika';
+        const teacherName = currentTeacher?.name || currentSession?.user?.email || 'Guru Pengampu';
+        const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        const graded = matchingSubs.filter(f => f.nilai !== null && f.nilai !== undefined && f.nilai !== '');
+        const avg = graded.length > 0 ? (graded.reduce((acc, f) => acc + Number(f.nilai), 0) / graded.length).toFixed(1) : 0;
+
+        let rowsHtml = '';
+        matchingSubs.forEach((f, idx) => {
+            const isText = isTextSubmission(f);
+            const isLink = isLinkSubmission(f);
+            const tipeStr = isText ? "Form Web" : (isLink ? "Tautan Link" : "Berkas File");
+            const scoreVal = f.nilai !== null && f.nilai !== undefined && f.nilai !== '' ? f.nilai : '-';
+            const statusStr = scoreVal !== '-' ? 'Tuntas' : 'Belum Dinilai';
+
+            rowsHtml += `
+                <tr>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${idx + 1}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold;">${escapeHtml(f.kelas)}</td>
+                    <td style="border: 1px solid black; padding: 6px; font-weight: bold;">${escapeHtml(f.nama)}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${tipeStr}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold; font-size: 13px;">${scoreVal}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${statusStr}</td>
+                    <td style="border: 1px solid black; padding: 6px; font-size: 11px;">${escapeHtml(f.catatan_guru || f.ai_feedback || '-')}</td>
+                </tr>
+            `;
+        });
+
+        const printWin = window.open('', '_blank');
+        printWin.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Rekap Penugasan: ${escapeHtml(a.judul_tugas)} - SMPN 58 Palembang</title>
+                <style>
+                    body { font-family: 'Times New Roman', Times, serif; padding: 25px; color: #000; }
+                    .kop { text-align: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 16px; }
+                    .kop h2 { margin: 0; font-size: 17px; text-transform: uppercase; font-weight: bold; }
+                    .kop h1 { margin: 3px 0; font-size: 21px; text-transform: uppercase; font-weight: 900; }
+                    .kop p { margin: 1px 0; font-size: 12px; }
+                    .title { text-align: center; font-size: 15px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
+                    .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 10px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                    th { border: 1px solid black; padding: 6px; background-color: #f2f2f2; text-transform: uppercase; }
+                    .stats { margin-top: 12px; font-size: 12px; font-weight: bold; }
+                    .footer-sig { margin-top: 35px; display: flex; justify-content: flex-end; text-align: center; font-size: 12px; }
+                    .sig-box { width: 220px; }
+                    @media print {
+                        @page { size: portrait; margin: 12mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="kop">
+                    <h2>Pemerintah Kota Palembang &bull; Dinas Pendidikan</h2>
+                    <h1>SMP NEGERI 58 PALEMBANG</h1>
+                    <p>Jl. Macan Lindungan, Kec. Ilir Barat I, Kota Palembang, Sumatera Selatan</p>
+                    <p>Portal Belajar & Sistem Asesmen Digital Siswa</p>
+                </div>
+                <div class="title">REKAPITULASI PENILAIAN TUGAS: ${escapeHtml(a.judul_tugas.toUpperCase())}</div>
+                <div class="meta">
+                    <div>
+                        <strong>Mata Pelajaran:</strong> ${escapeHtml(mapel)}<br>
+                        <strong>Sasaran Kelas:</strong> ${escapeHtml(a.kelas)}<br>
+                        <strong>Tahun Ajaran:</strong> 2026/2027
+                    </div>
+                    <div style="text-align: right;">
+                        <strong>Tanggal Cetak:</strong> ${dateStr}<br>
+                        <strong>Total Pengumpulan:</strong> ${matchingSubs.length} Siswa
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 25px;">No</th>
+                            <th style="width: 55px;">Kelas</th>
+                            <th>Nama Lengkap Siswa</th>
+                            <th style="width: 85px;">Metode</th>
+                            <th style="width: 50px;">Nilai</th>
+                            <th style="width: 75px;">Status</th>
+                            <th>Catatan Guru / Evaluasi AI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+                <div class="stats">
+                    Rata-Rata Nilai: ${avg} / 100 (${graded.length} dari ${matchingSubs.length} siswa telah dinilai)
+                </div>
+                <div class="footer-sig">
+                    <div class="sig-box">
+                        <p>Palembang, ${dateStr}<br>Guru Mata Pelajaran,</p>
+                        <br><br><br>
+                        <p style="font-weight: bold; text-decoration: underline;">${escapeHtml(teacherName)}</p>
+                        <p style="margin-top: -6px; font-size: 10px;">Guru Pengampu / NIP. -</p>
+                    </div>
+                </div>
+                <script>
+                    window.onload = function() { window.print(); };
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWin.document.close();
+    };
 
     // ==========================================
     // 3. Modul Kelola Penugasan Siswa

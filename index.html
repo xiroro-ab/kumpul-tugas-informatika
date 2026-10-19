@@ -310,13 +310,20 @@
             <!-- Scrollable Modal Body -->
             <div class="p-5 overflow-y-auto flex-1 space-y-3.5">
                 <!-- Target Assignment Banner -->
-                <div id="modal-assignment-banner" class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3 space-y-1">
-                    <div class="flex items-center gap-2">
-                        <span id="modal-banner-mapel" class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase">Informatika</span>
-                        <span id="modal-banner-kelas" class="bg-yellow-300 text-black font-black text-[10px] px-2 py-0.5 rounded border border-black uppercase">Kelas VII.1</span>
+                <div id="modal-assignment-banner" class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3.5 space-y-2">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-1.5">
+                            <span id="modal-banner-mapel" class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase">Informatika</span>
+                            <span id="modal-banner-kelas" class="bg-yellow-300 text-black font-black text-[10px] px-2 py-0.5 rounded border border-black uppercase">Kelas VII.1</span>
+                        </div>
+                        <span id="modal-banner-deadline" class="text-[10px] font-black text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 uppercase">Tanpa Batas Waktu</span>
                     </div>
-                    <h4 id="modal-banner-title" class="font-black text-sm text-black leading-snug">Nama Tugas</h4>
-                    <p id="modal-banner-desc" class="text-xs text-slate-600 font-medium line-clamp-2">Deskripsi tugas...</p>
+                    <h4 id="modal-banner-title" class="font-black text-sm md:text-base text-black leading-snug">Nama Tugas</h4>
+                    <div class="bg-white/90 p-2.5 rounded-xl border border-indigo-100 max-h-36 overflow-y-auto">
+                        <p id="modal-banner-desc" class="text-xs text-slate-700 font-medium leading-relaxed whitespace-pre-line">Deskripsi tugas...</p>
+                    </div>
+                    <div id="modal-banner-rubrik" class="hidden bg-purple-100/70 border border-purple-200 rounded-xl p-2 text-[11px] font-bold text-purple-900"></div>
+                    <div id="modal-banner-status" class="hidden bg-emerald-100 border border-emerald-300 rounded-xl p-2 text-xs font-bold text-emerald-950 flex flex-col gap-0.5"></div>
                 </div>
 
                 <form id="submission-form" class="space-y-3">

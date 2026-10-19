@@ -54,7 +54,8 @@ async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
         generationConfig: {
             temperature: 0.7,
             topK: 40,
-            topP: 0.95
+            topP: 0.95,
+            maxOutputTokens: 8192
         }
     };
 
@@ -97,6 +98,153 @@ async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
     const candidate = data.candidates?.[0];
     const text = candidate?.content?.parts?.[0]?.text || '';
     return text.trim();
+}
+
+/**
+ * Parser & Perbaikan JSON Cerdas (Kebal Truncate, Smart Quotes, dan Malformed JSON)
+ */
+export function robustJsonParse(raw) {
+    if (!raw) return null;
+    let str = typeof raw === 'string' ? raw.trim() : JSON.stringify(raw);
+
+    // 1. Bersihkan kode markdown
+    str = str.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+
+    // 2. Parse langsung
+    try {
+        return JSON.parse(str);
+    } catch (_) {}
+
+    // 3. Ekstrak blok JSON terluar
+    const firstBrace = str.indexOf('{');
+    const firstBracket = str.indexOf('[');
+    let startIdx = -1;
+    let isObject = false;
+
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+        startIdx = firstBrace;
+        isObject = true;
+    } else if (firstBracket !== -1) {
+        startIdx = firstBracket;
+        isObject = false;
+    }
+
+    if (startIdx !== -1) {
+        const lastBrace = str.lastIndexOf('}');
+        const lastBracket = str.lastIndexOf(']');
+        const endIdx = isObject ? lastBrace : lastBracket;
+
+        if (endIdx !== -1 && endIdx > startIdx) {
+            str = str.substring(startIdx, endIdx + 1);
+        } else {
+            str = str.substring(startIdx);
+        }
+    }
+
+    try {
+        return JSON.parse(str);
+    } catch (_) {}
+
+    // 4. Normalisasi smart quotes & trailing commas
+    let cleaned = str
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/,\s*([}\]])/g, '$1');
+
+    try {
+        return JSON.parse(cleaned);
+    } catch (_) {}
+
+    // 5. Perbaiki JSON terpotong (Truncated JSON Repair)
+    try {
+        let fixed = cleaned;
+        const quotes = (fixed.match(/(?<!\\)"/g) || []).length;
+        if (quotes % 2 !== 0) {
+            fixed += '"';
+        }
+        fixed = fixed.replace(/[,:\s]+$/, '');
+
+        let openBraces = (fixed.match(/\{/g) || []).length;
+        let closeBraces = (fixed.match(/\}/g) || []).length;
+        let openBrackets = (fixed.match(/\[/g) || []).length;
+        let closeBrackets = (fixed.match(/\]/g) || []).length;
+
+        while (openBrackets > closeBrackets) {
+            fixed += ']';
+            closeBrackets++;
+        }
+        while (openBraces > closeBraces) {
+            fixed += '}';
+            closeBraces++;
+        }
+
+        return JSON.parse(fixed);
+    } catch (_) {}
+
+    // 6. Regex Salvage: Selamatkan butir-butir soal yang sudah lengkap
+    const recoveredQuestions = [];
+    const qMatches = str.match(/\{[^{}]*?"pertanyaan"[^{}]*?\}/g);
+    if (qMatches && qMatches.length > 0) {
+        qMatches.forEach((qStr, idx) => {
+            try {
+                const cleanedQ = qStr.replace(/,\s*([}\]])/g, '$1');
+                recoveredQuestions.push(JSON.parse(cleanedQ));
+            } catch {
+                const getField = (f) => {
+                    const m = qStr.match(new RegExp(`"${f}"\\s*:\\s*"([^"]*)"`));
+                    return m ? m[1] : '';
+                };
+                const pertanyaan = getField('pertanyaan');
+                if (pertanyaan) {
+                    recoveredQuestions.push({
+                        nomor: idx + 1,
+                        tipe: qStr.includes('"opsi_a"') ? 'pg' : 'esai',
+                        pertanyaan,
+                        opsi_a: getField('opsi_a'),
+                        opsi_b: getField('opsi_b'),
+                        opsi_c: getField('opsi_c'),
+                        opsi_d: getField('opsi_d'),
+                        kunci_pg: getField('kunci_pg') || 'A',
+                        rubrik_esai: getField('rubrik_esai'),
+                        bobot: qStr.includes('"opsi_a"') ? 10 : 25
+                    });
+                }
+            }
+        });
+    }
+
+    if (recoveredQuestions.length > 0) {
+        return {
+            judul_kuis: 'Bank Soal Ujian',
+            petunjuk: 'Kerjakan soal dengan teliti dan jujur.',
+            durasi_menit: 45,
+            soal: recoveredQuestions
+        };
+    }
+
+    // 7. Regex Salvage untuk objek Penugasan
+    const judulMatch = str.match(/"judul"\s*:\s*"([^"]*)"/);
+    const deskripsiMatch = str.match(/"deskripsi"\s*:\s*"([^"]*)"/);
+    const rubrikMatch = str.match(/"rubrik"\s*:\s*"([^"]*)"/);
+    if (judulMatch || deskripsiMatch) {
+        return {
+            judul: judulMatch ? judulMatch[1] : 'Penugasan Pembelajaran',
+            deskripsi: deskripsiMatch ? deskripsiMatch[1] : str,
+            rubrik: rubrikMatch ? rubrikMatch[1] : 'Kesesuaian materi dan kerapian pengerjaan.'
+        };
+    }
+
+    // 8. Regex Salvage untuk Nilai & Catatan Evaluasi
+    const nilaiMatch = str.match(/"nilai"\s*:\s*(\d+)/);
+    const catatanMatch = str.match(/"catatan"\s*:\s*"([^"]*)"/);
+    if (nilaiMatch) {
+        return {
+            nilai: parseInt(nilaiMatch[1], 10),
+            catatan: catatanMatch ? catatanMatch[1] : 'Tugas telah diserahkan dengan baik.'
+        };
+    }
+
+    throw new Error('Respons AI tidak dapat diurai secara otomatis. Silakan klik generate sekali lagi.');
 }
 
 /**
@@ -273,12 +421,7 @@ Kembalikan HANYA format JSON valid tanpa tanda petik markdown:
 Pastikan instruksi sangat mudah dimengerti siswa SMP dan rubrik penilaian memiliki parameter terukur untuk acuan guru serta AI.`;
 
     const raw = await callGemini(prompt, system, true);
-    try {
-        return JSON.parse(raw);
-    } catch {
-        const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(clean);
-    }
+    return robustJsonParse(raw);
 }
 
 /**
@@ -388,13 +531,7 @@ KEMBALIKAN HANYA JSON MURNI SESUAI SCHEMA:
 - Alokasi Durasi Ujian: ${cfg.durasi} menit`;
 
     const raw = await callGemini(prompt, system, true);
-    let parsed = null;
-    try {
-        parsed = JSON.parse(raw);
-    } catch {
-        const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-        parsed = JSON.parse(clean);
-    }
+    const parsed = robustJsonParse(raw);
 
     // Ekstraksi array soal yang fleksibel dan kebal format
     let items = [];
@@ -438,12 +575,7 @@ Tentukan:
 2. Catatan feedback (2-3 kalimat ramah, sebutkan kelebihannya dan apa yang bisa ditingkatkan).`;
 
     const raw = await callGemini(prompt, system, true);
-    try {
-        return JSON.parse(raw);
-    } catch {
-        const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(clean);
-    }
+    return robustJsonParse(raw);
 }
 
 /**
@@ -462,10 +594,5 @@ Berikan:
 - "feedback": kalimat masukan singkat (maks 2 kalimat)`;
 
     const raw = await callGemini(prompt, system, true);
-    try {
-        return JSON.parse(raw);
-    } catch {
-        const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(clean);
-    }
+    return robustJsonParse(raw);
 }

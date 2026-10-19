@@ -501,6 +501,67 @@
     </div>
 
     <!-- ======================================================= -->
+    <!-- MODAL: HASIL PENGUMPULAN & KOREKSI PENUGASAN (LMS)      -->
+    <!-- ======================================================= -->
+    <div id="assignment-submissions-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-4xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[92vh] overflow-hidden my-auto">
+            
+            <div class="px-6 py-4 border-b-2 border-black bg-emerald-300 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 bg-black text-white rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">📋</span>
+                    <div>
+                        <h3 id="assign-sub-modal-title" class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Hasil Pengumpulan Tugas</h3>
+                        <p id="assign-sub-modal-meta" class="text-[11px] font-bold text-black/80">Kelas VII.1 • Mata Pelajaran Informatika</p>
+                    </div>
+                </div>
+                <button onclick="closeAssignmentSubmissionsModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg">
+                    &times;
+                </button>
+            </div>
+
+            <div class="p-5 md:p-6 overflow-y-auto flex-1 space-y-4">
+                <!-- Info Petunjuk & Rubrik Tugas -->
+                <div class="bg-slate-50 border-2 border-black rounded-2xl p-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-black uppercase text-slate-800">Petunjuk Tugas & Rubrik Penilaian</span>
+                        <span id="assign-sub-count-badge" class="text-[10px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded uppercase">0 Siswa</span>
+                    </div>
+                    <p id="assign-sub-modal-desc" class="text-xs text-slate-700 font-medium leading-relaxed whitespace-pre-line max-h-32 overflow-y-auto bg-white p-2.5 rounded-xl border border-slate-200"></p>
+                    <div id="assign-sub-modal-rubrik" class="bg-purple-50 border border-purple-200 rounded-xl p-2.5 text-[11px] font-bold text-purple-900"></div>
+                </div>
+
+                <!-- Tabel Pengumpulan Siswa -->
+                <div class="border-[3px] border-black rounded-2xl overflow-x-auto bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                    <table class="w-full min-w-[700px] divide-y-2 divide-black text-left text-xs">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2">Nama Siswa</th>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2">Kelas</th>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2">Metode Pengerjaan</th>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Status & Nilai</th>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black text-center">Aksi Guru</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assign-submissions-tbody" class="divide-y-2 divide-black bg-white">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+                <button onclick="printCurrentAssignmentReport()" class="px-4 py-2 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    🖨️ Cetak Rekap Nilai Tugas Ini
+                </button>
+                <button onclick="closeAssignmentSubmissionsModal()" class="px-5 py-2 bg-white border-2 border-black rounded-xl font-black text-xs uppercase hover:bg-slate-100">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
     <!-- MODAL: BUAT TUGAS BARU (INPUT MANUAL GURU)              -->
     <!-- ======================================================= -->
     <div id="assignment-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">

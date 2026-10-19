@@ -374,8 +374,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line">${a.deskripsi}</p>
 
                     ${a.rubrik_ai ? `
-                        <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 text-[11px] font-bold text-purple-900 mb-4">
+                        <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 text-[11px] font-bold text-purple-900 mb-3">
                             🎯 <strong>Rubrik Penilaian AI:</strong> ${a.rubrik_ai}
+                        </div>
+                    ` : ''}
+
+                    ${mySubmission && mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '' ? `
+                        <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 text-xs mb-3">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-black text-emerald-950 text-xs">Hasil Koreksi Guru:</span>
+                                <span class="font-black text-sm bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-500">${mySubmission.nilai} / 100</span>
+                            </div>
+                            ${mySubmission.catatan_guru ? `<p class="text-[11px] font-medium text-slate-800 italic">"${mySubmission.catatan_guru}"</p>` : ''}
                         </div>
                     ` : ''}
                 </div>
@@ -442,6 +452,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modal-banner-desc').textContent = assignment.deskripsi || '';
         document.getElementById('modal-assignment-banner').classList.remove('hidden');
 
+        const deadlineEl = document.getElementById('modal-banner-deadline');
+        if (deadlineEl) {
+            deadlineEl.textContent = assignment.deadline 
+                ? `Batas: ${new Date(assignment.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` 
+                : 'Tanpa Batas Waktu';
+        }
+
+        const rubrikEl = document.getElementById('modal-banner-rubrik');
+        if (rubrikEl) {
+            if (assignment.rubrik_ai) {
+                rubrikEl.innerHTML = `🎯 <strong>Rubrik Penilaian AI:</strong> ${assignment.rubrik_ai}`;
+                rubrikEl.classList.remove('hidden');
+            } else {
+                rubrikEl.classList.add('hidden');
+            }
+        }
+
         subNamaInput.value = globalNameInput.value.trim();
         subKelasSelect.value = globalKelasSelect.value || assignment.kelas || '';
         subMapelSelect.value = assignment.mapel || 'Informatika';
@@ -453,7 +480,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         resetFileInput();
         if (linkUrlInput) linkUrlInput.value = '';
         if (linkNoteInput) linkNoteInput.value = '';
-        setSubmissionMode('text');
+
+        // Cek apakah siswa telah mengirim tugas ini sebelumnya
+        const mySubmission = studentFiles.find(f => 
+            (f.assignment_id && String(f.assignment_id) === String(assignment.id)) ||
+            (f.materi && f.materi.toLowerCase().trim() === (assignment.judul_tugas || '').toLowerCase().trim())
+        );
+
+        const statusEl = document.getElementById('modal-banner-status');
+        if (statusEl) {
+            if (mySubmission) {
+                statusEl.classList.remove('hidden');
+                if (mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '') {
+                    statusEl.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span class="font-black text-emerald-950">✅ Nilai Anda: ${mySubmission.nilai} / 100</span>
+                            <span class="text-[10px] bg-emerald-200 text-emerald-950 font-black px-2 py-0.5 rounded">Telah Dikoreksi</span>
+                        </div>
+                        ${mySubmission.catatan_guru ? `<p class="text-[11px] font-medium text-emerald-950 mt-1"><strong>Catatan Guru:</strong> ${mySubmission.catatan_guru}</p>` : ''}
+                    `;
+                } else {
+                    statusEl.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span class="font-black text-emerald-900">✅ Tugas Sudah Dikumpulkan</span>
+                            <span class="text-[10px] bg-amber-200 text-amber-950 font-black px-2 py-0.5 rounded">Menunggu Koreksi Guru</span>
+                        </div>
+                        <p class="text-[10px] text-slate-700 font-medium">Anda dapat memperbarui jawaban Anda di bawah ini jika diperlukan.</p>
+                    `;
+                }
+
+                // Prefill previous answer
+                if (mySubmission.storage_path && mySubmission.storage_path.startsWith('TEXT:')) {
+                    const prevText = mySubmission.storage_path.replace('TEXT:', '');
+                    if (subTextAnswerInput) {
+                        subTextAnswerInput.value = prevText;
+                        const words = prevText.split(/\s+/).filter(Boolean).length;
+                        if (subTextCount) subTextCount.textContent = `${words} kata | ${prevText.length} karakter`;
+                    }
+                    setSubmissionMode('text');
+                } else if (mySubmission.link_url || (mySubmission.storage_path && mySubmission.storage_path.startsWith('LINK:'))) {
+                    const prevUrl = mySubmission.link_url || mySubmission.storage_path.replace('LINK:', '');
+                    if (linkUrlInput) linkUrlInput.value = prevUrl;
+                    setSubmissionMode('link');
+                } else {
+                    setSubmissionMode('text');
+                }
+            } else {
+                statusEl.classList.add('hidden');
+                setSubmissionMode('text');
+            }
+        } else {
+            setSubmissionMode('text');
+        }
 
         subModal.classList.remove('hidden');
         subModal.classList.add('flex');
