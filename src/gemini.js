@@ -143,32 +143,75 @@ export async function testGeminiConnection(apiKey, modelName) {
 }
 
 /**
- * AI Generator Materi Pembelajaran
+ * AI Generator Materi Pembelajaran (Kaya Fitur & Berstandar Kurikulum Merdeka)
  */
-export async function aiGenerateMaterial(mapel, topik, kelas) {
-    const system = `Anda adalah asisten kurikulum cerdas untuk guru SMP Negeri 58 Palembang. 
-Gaya bahasa ramah, edukatif, terstruktur, menggunakan Bahasa Indonesia yang baik dan mudah dipahami siswa SMP.`;
+export async function aiGenerateMaterial(mapelOrConfig, topik = '', kelas = 'Kelas 7', gaya = 'konseptual', kedalaman = 'menengah', opsi = {}) {
+    let cfg = {};
+    if (typeof mapelOrConfig === 'object' && mapelOrConfig !== null) {
+        cfg = mapelOrConfig;
+    } else {
+        cfg = {
+            mapel: mapelOrConfig || 'Informatika',
+            topik: topik || 'Topik Pembelajaran',
+            kelas: kelas || 'Kelas 7',
+            gaya: gaya || 'konseptual',
+            kedalaman: kedalaman || 'menengah',
+            sertakanStudiKasus: opsi.sertakanStudiKasus ?? true,
+            sertakanRefleksi: opsi.sertakanRefleksi ?? true,
+            sertakanGlosarium: opsi.sertakanGlosarium ?? true
+        };
+    }
 
-    const prompt = `Buatkan materi ajar lengkap untuk:
-Mata Pelajaran: ${mapel}
-Kelas: ${kelas}
-Topik/Bab: ${topik}
+    const gayaDescriptions = {
+        konseptual: 'Konseptual & Komunikatif: Bahasa ramah siswa SMP, dilengkapi analogi kehidupan sehari-hari yang mudah dibayangkan.',
+        praktikum: 'Tutorial Praktikum Prosedural: Berfokus pada tahapan langkah demi langkah teknis yang siap dipraktikkan langsung.',
+        ringkasan: 'Intisari Kompak & Rumus Kunci: Ringkasan padat fakta untuk review cepat pemahaman sebelum asesmen.',
+        kasus: 'Studi Kasus Kontekstual: Mengangkat skenario nyata atau fenomena kekinian untuk dianalisis bersama.'
+    };
 
-Sajikan dengan struktur rapi:
-1. Pengantar Singkat & Tujuan Pembelajaran
-2. Penjelasan Konsep Inti (jelas, dengan analogi sehari-hari)
-3. Poin-Poin Penting / Rangkuman
-4. Glosarium / Istilah Penting
+    const kedalamanDescriptions = {
+        dasar: 'Tingkat Fondasi (C1-C2): Mengenalkan konsep dasar, istilah kunci, dan fungsi utama tanpa kerumitan teknis berlebih.',
+        menengah: 'Tingkat Aplikatif (C3): Membahas cara penerapan konsep, prosedur praktis, dan contoh penyelesaian masalah.',
+        mahir: 'Tingkat Lanjutan HOTS (C4-C5): Mendorong analisis kritis, komparasi kelebihan dan kekurangan, serta evaluasi solusi.'
+    };
 
-Tulis langsung isi materinya tanpa basa-basi pembuka.`;
+    const system = `Anda adalah ahli pengembang modul ajar SMP Negeri 58 Palembang berstandar Kurikulum Merdeka.
+Susun materi ajar yang interaktif, mendalam, bernas, dan menggunakan Bahasa Indonesia yang tepat tanpa bahasa klise.
+PENTING: Jangan gunakan karakter em dash dalam naskah materi. Gunakan tanda koma, titik dua, atau kurung sebagai penggantinya.`;
+
+    const prompt = `Buatkan naskah bahan ajar komprehensif dengan spesifikasi:
+- Mata Pelajaran: ${cfg.mapel || 'Informatika'}
+- Target Siswa: ${cfg.kelas || 'Semua Kelas'}
+- Materi Pokok / Bab: ${cfg.topik}
+- Pendekatan Penyampaian: ${gayaDescriptions[cfg.gaya] || gayaDescriptions.konseptual}
+- Kedalaman Materi: ${kedalamanDescriptions[cfg.kedalaman] || kedalamanDescriptions.menengah}
+
+Struktur materi yang wajib disajikan:
+1. Capaian & Tujuan Pembelajaran (apa kompetensi yang diraih siswa)
+2. Pembahasan Konsep Inti (jelas, runut, disertai analogi nyata yang lekat dengan remaja SMP)
+${cfg.sertakanStudiKasus ? '3. Contoh Penerapan Nyata / Studi Kasus (skenario konkret yang dialami dalam kehidupan)' : ''}
+4. Rangkuman Intisari Materi (poin-poin penting yang harus diingat)
+${cfg.sertakanRefleksi ? '5. Pertanyaan Pemantik & Refleksi Mandiri (2-3 pertanyaan untuk menguji nalar siswa)' : ''}
+${cfg.sertakanGlosarium ? '6. Glosarium Istilah Penting (daftar istilah teknis beserta artinya secara ringkas)' : ''}
+
+Tuliskan langsung isi modul pembelajaran secara terstruktur tanpa basa-basi pembuka atau penutup.`;
 
     return await callGemini(prompt, system, false);
 }
 
 /**
- * AI Generator Tugas Siswa & Rubrik Penilaian (Spesifik & Terstruktur)
+ * AI Generator Tugas Siswa & Rubrik Penilaian (Spesifik, Terstruktur & Kaya Fitur)
  */
-export async function aiGenerateAssignment(mapelOrConfig, topik = '', kelas = 'Kelas 7', jenisTugas = 'praktikum', tingkatKognitif = 'hots') {
+export async function aiGenerateAssignment(
+    mapelOrConfig, 
+    topik = '', 
+    kelas = 'Kelas 7', 
+    jenisTugas = 'praktikum', 
+    tingkatKognitif = 'hots',
+    modelPembelajaran = 'pbl',
+    alokasiWaktu = '1 Minggu',
+    formatPengumpulan = 'kombinasi'
+) {
     let cfg = {};
     if (typeof mapelOrConfig === 'object' && mapelOrConfig !== null) {
         cfg = mapelOrConfig;
@@ -178,41 +221,56 @@ export async function aiGenerateAssignment(mapelOrConfig, topik = '', kelas = 'K
             topik: topik || 'Materi Pembelajaran',
             kelas: kelas || 'Kelas 7',
             jenisTugas: jenisTugas || 'praktikum',
-            tingkatKognitif: tingkatKognitif || 'hots'
+            tingkatKognitif: tingkatKognitif || 'hots',
+            modelPembelajaran: modelPembelajaran || 'pbl',
+            alokasiWaktu: alokasiWaktu || '1 Minggu',
+            formatPengumpulan: formatPengumpulan || 'kombinasi'
         };
     }
 
     const jenisTugasDesc = {
-        praktikum: 'Praktik Mandiri / Pemecahan Masalah Komputasional (Siswa mengerjakan proyek/langkah konkret)',
-        infografis: 'Infografis / Media Visual Canva (Siswa merangkum konsep ke dalam karya visual yang estetis dan informatif)',
-        video: 'Presentasi Video Singkat / Penjelasan Mandiri (Siswa menjelaskan pemahaman dalam video 2-3 menit)',
-        laporan: 'Laporan Tertulis & Analisis Kasus (Siswa menyusun resume terstruktur)',
-        proyek: 'Proyek Terpadu / Kolaborasi (Siswa menyusun solusi untuk skenario nyata)'
+        praktikum: 'Praktik Mandiri / Pemecahan Masalah Komputasional (Siswa menghasilkan luaran nyata berupa file/karya)',
+        lks: 'Lembar Kerja Peserta Didik (LKPD): Lembar analisis terstruktur dengan pertanyaan terbimbing',
+        infografis: 'Infografis & Media Kreatif Canva: Merangkum intisari materi ke dalam bentuk visual estetis',
+        video: 'Presentasi Video Singkat (2-3 menit): Siswa menjelaskan pemahaman atau mendemonstrasikan tugas',
+        laporan: 'Laporan Tertulis & Analisis Kasus: Siswa menyusun laporan sistematis',
+        proyek: 'Proyek Terpadu / Kolaborasi: Penugasan berbasis karya kelompok'
     }[cfg.jenisTugas] || 'Praktik Mandiri';
 
     const kognitifDesc = {
-        hots: 'Tingkat Kognitif HOTS (C4 Analisis, C5 Evaluasi, C6 Kreasi): Mendorong siswa berpikir kritis, menganalisis solusi, dan membuat karya orisinal.',
-        mots: 'Tingkat Kognitif MOTS (C3 Aplikasi): Siswa menerapkan konsep yang dipelajari pada contoh studi kasus konkret.',
-        lots: 'Tingkat Kognitif LOTS (C1-C2 Pemahaman): Siswa merangkum dan menjelaskan ulang konsep inti materi.'
+        hots: 'Tingkat Kognitif HOTS (C4 Analisis, C5 Evaluasi, C6 Kreasi Produk): Menuntut nalar kritis, evaluasi data, dan kreasi solusi baru.',
+        mots: 'Tingkat Kognitif MOTS (C3 Penerapan): Menuntut penerapan prosedur praktis pada skenario konkret.',
+        lots: 'Tingkat Kognitif LOTS (C1-C2 Pemahaman): Menuntut kemampuan menjelaskan dan merangkum konsep dasar.'
     }[cfg.tingkatKognitif] || 'HOTS';
 
-    const system = `Anda adalah konsultan kurikulum dan asesmen SMP Negeri 58 Palembang berstandar Kurikulum Merdeka.
-Buatkan rencana penugasan siswa yang spesifik, aplikatif, dan tidak abstrak.
-Kembalikan HANYA JSON:
+    const modelDesc = {
+        pbl: 'Problem-Based Learning (PBL): Berangkat dari permasalahan riil yang menuntut investigasi dan pemecahan masalah.',
+        pjbl: 'Project-Based Learning (PjBL): Berorientasi pada pembuatan produk/artefak nyata yang dapat dipresentasikan.',
+        discovery: 'Discovery / Inquiry Learning: Siswa diarahkan menemukan pola konsep melalui eksperimen terarah.',
+        kontekstual: 'Kontekstual (CTL): Mengaitkan materi secara langsung dengan kehidupan sehari-hari siswa di lingkungan sekolah dan rumah.'
+    }[cfg.modelPembelajaran] || 'Problem-Based Learning (PBL)';
+
+    const system = `Anda adalah konsultan kurikulum dan perancang asesmen autentik SMP Negeri 58 Palembang berstandar Kurikulum Merdeka.
+Buatkan rencana penugasan siswa yang aplikatif, jelas, tidak abstrak, dan terstruktur rapi.
+PENTING: Jangan gunakan karakter em dash.
+Kembalikan HANYA format JSON valid tanpa tanda petik markdown:
 {
-  "judul": "string (Judul penugasan yang spesifik dan menarik)",
-  "deskripsi": "string (Petunjuk rinci: 1. Latar Belakang & Tujuan, 2. Langkah Pengerjaan Step-by-Step, 3. Format Pengumpulan)",
-  "rubrik": "string (Kriteria penilaian kuantitatif: Kesesuaian Materi [40%], Kedalaman Analisis [30%], Orisinalitas & Kerapian [30%])"
+  "judul": "string (Judul penugasan yang spesifik, menarik, dan mencerminkan materi pokok)",
+  "deskripsi": "string (Rincian penugasan lengkap: 1. Capaian & Tujuan Tugas, 2. Alat & Bahan yang Diperlukan, 3. Langkah Pengerjaan Terperinci Step-by-Step, 4. Format & Ketentuan Pengumpulan)",
+  "rubrik": "string (Kriteria penilaian kuantitatif 3-4 kriteria lengkap dengan bobot persentase, contoh: Ketepatan Konsep [40%], Kedalaman Analisis & Kreativitas [35%], Kerapian & Kepatuhan Waktu [25%])"
 }`;
 
-    const prompt = `Rancang tugas siswa SMP dengan parameter:
-- Mata Pelajaran: ${cfg.mapel}
-- Kelas: ${cfg.kelas}
-- Capaian Pembelajaran / Topik: ${cfg.topik}
+    const prompt = `Rancang instrumen penugasan siswa SMP dengan parameter lengkap:
+- Mata Pelajaran: ${cfg.mapel || 'Informatika'}
+- Target Kelas: ${cfg.kelas || 'Semua Kelas'}
+- Materi Pokok / Capaian Pembelajaran: ${cfg.topik}
 - Bentuk Tugas: ${jenisTugasDesc}
-- Pendekatan Kognitif: ${kognitifDesc}
+- Tingkat Kognitif: ${kognitifDesc}
+- Model Pembelajaran: ${modelDesc}
+- Estimasi Alokasi Waktu: ${cfg.alokasiWaktu || '1 Minggu'}
+- Format Pengumpulan: ${cfg.formatPengumpulan || 'Form Web, File Dokumen, atau Tautan Canva/Docs'}
 
-Pastikan instruksi mudah dipahami murid SMP dan rubrik penilaian dapat menjadi acuan objektif bagi guru maupun AI auto-koreksi.`;
+Pastikan instruksi sangat mudah dimengerti siswa SMP dan rubrik penilaian memiliki parameter terukur untuk acuan guru serta AI.`;
 
     const raw = await callGemini(prompt, system, true);
     try {

@@ -949,18 +949,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ==========================================
+    // 3. Modul Kelola Penugasan Siswa
+    // ==========================================
     window.openAssignmentModal = () => {
         const kelasSelect = document.getElementById('assign-kelas');
-        kelasSelect.innerHTML = '';
-        stateKelas.forEach(k => {
-            const opt = document.createElement('option');
-            opt.value = k; opt.textContent = k;
-            kelasSelect.appendChild(opt);
-        });
+        if (kelasSelect) {
+            kelasSelect.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
+            stateKelas.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k; opt.textContent = `Kelas ${k}`;
+                kelasSelect.appendChild(opt);
+            });
+        }
+        const mapelSelect = document.getElementById('assign-mapel');
+        if (mapelSelect && currentTeacher?.mapel) {
+            mapelSelect.value = currentTeacher.mapel;
+        }
         document.getElementById('assign-judul').value = '';
         document.getElementById('assign-deskripsi').value = '';
         document.getElementById('assign-rubrik').value = '';
         document.getElementById('assign-deadline').value = '';
+        if (document.getElementById('assign-jenis')) document.getElementById('assign-jenis').value = 'praktikum';
+        if (document.getElementById('assign-kognitif')) document.getElementById('assign-kognitif').value = 'hots';
         document.getElementById('assignment-modal').classList.remove('hidden');
     };
 
@@ -968,8 +979,31 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('assignment-modal').classList.add('hidden');
     };
 
+    window.insertAssignmentTemplate = (type) => {
+        const descEl = document.getElementById('assign-deskripsi');
+        if (!descEl) return;
+        if (type === 'lkpd') {
+            descEl.value = `🎯 Capaian & Tujuan Tugas:\nSiswa mampu menganalisis konsep pokok dan menyajikan solusi terstruktur.\n\n🛠️ Alat & Bahan:\n1. Perangkat komputer atau smartphone dengan akses internet\n2. Lembar kerja digital atau catatan ringkasan\n\n📋 Langkah-Langkah Pengerjaan:\n1. Pelajari materi bab terkait yang telah dibagikan di menu Materi Belajar.\n2. Lakukan pengamatan atau analisis terhadap studi kasus yang diberikan.\n3. Catat poin temuan penting dan rumuskan kesimpulan Anda secara runtut.\n\n📤 Ketentuan Pengumpulan:\nKetikkan laporan langsung pada Form Web atau unggah berkas tugas sebelum batas waktu.`;
+        } else if (type === 'proyek') {
+            descEl.value = `🎨 Tema Karya & Luaran:\nMembuat media informasi visual kreatif (Poster / Infografis Canva) yang informatif dan estetis.\n\n🛠️ Media & Aplikasi Rekomendasi:\nCanva, Google Docs, atau aplikasi desain lainnya.\n\n📋 Ketentuan Pembuatan Karya:\n1. Memuat judul topik yang jelas dan nama lengkap siswa.\n2. Memuat minimal 3 intisari materi pokok dengan bahasa sendiri.\n3. Dilengkapi ilustrasi atau visual pendukung yang relevan.\n\n📤 Ketentuan Pengumpulan:\nBagikan tautan publik Canva/Docs (akses melihat) atau unggah file PDF/Gambar hasil ekspor karya Anda.`;
+        }
+        descEl.focus();
+    };
+
+    window.insertStandardRubric = (type) => {
+        const rubrikEl = document.getElementById('assign-rubrik');
+        if (!rubrikEl) return;
+        if (type === 'praktik') {
+            rubrikEl.value = `Kriteria 1: Ketepatan Prosedur & Langkah Kerja [40%], Kriteria 2: Kualitas & Kelengkapan Hasil Karya [35%], Kriteria 3: Kerapian, Estetika & Ketepatan Waktu [25%]`;
+        } else if (type === 'analisis') {
+            rubrikEl.value = `Kriteria 1: Penguasaan Konsep Materi Pokok [40%], Kriteria 2: Kedalaman Analisis & Argumentasi Kritis [35%], Kriteria 3: Orisinalitas Gagasan & Sistematika Penulisan [25%]`;
+        }
+        rubrikEl.focus();
+    };
+
     window.saveAssignment = async () => {
-        const kelas = document.getElementById('assign-kelas').value;
+        const mapel = document.getElementById('assign-mapel')?.value || currentTeacher?.mapel || 'Informatika';
+        const kelas = document.getElementById('assign-kelas')?.value || stateKelas[0] || 'Semua Kelas';
         const judul = document.getElementById('assign-judul').value.trim();
         const deskripsi = document.getElementById('assign-deskripsi').value.trim();
         const rubrik = document.getElementById('assign-rubrik').value.trim();
@@ -980,10 +1014,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const btn = document.getElementById('btn-save-assignment');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Menerbitkan Tugas...";
+        }
+
         try {
             const { error } = await supabase.from('assignments').insert([{
                 teacher_id: currentSession?.user?.id,
-                mapel: currentTeacher?.mapel || 'Informatika',
+                mapel,
                 kelas,
                 judul_tugas: judul,
                 deskripsi,
@@ -993,15 +1033,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (error) throw error;
 
-            // Tambahkan juga ke tabel options materi jika belum ada
             await supabase.from('options').insert([{ type: 'materi', name: judul }]).catch(() => {});
 
             closeAssignmentModal();
             loadAssignments();
             loadOptionsSettings();
-            showCustomModal("Penugasan baru berhasil diterbitkan untuk siswa!");
+            showCustomModal(`✅ Penugasan "${judul}" berhasil diterbitkan untuk ${kelas}!`);
         } catch (e) {
             showCustomModal("Gagal menyimpan penugasan: " + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "💾 PUBLIKASIKAN TUGAS KE SISWA";
+            }
         }
     };
 
@@ -1020,12 +1064,16 @@ document.addEventListener('DOMContentLoaded', () => {
     window.openAiAssignmentModal = () => {
         const kelasSelect = document.getElementById('ai-assign-kelas');
         if (kelasSelect) {
-            kelasSelect.innerHTML = '';
+            kelasSelect.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
             stateKelas.forEach(k => {
                 const opt = document.createElement('option');
-                opt.value = k; opt.textContent = k;
+                opt.value = k; opt.textContent = `Kelas ${k}`;
                 kelasSelect.appendChild(opt);
             });
+        }
+        const mapelSelect = document.getElementById('ai-assign-mapel');
+        if (mapelSelect && currentTeacher?.mapel) {
+            mapelSelect.value = currentTeacher.mapel;
         }
         document.getElementById('ai-assign-topik').value = '';
         document.getElementById('ai-assignment-modal').classList.remove('hidden');
@@ -1036,10 +1084,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.runAiGenerateAssignment = async () => {
-        const topik = document.getElementById('ai-assign-topik').value.trim();
-        const kelas = document.getElementById('ai-assign-kelas').value || stateKelas[0] || 'VII.1';
+        const mapel = document.getElementById('ai-assign-mapel')?.value || currentTeacher?.mapel || 'Informatika';
+        const kelas = document.getElementById('ai-assign-kelas')?.value || stateKelas[0] || 'Semua Kelas';
         const jenisTugas = document.getElementById('ai-assign-jenis').value;
+        const modelPembelajaran = document.getElementById('ai-assign-model').value;
         const tingkatKognitif = document.getElementById('ai-assign-kognitif').value;
+        const alokasiWaktu = document.getElementById('ai-assign-alokasi').value;
+        const topik = document.getElementById('ai-assign-topik').value.trim();
 
         if (!topik) {
             showCustomModal("Masukkan materi pokok / capaian pembelajaran terlebih dahulu!");
@@ -1048,28 +1099,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const btn = document.getElementById('btn-run-ai-assign');
         btn.disabled = true;
-        btn.innerText = "Merumuskan Tugas & Rubrik...";
+        btn.innerText = "Merumuskan Tugas Autentik...";
 
         try {
             const res = await aiGenerateAssignment({
-                mapel: currentTeacher?.mapel || 'Informatika',
+                mapel,
                 topik,
                 kelas,
                 jenisTugas,
-                tingkatKognitif
+                tingkatKognitif,
+                modelPembelajaran,
+                alokasiWaktu
             });
 
             closeAiAssignmentModal();
             openAssignmentModal();
+            if (document.getElementById('assign-mapel')) document.getElementById('assign-mapel').value = mapel;
             if (document.getElementById('assign-kelas')) document.getElementById('assign-kelas').value = kelas;
+            if (document.getElementById('assign-jenis')) document.getElementById('assign-jenis').value = jenisTugas;
+            if (document.getElementById('assign-kognitif')) document.getElementById('assign-kognitif').value = tingkatKognitif;
             if (res.judul) document.getElementById('assign-judul').value = res.judul;
             if (res.deskripsi) document.getElementById('assign-deskripsi').value = res.deskripsi;
             if (res.rubrik) document.getElementById('assign-rubrik').value = res.rubrik;
         } catch (e) {
             showCustomModal("Gagal generate tugas AI: " + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "🚀 GENERATE TUGAS & RUBRIK";
         }
-        btn.disabled = false;
-        btn.innerText = "🚀 GENERATE TUGAS & RUBRIK";
     };
 
     // ==========================================
@@ -1077,7 +1134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     async function loadMaterials() {
         const container = document.getElementById('materials-container');
-        container.innerHTML = '<div class="col-span-2 text-center py-6 font-bold text-black uppercase">Memuat materi pembelajaran...</div>';
+        container.innerHTML = '<div class="col-span-2 text-center py-6 font-bold text-black uppercase animate-pulse">Memuat materi pembelajaran...</div>';
 
         try {
             const { data, error } = await supabase.from('materials').select('*').order('created_at', { ascending: false });
@@ -1115,15 +1172,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.openMaterialModal = () => {
         const matKelasSelect = document.getElementById('mat-kelas');
-        matKelasSelect.innerHTML = '';
-        stateKelas.forEach(k => {
-            const opt = document.createElement('option');
-            opt.value = k; opt.textContent = k;
-            matKelasSelect.appendChild(opt);
-        });
+        if (matKelasSelect) {
+            matKelasSelect.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
+            stateKelas.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k; opt.textContent = `Kelas ${k}`;
+                matKelasSelect.appendChild(opt);
+            });
+        }
+        const matMapelSelect = document.getElementById('mat-mapel');
+        if (matMapelSelect && currentTeacher?.mapel) {
+            matMapelSelect.value = currentTeacher.mapel;
+        }
         document.getElementById('mat-judul').value = '';
         document.getElementById('mat-konten').value = '';
         document.getElementById('mat-video').value = '';
+        if (document.getElementById('mat-kategori')) document.getElementById('mat-kategori').value = 'modul';
+        if (document.getElementById('mat-level')) document.getElementById('mat-level').value = 'menengah';
         document.getElementById('material-modal').classList.remove('hidden');
     };
 
@@ -1131,21 +1196,45 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('material-modal').classList.add('hidden');
     };
 
+    window.insertMaterialSection = (section) => {
+        const kontenEl = document.getElementById('mat-konten');
+        if (!kontenEl) return;
+        let snippet = '';
+        if (section === 'tujuan') {
+            snippet = `\n\n🎯 Capaian & Tujuan Pembelajaran:\n1. Memahami konsep pokok dan fungsi utama materi ini.\n2. Mampu menerapkan konsep untuk memecahkan persoalan sehari-hari.`;
+        } else if (section === 'kasus') {
+            snippet = `\n\n💡 Contoh Kasus & Penerapan Sehari-Hari:\nBayangkan situasi berikut pada kehidupan remaja sehari-hari:\n[Tuliskan skenario studi kasus konkret di sini].`;
+        } else if (section === 'rangkuman') {
+            snippet = `\n\n📌 Rangkuman Intisari Materi:\n- Poin 1: [Prinsip penting yang harus diingat]\n- Poin 2: [Aturan atau langkah kunci]\n- Poin 3: [Hal yang perlu diperhatikan]`;
+        } else if (section === 'glosarium') {
+            snippet = `\n\n📖 Glosarium Istilah Penting:\n- Istilah 1: Penjelasan ringkas istilah 1.\n- Istilah 2: Penjelasan ringkas istilah 2.`;
+        }
+        kontenEl.value = (kontenEl.value.trim() + snippet).trim();
+        kontenEl.focus();
+    };
+
     window.saveMaterial = async () => {
-        const kelas = document.getElementById('mat-kelas').value;
+        const mapel = document.getElementById('mat-mapel')?.value || currentTeacher?.mapel || 'Informatika';
+        const kelas = document.getElementById('mat-kelas')?.value || stateKelas[0] || 'Semua Kelas';
         const judul = document.getElementById('mat-judul').value.trim();
         const konten = document.getElementById('mat-konten').value.trim();
         const video = document.getElementById('mat-video').value.trim();
 
         if (!judul || !konten) {
-            showCustomModal("Judul dan konten materi wajib diisi!");
+            showCustomModal("Judul dan uraian materi wajib diisi!");
             return;
+        }
+
+        const btn = document.getElementById('btn-save-material');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Menyimpan Materi...";
         }
 
         try {
             const { error } = await supabase.from('materials').insert([{
                 teacher_id: currentSession?.user?.id,
-                mapel: currentTeacher?.mapel || 'Informatika',
+                mapel,
                 kelas,
                 judul,
                 konten,
@@ -1155,9 +1244,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             closeMaterialModal();
             loadMaterials();
-            showCustomModal("Materi pembelajaran berhasil disimpan dan dapat dibaca siswa!");
+            showCustomModal(`✅ Modul materi "${judul}" berhasil disimpan dan dapat diakses siswa ${kelas}!`);
         } catch (e) {
             showCustomModal("Gagal menyimpan materi: " + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "💾 SIMPAN & TERBITKAN MATERI";
+            }
         }
     };
 
@@ -1174,6 +1268,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.openAiMaterialModal = () => {
+        const kelasSelect = document.getElementById('ai-mat-kelas');
+        if (kelasSelect) {
+            kelasSelect.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
+            stateKelas.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k; opt.textContent = `Kelas ${k}`;
+                kelasSelect.appendChild(opt);
+            });
+        }
+        const mapelSelect = document.getElementById('ai-mat-mapel');
+        if (mapelSelect && currentTeacher?.mapel) {
+            mapelSelect.value = currentTeacher.mapel;
+        }
         document.getElementById('ai-mat-topik').value = '';
         document.getElementById('ai-material-modal').classList.remove('hidden');
     };
@@ -1183,32 +1290,48 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.runAiGenerateMaterial = async () => {
+        const mapel = document.getElementById('ai-mat-mapel')?.value || currentTeacher?.mapel || 'Informatika';
+        const kelas = document.getElementById('ai-mat-kelas')?.value || stateKelas[0] || 'Semua Kelas';
+        const gaya = document.getElementById('ai-mat-gaya').value;
+        const kedalaman = document.getElementById('ai-mat-kedalaman').value;
+        const sertakanStudiKasus = document.getElementById('ai-mat-opt-kasus')?.checked ?? true;
+        const sertakanRefleksi = document.getElementById('ai-mat-opt-refleksi')?.checked ?? true;
+        const sertakanGlosarium = document.getElementById('ai-mat-opt-glosarium')?.checked ?? true;
         const topik = document.getElementById('ai-mat-topik').value.trim();
+
         if (!topik) {
-            showCustomModal("Masukkan topik materi terlebih dahulu!");
+            showCustomModal("Masukkan materi pokok / capaian pembelajaran terlebih dahulu!");
             return;
         }
 
         const btn = document.getElementById('btn-run-ai-mat');
         btn.disabled = true;
-        btn.innerText = "Sedang Membuatkan Materi...";
+        btn.innerText = "Menyusun Modul Ajar Komprehensif...";
 
         try {
-            const generatedText = await aiGenerateMaterial(
-                currentTeacher?.mapel || 'Informatika',
+            const generatedText = await aiGenerateMaterial({
+                mapel,
                 topik,
-                'SMP Kelas 7-9'
-            );
+                kelas,
+                gaya,
+                kedalaman,
+                sertakanStudiKasus,
+                sertakanRefleksi,
+                sertakanGlosarium
+            });
 
             closeAiMaterialModal();
             openMaterialModal();
+            if (document.getElementById('mat-mapel')) document.getElementById('mat-mapel').value = mapel;
+            if (document.getElementById('mat-kelas')) document.getElementById('mat-kelas').value = kelas;
             document.getElementById('mat-judul').value = topik;
             document.getElementById('mat-konten').value = generatedText;
         } catch (e) {
             showCustomModal("Gagal generate materi: " + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "🚀 GENERATE MODUL AJAR SEKARANG";
         }
-        btn.disabled = false;
-        btn.innerText = "🚀 GENERATE MATERI SEKARANG";
     };
 
     // ==========================================
