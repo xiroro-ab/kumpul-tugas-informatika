@@ -2831,17 +2831,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             let submissionId = null;
 
             if (existingSub) {
-                const serverCheats = existingSub.jawaban_siswa?.cheatAttempts || 0;
+                let serverJawaban = existingSub.jawaban_siswa;
+                if (typeof serverJawaban === 'string') {
+                    try { serverJawaban = JSON.parse(serverJawaban); } catch (_) { serverJawaban = {}; }
+                }
+                const serverCheats = serverJawaban?.cheatAttempts || 0;
+                const isServerUnlocked = existingSub.status_koreksi === 'sedang_ujian' && (serverJawaban?.unlockedAt || serverCheats === 0);
+
+                const localKey = `cbt_exam_${quiz.id}_${encodeURIComponent(studentName)}`;
+
+                // Jika server menandakan akun sedang aktif atau baru dibuka kuncinya oleh guru:
+                if (isServerUnlocked) {
+                    try {
+                        const localRaw = localStorage.getItem(localKey);
+                        if (localRaw) {
+                            const localData = JSON.parse(localRaw);
+                            localData.cheatAttempts = 0;
+                            localData.isLocked = false;
+                            localData.cheatLogs = [];
+                            localStorage.setItem(localKey, JSON.stringify(localData));
+                        }
+                    } catch (_) {}
+                }
+
                 let localCheats = 0;
+                let isLocalLocked = false;
                 try {
-                    const localKey = `cbt_exam_${quiz.id}_${encodeURIComponent(studentName)}`;
                     const localData = JSON.parse(localStorage.getItem(localKey) || '{}');
                     localCheats = localData.cheatAttempts || 0;
+                    isLocalLocked = !!localData.isLocked;
                 } catch (_) {}
-                const totalCheats = Math.max(serverCheats, localCheats);
+
+                const totalCheats = isServerUnlocked ? serverCheats : Math.max(serverCheats, localCheats);
                 const limit = config.violation_limit !== undefined ? config.violation_limit : 3;
 
-                if (existingSub.status_koreksi === 'terkunci_curang' || (limit > 0 && totalCheats >= limit)) {
+                if (existingSub.status_koreksi === 'terkunci_curang' || (!isServerUnlocked && (isLocalLocked || (limit > 0 && totalCheats >= limit)))) {
                     if (btn) { btn.disabled = false; btn.innerText = "Mulai Kerjakan Ujian"; }
                     closeExamTokenModal();
                     await showCustomModal(
@@ -2867,6 +2891,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 submissionId = existingSub.id;
             } else {
+                // Sesi baru ATAU sesi sebelumnya telah di-reset oleh guru pengawas:
+                // Bersihkan data lokal lama agar siswa tidak terblokir oleh riwayat sesi yang sudah dihapus
+                const localKey = `cbt_exam_${quiz.id}_${encodeURIComponent(studentName)}`;
+                try {
+                    localStorage.removeItem(localKey);
+                    sessionStorage.removeItem('cbt_active_exam_session');
+                } catch (_) {}
+
                 // Buat sesi live baru di Supabase quiz_submissions dengan student_id
                 try {
                     const { data: newSub, error: subErr } = await supabase.from('quiz_submissions').insert([{
@@ -2920,10 +2952,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const violationLimit = config.violation_limit !== undefined ? config.violation_limit : 3;
 
         // Ambil riwayat dari server database jika ada
-        const serverCheats = existingSub?.jawaban_siswa?.cheatAttempts || 0;
-        const serverLogs = Array.isArray(existingSub?.jawaban_siswa?.cheatLogs) ? existingSub.jawaban_siswa.cheatLogs : [];
-        const serverAnswers = existingSub?.jawaban_siswa?.answers || {};
-        const serverDoubtful = existingSub?.jawaban_siswa?.doubtful || {};
+        let serverJawaban = existingSub?.jawaban_siswa;
+        if (typeof serverJawaban === 'string') {
+            try { serverJawaban = JSON.parse(serverJawaban); } catch (_) { serverJawaban = {}; }
+        }
+        const serverCheats = serverJawaban?.cheatAttempts || 0;
+        const serverLogs = Array.isArray(serverJawaban?.cheatLogs) ? serverJawaban.cheatLogs : [];
+        const serverAnswers = serverJawaban?.answers || {};
+        const serverDoubtful = serverJawaban?.doubtful || {};
+        const isServerUnlocked = existingSub?.status_koreksi === 'sedang_ujian' && (serverJawaban?.unlockedAt || serverCheats === 0);
 
         // Ambil riwayat dari localStorage jika ada
         let localAnswers = {};
@@ -2933,8 +2970,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         let localTimerSeconds = null;
         let isLocalLocked = false;
 
+        const localKey = `cbt_exam_${quizData.id}_${encodeURIComponent(studentName)}`;
         try {
-            const localKey = `cbt_exam_${quizData.id}_${encodeURIComponent(studentName)}`;
             const savedRaw = localStorage.getItem(localKey);
             if (savedRaw) {
                 const savedState = JSON.parse(savedRaw);
@@ -2947,9 +2984,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (_) {}
 
-        // Konsolidasi: selalu ambil jumlah kecurangan TERTINGGI antara client dan server!
-        const effectiveCheats = Math.max(serverCheats, localCheats);
-        const effectiveLogs = serverLogs.length >= localLogs.length ? serverLogs : localLogs;
+        // JIKA SERVER SUDAH MEMBUKA KUNCI: bersihkan status lock lokal!
+        if (isServerUnlocked) {
+            isLocalLocked = false;
+            localCheats = 0;
+            localLogs = [];
+            try {
+                const savedRaw = localStorage.getItem(localKey);
+                if (savedRaw) {
+                    const localData = JSON.parse(savedRaw);
+                    localData.isLocked = false;
+                    localData.cheatAttempts = 0;
+                    localData.cheatLogs = [];
+                    localStorage.setItem(localKey, JSON.stringify(localData));
+                }
+            } catch (_) {}
+        }
+
+        // Konsolidasi: jika sudah di-unlock oleh guru di server, gunakan serverCheats (0)
+        const effectiveCheats = isServerUnlocked ? serverCheats : Math.max(serverCheats, localCheats);
+        const effectiveLogs = isServerUnlocked ? serverLogs : (serverLogs.length >= localLogs.length ? serverLogs : localLogs);
         const effectiveAnswers = { ...serverAnswers, ...localAnswers };
         const effectiveDoubtful = { ...serverDoubtful, ...localDoubtful };
 
@@ -2972,7 +3026,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         // Jika terdeteksi terkunci atau kecurangan telah mencapai/melampaui limit, langsung bekukan!
-        if (existingSub?.status_koreksi === 'terkunci_curang' || isLocalLocked || (violationLimit > 0 && effectiveCheats >= violationLimit)) {
+        if (existingSub?.status_koreksi === 'terkunci_curang' || (!isServerUnlocked && (isLocalLocked || (violationLimit > 0 && effectiveCheats >= violationLimit)))) {
             enterExamMode();
             await lockExamDueToCheating();
             return;
@@ -3205,17 +3259,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (rawActive) {
             const activeData = JSON.parse(rawActive);
             if (activeData && activeData.quizId && activeData.studentName) {
-                if (typeof switchStudentPortal === 'function') {
-                    switchStudentPortal('ujian');
-                }
                 const resumeQuiz = allQuizzes.find(q => String(q.id) === String(activeData.quizId));
-                if (resumeQuiz) {
-                    let resumeSub = null;
-                    if (activeData.submissionId) {
-                        try {
-                            const { data: sub } = await supabase.from('quiz_submissions').select('*').eq('id', activeData.submissionId).maybeSingle();
-                            if (sub) resumeSub = sub;
-                        } catch (_) {}
+                let resumeSub = null;
+                if (activeData.submissionId) {
+                    try {
+                        const { data: sub } = await supabase.from('quiz_submissions').select('*').eq('id', activeData.submissionId).maybeSingle();
+                        if (sub) resumeSub = sub;
+                    } catch (_) {}
+                }
+
+                // JIKA SUBMISSION TIDAK DITEMUKAN (Telah di-reset oleh guru pengawas):
+                if (!resumeSub) {
+                    sessionStorage.removeItem('cbt_active_exam_session');
+                    const localKey = `cbt_exam_${activeData.quizId}_${encodeURIComponent(activeData.studentName)}`;
+                    try { localStorage.removeItem(localKey); } catch (_) {}
+                } else if (resumeSub.status_koreksi === 'selesai') {
+                    sessionStorage.removeItem('cbt_active_exam_session');
+                } else if (resumeQuiz) {
+                    if (typeof switchStudentPortal === 'function') {
+                        switchStudentPortal('ujian');
                     }
                     await launchCbtExam(resumeQuiz, activeData.studentName, activeData.submissionId, activeData.studentId, resumeSub);
                 }

@@ -3786,7 +3786,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentVal = kelasSelect.value || 'all';
                 const submissionClasses = activeQuizSubmissions.map(s => String(s.kelas || '').trim()).filter(Boolean);
                 const quizTargetKelas = activeQuizForResults?.kelas && activeQuizForResults.kelas !== 'Semua Kelas' ? [activeQuizForResults.kelas] : [];
-                const rosterClasses = (rosterStudents || []).map(r => String(r.kelas || '').trim()).filter(Boolean);
+                const rosterClasses = (stateStudents || []).map(r => String(r.kelas || '').trim()).filter(Boolean);
                 const allClasses = [...new Set([...submissionClasses, ...quizTargetKelas, ...rosterClasses])].sort();
 
                 kelasSelect.innerHTML = '<option value="all">Semua Kelas</option>' +
@@ -4081,6 +4081,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             curJawaban.cheatAttempts = 0;
             curJawaban.lockedDueToCheating = false;
+            curJawaban.isFocus = true;
+            curJawaban.isOnline = true;
             curJawaban.unlockedAt = new Date().toISOString();
 
             const { error: updErr } = await supabase.from('quiz_submissions').update({

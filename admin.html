@@ -239,16 +239,16 @@
             <!-- ======================================================= -->
             <div id="tab-content-penugasan" class="space-y-6 hidden">
                 <div class="bg-emerald-300 border-[3px] border-black rounded-3xl md:rounded-[40px] p-4 sm:p-6 md:p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                        <div>
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+                        <div class="flex-1 min-w-[260px]">
                             <h3 class="text-2xl sm:text-3xl font-black text-black uppercase tracking-tight">Kelola Penugasan Siswa</h3>
                             <p class="text-black font-bold text-xs md:text-sm mt-0.5">Buat instruksi penugasan, batas waktu, dan rubrik kriteria untuk koreksi AI.</p>
                         </div>
-                        <div class="flex gap-2 w-full sm:w-auto">
-                            <button type="button" onclick="openAiAssignmentModal()" class="flex-1 sm:flex-none h-11 bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition">
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+                            <button type="button" onclick="openAiAssignmentModal()" class="flex-1 sm:flex-none h-11 bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap">
                                 AI Buat Tugas
                             </button>
-                            <button type="button" onclick="openAssignmentModal()" class="flex-1 sm:flex-none h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition">
+                            <button type="button" onclick="openAssignmentModal()" class="flex-1 sm:flex-none h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap">
                                 Buat Tugas Baru
                             </button>
                         </div>
@@ -265,16 +265,16 @@
             <!-- ======================================================= -->
             <div id="tab-content-materi" class="space-y-6 hidden">
                 <div class="bg-blue-400 border-[3px] border-black rounded-3xl md:rounded-[40px] p-4 sm:p-6 md:p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                        <div>
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+                        <div class="flex-1 min-w-[260px]">
                             <h3 class="text-2xl sm:text-3xl font-black text-black uppercase tracking-tight">Materi Pembelajaran</h3>
                             <p class="text-black font-bold text-xs md:text-sm mt-0.5">Kelola ringkasan materi, modul modul belajar, dan video untuk siswa.</p>
                         </div>
-                        <div class="flex gap-2 w-full sm:w-auto">
-                            <button type="button" onclick="openAiMaterialModal()" class="flex-1 sm:flex-none h-11 bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition">
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+                            <button type="button" onclick="openAiMaterialModal()" class="flex-1 sm:flex-none h-11 bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap">
                                 AI Buat Materi
                             </button>
-                            <button type="button" onclick="openMaterialModal()" class="flex-1 sm:flex-none h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition">
+                            <button type="button" onclick="openMaterialModal()" class="flex-1 sm:flex-none h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap">
                                 Tambah Materi
                             </button>
                         </div>
@@ -291,16 +291,16 @@
             <!-- ======================================================= -->
             <div id="tab-content-kuis" class="space-y-6 hidden">
                 <div class="bg-amber-300 border-[3px] border-black rounded-3xl md:rounded-[40px] p-4 sm:p-6 md:p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                        <div>
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+                        <div class="flex-1 min-w-[260px]">
                             <h3 class="text-2xl sm:text-3xl font-black text-black uppercase tracking-tight">Bank Soal & Ujian Online</h3>
                             <p class="text-black font-bold text-xs md:text-sm mt-0.5">Buat kuis interaktif berstandar AKM (PG, PG Kompleks, Benar/Salah, Menjodohkan, Isian & Esai). Otomatis dikoreksi sistem & AI.</p>
                         </div>
-                        <div class="flex gap-2 w-full sm:w-auto">
-                            <button type="button" onclick="openAiQuizModal()" class="flex-1 sm:flex-none h-11 bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition">
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+                            <button type="button" onclick="openAiQuizModal()" class="flex-1 sm:flex-none h-11 bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap">
                                 Generator Soal AI
                             </button>
-                            <button type="button" onclick="openQuizModal()" class="flex-1 sm:flex-none h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition">
+                            <button type="button" onclick="openQuizModal()" class="flex-1 sm:flex-none h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap">
                                 Buat Kuis Baru
                             </button>
                         </div>
