@@ -450,51 +450,78 @@
     </div>
 
     <!-- ======================================================= -->
-    <!-- MODAL: KOREKSI TUGAS & AI GRADING                       -->
+    <!-- MODAL: KOREKSI RESPONS TUGAS (GOOGLE FORM VIEW & AI)    -->
     <!-- ======================================================= -->
-    <div id="grade-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 my-8">
-            <div class="flex justify-between items-start border-b-2 border-black pb-3">
-                <div>
-                    <span class="text-[10px] bg-indigo-100 text-indigo-900 font-black px-2 py-0.5 rounded border border-indigo-300 uppercase">Koreksi Tugas</span>
-                    <h3 id="grade-modal-student" class="text-2xl font-black text-black uppercase mt-1">Nama Siswa</h3>
-                    <p id="grade-modal-meta" class="text-xs font-bold text-slate-500">Kelas VII.1 • Materi</p>
+    <div id="grade-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-3xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[92vh] overflow-hidden my-auto">
+            
+            <div class="px-6 py-4 border-b-2 border-black bg-indigo-300 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 bg-black text-white rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">📋</span>
+                    <div>
+                        <h3 id="grade-modal-student" class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Nama Siswa</h3>
+                        <p id="grade-modal-meta" class="text-[11px] font-bold text-black/80">Kelas VII.1 • Lembar Respons Tugas Siswa</p>
+                    </div>
                 </div>
-                <button onclick="closeGradeModal()" class="text-2xl font-black hover:text-red-600">&times;</button>
-            </div>
-
-            <!-- Preview Ringkas / Link -->
-            <div id="grade-modal-preview-box" class="bg-slate-50 border-2 border-black rounded-xl p-3.5 text-xs font-medium"></div>
-
-            <!-- Tombol Bantuan Koreksi AI -->
-            <div class="bg-purple-100 border-2 border-purple-400 rounded-xl p-3 flex items-center justify-between gap-3">
-                <div>
-                    <span class="font-black text-purple-950 text-xs block">✨ Asisten Koreksi AI</span>
-                    <span class="text-[11px] text-purple-800">Evaluasi otomatis kecocokan tugas & buat saran masukan.</span>
-                </div>
-                <button id="btn-run-ai-grade" onclick="runAiGrade()" class="bg-purple-600 hover:bg-purple-700 text-white font-black px-3.5 py-2 rounded-lg text-xs uppercase tracking-wider shrink-0 transition">
-                    Koreksi AI
+                <button onclick="closeGradeModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg">
+                    &times;
                 </button>
             </div>
 
-            <!-- Form Nilai Guru -->
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-black uppercase text-black mb-1">Nilai Angka (0 - 100)</label>
-                    <input type="number" id="grade-input-score" min="0" max="100" placeholder="Contoh: 85" class="w-full h-11 px-3 border-2 border-black rounded-xl font-black text-lg focus:outline-none">
+            <!-- Scrollable Body -->
+            <div class="p-5 md:p-6 overflow-y-auto flex-1 space-y-4">
+                
+                <!-- 1. Kontainer Respons Butir Soal Google Form Siswa -->
+                <div id="grade-form-responses-section" class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-black uppercase text-slate-800 tracking-wider">Hasil Lembar Jawaban Siswa per Butir Soal</span>
+                        <span id="grade-form-total-badge" class="text-[10px] font-black bg-indigo-100 text-indigo-900 border border-indigo-300 px-2 py-0.5 rounded uppercase">0 Soal</span>
+                    </div>
+                    <div id="grade-form-responses-container" class="space-y-3">
+                        <!-- Populated via JS -->
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-black uppercase text-black mb-1">Catatan Ulasan / Feedback Guru</label>
-                    <textarea id="grade-input-feedback" rows="3" placeholder="Tuliskan catatan evaluasi untuk siswa..." class="w-full p-3 border-2 border-black rounded-xl font-bold text-xs focus:outline-none"></textarea>
+
+                <!-- 2. Preview untuk Berkas File / Link / Teks Lama -->
+                <div id="grade-modal-preview-box" class="hidden bg-slate-50 border-2 border-black rounded-xl p-3.5 text-xs font-medium"></div>
+
+                <!-- 3. AI Asisten Koreksi Otomatis -->
+                <div class="bg-purple-100 border-2 border-purple-400 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="space-y-0.5">
+                        <span class="font-black text-purple-950 text-xs flex items-center gap-1.5">
+                            <span class="text-base">🤖</span> Asisten Koreksi Otomatis AI (SMPN 58)
+                        </span>
+                        <p class="text-[11px] text-purple-900 font-medium">AI akan menganalisis kesesuaian jawaban siswa terhadap setiap pertanyaan & kunci jawaban, lalu mengisi estimasi nilai dan catatan evaluasi.</p>
+                    </div>
+                    <button id="btn-run-ai-grade" onclick="runAiGrade()" class="w-full sm:w-auto bg-purple-600 hover:bg-black text-white font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider shrink-0 transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                        ✨ Koreksi Otomatis AI
+                    </button>
                 </div>
+
+                <!-- 4. Form Penilaian Guru -->
+                <div class="bg-slate-50 border-2 border-black rounded-2xl p-4 space-y-3">
+                    <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">Penetapan Nilai Akhir & Catatan Guru</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div>
+                            <label class="block text-xs font-black uppercase text-black mb-1">Nilai Angka (0 - 100)</label>
+                            <input type="number" id="grade-input-score" min="0" max="100" placeholder="Contoh: 85" class="w-full h-11 px-3 border-2 border-black rounded-xl font-black text-xl text-center bg-white focus:outline-none">
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="block text-xs font-black uppercase text-black mb-1">Catatan Evaluasi / Umpan Balik Guru (Tampil di Siswa)</label>
+                            <textarea id="grade-input-feedback" rows="2" placeholder="Tuliskan apresiasi, saran perbaikan, atau catatan evaluasi untuk siswa..." class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-white focus:outline-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
-            <div class="flex gap-2 justify-end pt-3 border-t-2 border-black">
-                <button onclick="closeGradeModal()" class="px-4 py-2.5 bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase hover:bg-slate-200">
+            <!-- Pinned Footer -->
+            <div class="px-6 py-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+                <button type="button" onclick="closeGradeModal()" class="px-5 h-11 bg-white border-2 border-black text-black font-black text-xs uppercase tracking-wider rounded-xl hover:bg-slate-100 transition">
                     Batal
                 </button>
-                <button onclick="saveGrade()" id="btn-save-grade" class="px-5 py-2.5 bg-emerald-400 hover:bg-emerald-500 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                    Simpan Nilai
+                <button type="button" onclick="saveGrade()" id="btn-save-grade" class="px-6 h-11 bg-emerald-400 hover:bg-emerald-500 border-2 border-black text-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                    💾 Simpan Nilai & Evaluasi
                 </button>
             </div>
         </div>
@@ -562,18 +589,18 @@
     </div>
 
     <!-- ======================================================= -->
-    <!-- MODAL: BUAT TUGAS BARU (INPUT MANUAL GURU)              -->
+    <!-- MODAL: FORM BUILDER TUGAS SISWA (MODEL GOOGLE FORM)     -->
     <!-- ======================================================= -->
     <div id="assignment-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-2xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[92vh] overflow-hidden my-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-3xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[92vh] overflow-hidden my-auto">
             
             <!-- Pinned Header -->
             <div class="px-6 py-4 border-b-2 border-black bg-emerald-300 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-2.5">
                     <span class="w-8 h-8 bg-black text-white rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">📝</span>
                     <div>
-                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Buat Penugasan Siswa (Input Mandiri)</h3>
-                        <p class="text-[11px] font-bold text-black/80">Rancang instruksi penugasan autentik berbobot kurikulum tanpa AI</p>
+                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Form Builder Tugas Siswa (Model Google Form)</h3>
+                        <p class="text-[11px] font-bold text-black/80">Input butir soal manual (PG, Esai, Isian Singkat) atau minta generate otomatis dari AI</p>
                     </div>
                 </div>
                 <button onclick="closeAssignmentModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg">
@@ -584,9 +611,9 @@
             <!-- Scrollable Body -->
             <div class="p-5 md:p-6 overflow-y-auto flex-1 space-y-4">
                 
-                <!-- Identitas Penugasan -->
+                <!-- 1. Identitas Pokok Form Tugas -->
                 <div class="bg-slate-50 border-2 border-black rounded-2xl p-4 space-y-3">
-                    <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">1. Informasi Pokok Penugasan</h4>
+                    <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">1. Judul & Sasaran Form Tugas</h4>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-[11px] font-black uppercase text-black mb-1">Mata Pelajaran</label>
@@ -614,68 +641,44 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <div>
-                            <label class="block text-[11px] font-black uppercase text-black mb-1">Bentuk Tugas / Luaran</label>
-                            <select id="assign-jenis" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white cursor-pointer">
-                                <option value="praktikum" selected>Praktik Mandiri / Pemecahan Masalah</option>
-                                <option value="lks">Lembar Kerja Peserta Didik (LKPD)</option>
-                                <option value="infografis">Infografis & Media Kreatif Canva</option>
-                                <option value="video">Presentasi Video Singkat (2-3 Menit)</option>
-                                <option value="laporan">Laporan Analisis & Resume Kasus</option>
-                                <option value="proyek">Proyek Terpadu / Kolaborasi</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-black uppercase text-black mb-1">Tingkat Kognitif</label>
-                            <select id="assign-kognitif" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white cursor-pointer">
-                                <option value="hots" selected>HOTS (C4 Analisis, C5 Evaluasi, C6 Kreasi Produk)</option>
-                                <option value="mots">MOTS (C3 Penerapan Rumus & Prosedur Praktis)</option>
-                                <option value="lots">LOTS (C1-C2 Pemahaman Dasar & Rangkuman)</option>
-                            </select>
-                        </div>
+                    <div>
+                        <label class="block text-[11px] font-black uppercase text-black mb-1">Judul Formulir Tugas</label>
+                        <input type="text" id="assign-judul" placeholder="Contoh: Latihan Pemrograman Visual & Algoritma Sederhana" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-black uppercase text-black mb-1">Judul Penugasan</label>
-                        <input type="text" id="assign-judul" placeholder="Contoh: LKPD 2: Analisis Keamanan Sandi & Privasi Digital" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                        <label class="block text-[11px] font-black uppercase text-black mb-1">Petunjuk Pengisian Siswa</label>
+                        <textarea id="assign-deskripsi" rows="2" placeholder="Tuliskan petunjuk pengerjaan (contoh: Bacalah setiap pertanyaan dengan teliti dan jawablah secara mandiri)..." class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-white"></textarea>
                     </div>
                 </div>
 
-                <!-- Petunjuk & Langkah Pengerjaan -->
-                <div class="space-y-2">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <label class="block text-xs font-black uppercase text-black">2. Petunjuk & Langkah Pengerjaan Siswa</label>
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="text-[10px] font-bold text-slate-500 uppercase">Template Cepat:</span>
-                            <button type="button" onclick="insertAssignmentTemplate('lkpd')" class="px-2.5 py-1 bg-yellow-200 hover:bg-yellow-300 border border-black rounded-lg text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                                📋 Format LKPD
-                            </button>
-                            <button type="button" onclick="insertAssignmentTemplate('proyek')" class="px-2.5 py-1 bg-purple-200 hover:bg-purple-300 border border-black rounded-lg text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                                🎨 Format Canva/Karya
-                            </button>
-                        </div>
-                    </div>
-                    <textarea id="assign-deskripsi" rows="5" placeholder="Tuliskan petunjuk pengerjaan terperinci: tujuan tugas, alat/bahan, tahapan kerja, serta format pengumpulan..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white"></textarea>
-                </div>
-
-                <!-- Rubrik Penilaian -->
-                <div class="space-y-2">
+                <!-- 2. Lembar Butir Soal (Google Form Questions Builder) -->
+                <div class="space-y-3">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                         <div>
-                            <label class="block text-xs font-black uppercase text-black">3. Rubrik Penilaian AI & Guru</label>
-                            <p class="text-[10px] text-slate-500 font-bold">Kriteria berbobot sebagai panduan evaluasi otomatis AI dan penilaian guru.</p>
+                            <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">2. Daftar Butir Pertanyaan (Form Soal)</h4>
+                            <p class="text-[10px] text-slate-500 font-bold">Total: <span id="form-total-soal" class="text-black font-black">0</span> Butir Soal &bull; Akumulasi Bobot: <span id="form-total-bobot" class="text-indigo-700 font-black">0</span> Poin</p>
                         </div>
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <button type="button" onclick="insertStandardRubric('praktik')" class="px-2.5 py-1 bg-emerald-200 hover:bg-emerald-300 border border-black rounded-lg text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                                ⚡ Rubrik Praktik (40:35:25)
+                            <button type="button" onclick="addFormQuestionItem('esai')" class="px-2.5 py-1.5 bg-yellow-200 hover:bg-yellow-300 border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ Soal Esai
                             </button>
-                            <button type="button" onclick="insertStandardRubric('analisis')" class="px-2.5 py-1 bg-blue-200 hover:bg-blue-300 border border-black rounded-lg text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                                ⚡ Rubrik Analisis (40:35:25)
+                            <button type="button" onclick="addFormQuestionItem('pg')" class="px-2.5 py-1.5 bg-blue-200 hover:bg-blue-300 border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ Soal Pilihan Ganda
+                            </button>
+                            <button type="button" onclick="addFormQuestionItem('singkat')" class="px-2.5 py-1.5 bg-emerald-200 hover:bg-emerald-300 border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ Isian Singkat
+                            </button>
+                            <button type="button" onclick="openAiAssignmentModal()" class="px-2.5 py-1.5 bg-purple-400 hover:bg-purple-500 text-black border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                ✨ Minta Soal AI
                             </button>
                         </div>
                     </div>
-                    <textarea id="assign-rubrik" rows="3" placeholder="Contoh: Kriteria 1: Ketepatan Konsep [40%], Kriteria 2: Kedalaman Analisis & Kualitas Karya [35%], Kriteria 3: Kerapian & Kepatuhan Waktu [25%]" class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs bg-purple-50/70 focus:bg-white"></textarea>
+
+                    <!-- Dynamic List of Questions -->
+                    <div id="form-builder-questions-list" class="space-y-3.5">
+                        <!-- Rendered by JS -->
+                    </div>
                 </div>
 
             </div>
@@ -686,24 +689,24 @@
                     Batal
                 </button>
                 <button type="button" onclick="saveAssignment()" id="btn-save-assignment" class="flex-1 h-11 bg-emerald-400 hover:bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2">
-                    <span>💾 PUBLIKASIKAN TUGAS KE SISWA</span>
+                    <span>💾 PUBLIKASIKAN FORM TUGAS KE SISWA</span>
                 </button>
             </div>
         </div>
     </div>
 
     <!-- ======================================================= -->
-    <!-- MODAL: AI BUAT TUGAS & RUBRIK                           -->
+    <!-- MODAL: AI GENERATOR SOAL FORMULIR TUGAS                -->
     <!-- ======================================================= -->
     <div id="ai-assignment-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-xl w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[92vh] overflow-hidden my-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-lg w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[92vh] overflow-hidden my-auto">
             
             <div class="flex justify-between items-center border-b-2 border-black px-6 py-4 bg-yellow-300 shrink-0">
                 <div class="flex items-center gap-2.5">
                     <span class="w-8 h-8 bg-black text-white rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">✨</span>
                     <div>
-                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">AI Perancang Tugas & Rubrik</h3>
-                        <p class="text-[11px] font-bold text-black/80">Rancang penugasan autentik dengan Kurikulum Merdeka & model pembelajaran</p>
+                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">AI Generator Soal Form Tugas</h3>
+                        <p class="text-[11px] font-bold text-black/80">Buat otomatis butir pertanyaan tugas berstandar Kurikulum Merdeka</p>
                     </div>
                 </div>
                 <button onclick="closeAiAssignmentModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg">&times;</button>
@@ -735,50 +738,39 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-black uppercase mb-1">Bentuk Tugas / Luaran</label>
-                        <select id="ai-assign-jenis" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
-                            <option value="praktikum" selected>Praktik Mandiri / Pemecahan Masalah</option>
-                            <option value="lks">Lembar Kerja Peserta Didik (LKPD)</option>
-                            <option value="infografis">Infografis / Desain Canva</option>
-                            <option value="video">Presentasi Video Pendek</option>
-                            <option value="laporan">Laporan Tertulis & Analisis Kasus</option>
-                            <option value="proyek">Proyek Studi Kasus Nyata</option>
+                        <label class="block text-xs font-black uppercase mb-1">Jumlah Butir Pertanyaan</label>
+                        <select id="ai-assign-jumlah" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="3">3 Butir Soal</option>
+                            <option value="4" selected>4 Butir Soal</option>
+                            <option value="5">5 Butir Soal</option>
+                            <option value="6">6 Butir Soal</option>
+                            <option value="8">8 Butir Soal</option>
+                            <option value="10">10 Butir Soal</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-black uppercase mb-1">Model Pembelajaran</label>
-                        <select id="ai-assign-model" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
-                            <option value="pbl" selected>Problem-Based Learning (PBL)</option>
-                            <option value="pjbl">Project-Based Learning (PjBL)</option>
-                            <option value="discovery">Discovery / Inquiry Learning</option>
-                            <option value="kontekstual">Kontekstual (Kehidupan Sehari-hari SMP)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-black uppercase mb-1">Tingkat Kognitif</label>
-                        <select id="ai-assign-kognitif" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
-                            <option value="hots" selected>HOTS (C4 Analisis, C5 Evaluasi, C6 Kreasi Produk)</option>
-                            <option value="mots">MOTS (C3 Penerapan Prosedur & Rumus Praktis)</option>
-                            <option value="lots">LOTS (C1-C2 Pemahaman Konsep & Rangkuman)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-black uppercase mb-1">Estimasi Alokasi Waktu</label>
-                        <select id="ai-assign-alokasi" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
-                            <option value="1 Minggu" selected>1 Minggu (Standar Tugas Mingguan)</option>
-                            <option value="2 Minggu">2 Minggu (Proyek Terpadu)</option>
-                            <option value="3 Hari">3 Hari (Tugas Pendek / Resensi)</option>
-                            <option value="1 Hari">1 Hari (Tugas Harian Cepat)</option>
+                        <label class="block text-xs font-black uppercase mb-1">Kombinasi Tipe Soal</label>
+                        <select id="ai-assign-tipe" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="campuran" selected>Campuran (PG + Esai + Singkat)</option>
+                            <option value="esai">Penuh Esai / Uraian Penalaran</option>
+                            <option value="pg">Pilihan Ganda (PG) Berbobot</option>
+                            <option value="singkat">Isian Singkat Konseptual</option>
                         </select>
                     </div>
                 </div>
 
                 <div>
+                    <label class="block text-xs font-black uppercase mb-1">Tingkat Kognitif</label>
+                    <select id="ai-assign-kognitif" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                        <option value="hots" selected>HOTS (C4 Analisis, C5 Evaluasi, C6 Pemecahan Masalah)</option>
+                        <option value="mots">MOTS (C3 Penerapan Prosedur & Praktik)</option>
+                        <option value="lots">LOTS (C1-C2 Pemahaman Dasar & Rangkuman)</option>
+                    </select>
+                </div>
+
+                <div>
                     <label class="block text-xs font-black uppercase mb-1">Materi Pokok / Capaian Pembelajaran</label>
-                    <textarea id="ai-assign-topik" rows="3" placeholder="Contoh: Analisis Keamanan Akun Media Sosial & Etika Berinternet untuk Remaja..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white"></textarea>
+                    <textarea id="ai-assign-topik" rows="3" placeholder="Contoh: Pengenalan Komponen Jaringan Komputer, Topologi Jaringan, dan Keamanan Sandi..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white"></textarea>
                 </div>
             </div>
 
@@ -787,7 +779,7 @@
                     Batal
                 </button>
                 <button onclick="runAiGenerateAssignment()" id="btn-run-ai-assign" class="flex-1 h-11 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2">
-                    <span>🚀 GENERATE TUGAS & RUBRIK</span>
+                    <span>🚀 BUATKAN SOAL KE FORM BUILDER</span>
                 </button>
             </div>
         </div>

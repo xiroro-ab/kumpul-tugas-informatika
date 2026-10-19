@@ -596,3 +596,121 @@ Berikan:
     const raw = await callGemini(prompt, system, true);
     return robustJsonParse(raw);
 }
+
+/**
+ * AI Generator Butir Soal Formulir Tugas Siswa (Model Google Form)
+ */
+export async function aiGenerateFormQuestions({ mapel, kelas, topik, jmlSoal = 4, tipeSoal = 'campuran', tingkatKognitif = 'hots' }) {
+    const system = `Anda adalah ahli pengembang instrumen lembar tugas siswa (Google Form style) untuk SMP Negeri 58 Palembang berstandar Kurikulum Merdeka.
+Tugas Anda merancang butir-butir pertanyaan penugasan yang jelas, terstruktur, mendidik, dan relevan dengan materi.
+Tipe soal yang didukung:
+- "esai": pertanyaan uraian mendalam yang menuntut penalaran siswa. Sertakan panduan kunci jawaban / rubrik ringkas.
+- "pg": pertanyaan pilihan ganda dengan 4 opsi (A, B, C, D) dan kunci jawaban (A/B/C/D).
+- "singkat": pertanyaan isian singkat (1 frasa/kalimat) beserta kunci jawaban singkat.
+
+KEMBALIKAN HANYA JSON DENGAN STRUKTUR BERIKUT:
+{
+  "judul_tugas": "string",
+  "petunjuk": "string",
+  "questions": [
+    {
+      "id": 1,
+      "tipe": "esai" | "pg" | "singkat",
+      "pertanyaan": "string",
+      "opsi_a": "string (khusus pg)",
+      "opsi_b": "string (khusus pg)",
+      "opsi_c": "string (khusus pg)",
+      "opsi_d": "string (khusus pg)",
+      "kunci": "string (huruf A/B/C/D jika pg, atau poin kunci jika esai/singkat)",
+      "bobot": number
+    }
+  ]
+}`;
+
+    const prompt = `Rancanglah lembar pertanyaan tugas siswa (seperti Google Form) dengan kriteria:
+- Mata Pelajaran: ${mapel || 'Informatika'}
+- Target Kelas: ${kelas || 'Kelas 7'}
+- Topik / Materi Pembelajaran: ${topik}
+- Preferensi Tipe Soal: ${tipeSoal} (pilihan: campuran, esai, pg, singkat)
+- Tingkat Kognitif: ${tingkatKognitif} (LOTS pemahaman dasar, MOTS penerapan, atau HOTS penalaran kritis)
+- Jumlah Pertanyaan: ${jmlSoal} butir soal
+Pastikan total bobot dari semua butir soal berjumlah 100 poin.`;
+
+    const raw = await callGemini(prompt, system, true);
+    const parsed = robustJsonParse(raw);
+
+    let questions = [];
+    if (parsed && Array.isArray(parsed.questions)) {
+        questions = parsed.questions;
+    } else if (parsed && Array.isArray(parsed.soal)) {
+        questions = parsed.soal;
+    } else if (Array.isArray(parsed)) {
+        questions = parsed;
+    }
+
+    return {
+        judul_tugas: parsed?.judul_tugas || `Tugas ${mapel} - ${topik}`,
+        petunjuk: parsed?.petunjuk || `Jawablah butir pertanyaan berikut dengan teliti dan jujur.`,
+        questions: questions.map((q, idx) => ({
+            id: q.id || (idx + 1),
+            nomor: idx + 1,
+            tipe: q.tipe === 'pg' ? 'pg' : (q.tipe === 'singkat' ? 'singkat' : 'esai'),
+            pertanyaan: q.pertanyaan || q.soal || `Pertanyaan nomor ${idx + 1}`,
+            opsi_a: q.opsi_a || '',
+            opsi_b: q.opsi_b || '',
+            opsi_c: q.opsi_c || '',
+            opsi_d: q.opsi_d || '',
+            kunci: q.kunci || q.kunci_pg || q.rubrik_esai || '',
+            bobot: Number(q.bobot) || Math.round(100 / (questions.length || 1))
+        }))
+    };
+}
+
+/**
+ * AI Auto-Koreksi Lembar Respons Tugas Google Form Siswa
+ */
+export async function aiEvaluateFormSubmission(mapel, judulTugas, formItems = []) {
+    const system = `Anda adalah guru penguji profesional SMP Negeri 58 Palembang.
+Tugas Anda mengevaluasi lembar jawaban tugas siswa (Google Form response) secara objektif dan mendidik.
+Setiap butir soal memiliki bobot poin tertentu.
+Untuk Pilihan Ganda: periksa apakah jawaban siswa cocok dengan kunci.
+Untuk Esai & Isian Singkat: evaluasi kebenaran konsep, kelengkapan, dan daya nalar siswa terhadap kunci/rubrik.
+
+KEMBALIKAN HANYA JSON:
+{
+  "nilai_total": number (0 - 100),
+  "catatan_guru": "string (umpan balik menyeluruh yang konstruktif dan memotivasi)",
+  "evaluasi_per_soal": [
+    {
+      "nomor": number,
+      "skor": number (skor yang diperoleh untuk butir ini),
+      "catatan": "string singkat penjelasan skor butir ini"
+    }
+  ]
+}`;
+
+    const itemsSummary = formItems.map((item, idx) => `
+Butir #${item.nomor || (idx + 1)} (${item.tipe.toUpperCase()} - Bobot Maks: ${item.bobot || 25}):
+Pertanyaan: ${item.pertanyaan}
+Kunci / Panduan Guru: ${item.kunci || '-'}
+Jawaban Siswa: ${item.jawaban_siswa || '(Tidak dijawab / Kosong)'}
+`).join('\n---\n');
+
+    const prompt = `Evaluasi lembar jawaban siswa berikut:
+Mata Pelajaran: ${mapel}
+Judul Tugas: ${judulTugas}
+
+Daftar Soal & Jawaban Siswa:
+${itemsSummary}
+
+Berikan skor per nomor secara adil dan total nilai akhir (0-100), serta catatan umpan balik yang membangun.`;
+
+    const raw = await callGemini(prompt, system, true);
+    const parsed = robustJsonParse(raw);
+
+    return {
+        nilai_total: typeof parsed?.nilai_total === 'number' ? parsed.nilai_total : (parsed?.nilai || 75),
+        catatan_guru: parsed?.catatan_guru || parsed?.catatan || 'Tugas telah diperiksa oleh AI Asesmen.',
+        evaluasi_per_soal: Array.isArray(parsed?.evaluasi_per_soal) ? parsed.evaluasi_per_soal : []
+    };
+}

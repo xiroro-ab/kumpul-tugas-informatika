@@ -292,7 +292,7 @@
     <!-- MODAL PENGUMPULAN TUGAS (FILE / LINK DEDICATED)           -->
     <!-- ======================================================== -->
     <div id="submission-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-lg w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] my-auto relative flex flex-col max-h-[88vh] overflow-hidden">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-3xl w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] my-auto relative flex flex-col max-h-[90vh] overflow-hidden">
             
             <!-- Modal Header (Pinned at Top) -->
             <div class="flex items-center justify-between border-b-2 border-black px-5 py-3.5 bg-white shrink-0">
@@ -365,7 +365,7 @@
                     </div>
 
                     <!-- Mode Switcher: Form Web vs Berkas vs Tautan -->
-                    <div class="space-y-1 pt-0.5">
+                    <div id="sub-mode-switcher-container" class="space-y-1 pt-0.5">
                         <label class="text-xs font-black uppercase text-black ml-1">Metode Pengerjaan / Pengumpulan</label>
                         <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 border-2 border-black rounded-xl">
                             <button type="button" id="tabModeText" onclick="setSubmissionMode('text')" class="py-1.5 px-1.5 rounded-lg font-black text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
@@ -381,15 +381,38 @@
                     </div>
 
                     <!-- 1. Form Jawab Langsung di Web (Google Form Style) -->
-                    <div id="sectionText" class="space-y-2">
-                        <div class="flex justify-between items-center">
-                            <label for="sub-text-answer" class="text-xs font-black uppercase text-black ml-1">Lembar Jawaban Online (Seperti Google Form)</label>
-                            <span id="sub-text-count" class="text-[10px] font-bold text-slate-500">0 kata | 0 karakter</span>
+                    <div id="sectionText" class="space-y-3">
+                        <!-- Mode Form Soal Interaktif (Google Form Style) -->
+                        <div id="task-google-form-sheet" class="hidden space-y-3">
+                            <div class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3 flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">📋</span>
+                                    <div>
+                                        <h5 class="text-xs font-black uppercase text-indigo-950">Lembar Soal Interaktif</h5>
+                                        <p class="text-[11px] font-bold text-indigo-700">Jawab setiap butir pertanyaan langsung pada lembar formulir di bawah ini.</p>
+                                    </div>
+                                </div>
+                                <span id="student-form-counter-badge" class="bg-indigo-600 text-white font-black text-[10px] px-2.5 py-1 rounded-lg border border-black uppercase shrink-0">
+                                    0 Soal
+                                </span>
+                            </div>
+
+                            <div id="student-form-questions-list" class="space-y-3.5">
+                                <!-- Dynamic Question Cards Rendered via JS -->
+                            </div>
                         </div>
-                        <textarea id="sub-text-answer" rows="5" placeholder="Tuliskan jawaban tugas Anda di sini secara lengkap. Anda dapat mengetik ringkasan, analisis, atau jawaban pertanyaan tugas..." class="w-full p-3 rounded-xl border-2 border-black bg-slate-50 font-medium text-xs outline-none focus:bg-white resize-y"></textarea>
-                        <div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex items-start gap-2 text-[11px] font-bold text-amber-900">
-                            <span class="text-base leading-none">⚡</span>
-                            <span>Jawaban yang Anda ketik langsung tersimpan ke Meja Koreksi Guru dan dapat langsung dievaluasi otomatis oleh AI Asesmen SMPN 58.</span>
+
+                        <!-- Mode Fallback Jawaban Teks Bebas (Untuk tugas tanpa butir soal terstruktur) -->
+                        <div id="task-legacy-text-sheet" class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label for="sub-text-answer" class="text-xs font-black uppercase text-black ml-1">Lembar Jawaban Online</label>
+                                <span id="sub-text-count" class="text-[10px] font-bold text-slate-500">0 kata | 0 karakter</span>
+                            </div>
+                            <textarea id="sub-text-answer" rows="5" placeholder="Tuliskan jawaban tugas Anda di sini secara lengkap. Anda dapat mengetik ringkasan, analisis, atau jawaban pertanyaan tugas..." class="w-full p-3 rounded-xl border-2 border-black bg-slate-50 font-medium text-xs outline-none focus:bg-white resize-y"></textarea>
+                            <div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex items-start gap-2 text-[11px] font-bold text-amber-900">
+                                <span class="text-base leading-none">⚡</span>
+                                <span>Jawaban yang Anda ketik langsung tersimpan ke Meja Koreksi Guru dan dapat langsung dievaluasi otomatis oleh AI Asesmen SMPN 58.</span>
+                            </div>
                         </div>
                     </div>
 

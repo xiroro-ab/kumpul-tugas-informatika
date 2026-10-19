@@ -9,7 +9,9 @@ import {
     aiGenerateAssignment,
     aiGenerateQuestions, 
     aiEvaluateSubmission,
-    aiGradeQuizEssay
+    aiGradeQuizEssay,
+    aiGenerateFormQuestions,
+    aiEvaluateFormSubmission
 } from './gemini.js';
 
 let currentSession = null;
@@ -24,6 +26,38 @@ let activeQuizForResults = null;
 let activeQuizSubmissions = [];
 let activeReviewSubmission = null;
 let activeAssignmentForSubmissions = null;
+let formBuilderQuestions = [];
+
+export function parseAssignmentQuestions(assignment) {
+    if (!assignment || !assignment.deskripsi) {
+        return { petunjuk: '', questions: [] };
+    }
+    const raw = String(assignment.deskripsi).trim();
+    if (raw.startsWith('{') || raw.startsWith('[')) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                return { petunjuk: '', questions: parsed };
+            }
+            if (parsed.questions && Array.isArray(parsed.questions)) {
+                return { petunjuk: parsed.petunjuk || '', questions: parsed.questions };
+            }
+        } catch (_) {}
+    }
+    return {
+        petunjuk: raw,
+        questions: [
+            {
+                id: 1,
+                nomor: 1,
+                tipe: 'esai',
+                pertanyaan: raw,
+                kunci: assignment.rubrik_ai || '',
+                bobot: 100
+            }
+        ]
+    };
+}
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -587,42 +621,116 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('grade-modal-student').textContent = item.nama;
         document.getElementById('grade-modal-meta').textContent = `Kelas: ${item.kelas} • Tugas: ${item.materi}`;
         
+        const formSection = document.getElementById('grade-form-responses-section');
+        const formContainer = document.getElementById('grade-form-responses-container');
         const previewBox = document.getElementById('grade-modal-preview-box');
-        const isText = isTextSubmission(item);
-        const isLink = isLinkSubmission(item);
+        const totalBadge = document.getElementById('grade-form-total-badge');
 
-        if (isText) {
-            const textContent = getTextContent(item);
-            previewBox.innerHTML = `
-                <div class="space-y-1.5">
-                    <div class="flex justify-between items-center">
-                        <span class="font-black text-amber-950 text-xs">Jawaban Siswa (Dikerjakan Langsung di Form Web):</span>
-                        <span class="text-[10px] bg-amber-200 text-amber-950 font-black px-2 py-0.5 rounded border border-amber-300">Form Online</span>
-                    </div>
-                    <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3.5 text-xs font-semibold text-slate-900 whitespace-pre-line max-h-56 overflow-y-auto leading-relaxed shadow-inner">
-                        ${escapeHtml(textContent)}
-                    </div>
-                </div>
-            `;
-        } else if (isLink) {
-            const url = getLinkUrl(item);
-            previewBox.innerHTML = `
-                <div class="space-y-1">
-                    <span class="font-bold text-purple-900 block">Tautan Tugas Siswa:</span>
-                    <a href="${url}" target="_blank" class="text-indigo-600 font-bold underline break-all">${url} ↗</a>
-                </div>
-            `;
+        let isForm = false;
+        let formItems = [];
+
+        if (item.storage_path && item.storage_path.startsWith('FORM:')) {
+            isForm = true;
+            try {
+                formItems = JSON.parse(item.storage_path.replace(/^FORM:/, ''));
+            } catch (_) {}
+        } else if (item.tipe === 'form') {
+            isForm = true;
+            try {
+                formItems = JSON.parse(item.storage_path || '[]');
+            } catch (_) {}
+        }
+
+        if (isForm && Array.isArray(formItems) && formItems.length > 0) {
+            if (formSection) formSection.classList.remove('hidden');
+            if (previewBox) previewBox.classList.add('hidden');
+            if (totalBadge) totalBadge.textContent = `${formItems.length} Butir Soal`;
+
+            if (formContainer) {
+                formContainer.innerHTML = formItems.map((q, idx) => {
+                    const isPg = q.tipe === 'pg';
+                    let keyBadge = '';
+                    if (isPg) {
+                        const isCorrect = String(q.jawaban_siswa).trim().toUpperCase() === String(q.kunci).trim().toUpperCase();
+                        keyBadge = isCorrect
+                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">✅ Benar (Kunci: ${escapeHtml(q.kunci)})</span>`
+                            : `<span class="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">❌ Jawaban: ${escapeHtml(q.jawaban_siswa || 'Kosong')} (Kunci: ${escapeHtml(q.kunci)})</span>`;
+                    }
+
+                    return `
+                        <div class="border-2 border-black rounded-2xl p-4 bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] space-y-2.5">
+                            <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 flex-wrap gap-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-lg bg-black text-white font-black text-xs flex items-center justify-center">
+                                        ${idx + 1}
+                                    </span>
+                                    <span class="font-black text-xs uppercase ${isPg ? 'text-blue-700' : 'text-purple-700'}">
+                                        ${isPg ? 'Pilihan Ganda' : (q.tipe === 'singkat' ? 'Isian Singkat' : 'Esai / Uraian')}
+                                    </span>
+                                    ${keyBadge}
+                                </div>
+                                <span class="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                                    Bobot: ${q.bobot || 25} Poin
+                                </span>
+                            </div>
+
+                            <p class="font-bold text-xs md:text-sm text-slate-900 leading-relaxed">${escapeHtml(q.pertanyaan)}</p>
+
+                            <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 text-xs leading-relaxed">
+                                <span class="font-black uppercase text-amber-950 text-[10px] block mb-1">Jawaban Siswa:</span>
+                                <div class="font-semibold text-black whitespace-pre-line">${escapeHtml(q.jawaban_siswa || '(Tidak dijawab / Kosong)')}</div>
+                            </div>
+
+                            ${q.kunci ? `
+                                <div class="bg-purple-50 border border-purple-200 rounded-xl p-2.5 text-[11px] font-bold text-purple-900">
+                                    🎯 <strong>Kunci / Panduan Guru:</strong> ${escapeHtml(q.kunci)}
+                                </div>
+                            ` : ''}
+
+                            <div id="ai-item-eval-${idx}" class="hidden bg-emerald-50 border border-emerald-300 rounded-xl p-2.5 text-xs text-emerald-950 font-medium"></div>
+                        </div>
+                    `;
+                }).join('');
+            }
         } else {
-            const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(item.storage_path);
-            previewBox.innerHTML = `
-                <div class="flex items-center justify-between gap-2">
-                    <span class="font-bold text-slate-800 truncate">${item.filename}</span>
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <a href="${publicUrlData.publicUrl}" target="_blank" class="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-lg border border-indigo-300">Buka Berkas ↗</a>
-                        <button type="button" onclick="downloadSubmissionFile('${publicUrlData.publicUrl}', '${item.filename.replace(/'/g, "\\'")}')" class="bg-slate-100 text-slate-800 font-bold px-3 py-1 rounded-lg border border-slate-300">⬇️ Unduh</button>
-                    </div>
-                </div>
-            `;
+            // Legacy / File / Link / Plain Text
+            if (formSection) formSection.classList.add('hidden');
+            if (previewBox) {
+                previewBox.classList.remove('hidden');
+                const isText = isTextSubmission(item);
+                const isLink = isLinkSubmission(item);
+
+                if (isText) {
+                    const textContent = getTextContent(item);
+                    previewBox.innerHTML = `
+                        <div class="space-y-1.5">
+                            <span class="font-black text-amber-950 text-xs">Jawaban Siswa (Teks Online):</span>
+                            <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3.5 text-xs font-semibold text-slate-900 whitespace-pre-line max-h-56 overflow-y-auto leading-relaxed shadow-inner">
+                                ${escapeHtml(textContent)}
+                            </div>
+                        </div>
+                    `;
+                } else if (isLink) {
+                    const url = getLinkUrl(item);
+                    previewBox.innerHTML = `
+                        <div class="space-y-1">
+                            <span class="font-bold text-purple-900 block">Tautan Tugas Siswa:</span>
+                            <a href="${url}" target="_blank" class="text-indigo-600 font-bold underline break-all">${url} ↗</a>
+                        </div>
+                    `;
+                } else {
+                    const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(item.storage_path);
+                    previewBox.innerHTML = `
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-bold text-slate-800 truncate">${escapeHtml(item.filename)}</span>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <a href="${publicUrlData.publicUrl}" target="_blank" class="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-lg border border-indigo-300">Buka Berkas ↗</a>
+                                <button type="button" onclick="downloadSubmissionFile('${publicUrlData.publicUrl}', '${item.filename.replace(/'/g, "\\'")}')" class="bg-slate-100 text-slate-800 font-bold px-3 py-1 rounded-lg border border-slate-300">⬇️ Unduh</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
         }
 
         document.getElementById('grade-input-score').value = item.nilai !== null && item.nilai !== undefined ? item.nilai : '';
@@ -639,52 +747,95 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!activeGradeItem) return;
         const btn = document.getElementById('btn-run-ai-grade');
         btn.disabled = true;
-        btn.innerText = "Menganalisis...";
+        btn.innerText = "Menganalisis Jawaban...";
 
         try {
-            let studentContent = '';
-            if (isTextSubmission(activeGradeItem)) {
-                studentContent = getTextContent(activeGradeItem);
-            } else if (isLinkSubmission(activeGradeItem)) {
-                studentContent = getLinkUrl(activeGradeItem);
+            let isForm = false;
+            let formItems = [];
+
+            if (activeGradeItem.storage_path && activeGradeItem.storage_path.startsWith('FORM:')) {
+                isForm = true;
+                try {
+                    formItems = JSON.parse(activeGradeItem.storage_path.replace(/^FORM:/, ''));
+                } catch (_) {}
+            } else if (activeGradeItem.tipe === 'form') {
+                isForm = true;
+                try {
+                    formItems = JSON.parse(activeGradeItem.storage_path || '[]');
+                } catch (_) {}
+            }
+
+            if (isForm && Array.isArray(formItems) && formItems.length > 0) {
+                // Gunakan AI Form Evaluator per butir soal
+                const evalResult = await aiEvaluateFormSubmission(
+                    currentTeacher?.mapel || 'Informatika',
+                    activeGradeItem.materi,
+                    formItems
+                );
+
+                if (evalResult.nilai_total !== undefined) {
+                    document.getElementById('grade-input-score').value = evalResult.nilai_total;
+                }
+                if (evalResult.catatan_guru) {
+                    document.getElementById('grade-input-feedback').value = evalResult.catatan_guru;
+                }
+
+                if (Array.isArray(evalResult.evaluasi_per_soal)) {
+                    evalResult.evaluasi_per_soal.forEach(ev => {
+                        const idx = (ev.nomor || 1) - 1;
+                        const el = document.getElementById(`ai-item-eval-${idx}`);
+                        if (el) {
+                            el.innerHTML = `<strong>Koreksi AI:</strong> Nilai Butir Ini: ${ev.skor} Poin. ${escapeHtml(ev.catatan)}`;
+                            el.classList.remove('hidden');
+                        }
+                    });
+                }
             } else {
-                studentContent = activeGradeItem.filename;
-            }
+                let studentContent = '';
+                if (isTextSubmission(activeGradeItem)) {
+                    studentContent = getTextContent(activeGradeItem);
+                } else if (isLinkSubmission(activeGradeItem)) {
+                    studentContent = getLinkUrl(activeGradeItem);
+                } else {
+                    studentContent = activeGradeItem.filename;
+                }
 
-            let rubricToUse = 'Kesesuaian tugas dengan instruksi, kelengkapan pembahasan, dan kerapian pengerjaan.';
-            let assignmentTitle = activeGradeItem.materi;
-            let assignmentInstructions = activeGradeItem.materi;
+                let rubricToUse = 'Kesesuaian tugas dengan instruksi, kelengkapan pembahasan, dan kerapian pengerjaan.';
+                let assignmentTitle = activeGradeItem.materi;
+                let assignmentInstructions = activeGradeItem.materi;
 
-            const relatedAssign = assignmentsList.find(a => 
-                (activeGradeItem.assignment_id && String(a.id) === String(activeGradeItem.assignment_id)) ||
-                (a.judul_tugas && a.judul_tugas.toLowerCase().trim() === (activeGradeItem.materi || '').toLowerCase().trim())
-            );
+                const relatedAssign = assignmentsList.find(a => 
+                    (activeGradeItem.assignment_id && String(a.id) === String(activeGradeItem.assignment_id)) ||
+                    (a.judul_tugas && a.judul_tugas.toLowerCase().trim() === (activeGradeItem.materi || '').toLowerCase().trim())
+                );
 
-            if (relatedAssign) {
-                assignmentTitle = relatedAssign.judul_tugas;
-                assignmentInstructions = relatedAssign.deskripsi || relatedAssign.judul_tugas;
-                if (relatedAssign.rubrik_ai) rubricToUse = relatedAssign.rubrik_ai;
-            }
+                if (relatedAssign) {
+                    assignmentTitle = relatedAssign.judul_tugas;
+                    assignmentInstructions = relatedAssign.deskripsi || relatedAssign.judul_tugas;
+                    if (relatedAssign.rubrik_ai) rubricToUse = relatedAssign.rubrik_ai;
+                }
 
-            const result = await aiEvaluateSubmission(
-                currentTeacher?.mapel || 'Informatika',
-                assignmentTitle,
-                assignmentInstructions,
-                rubricToUse,
-                studentContent
-            );
+                const result = await aiEvaluateSubmission(
+                    currentTeacher?.mapel || 'Informatika',
+                    assignmentTitle,
+                    assignmentInstructions,
+                    rubricToUse,
+                    studentContent
+                );
 
-            if (result.nilai !== undefined) {
-                document.getElementById('grade-input-score').value = result.nilai;
-            }
-            if (result.catatan) {
-                document.getElementById('grade-input-feedback').value = result.catatan;
+                if (result.nilai !== undefined) {
+                    document.getElementById('grade-input-score').value = result.nilai;
+                }
+                if (result.catatan) {
+                    document.getElementById('grade-input-feedback').value = result.catatan;
+                }
             }
         } catch (e) {
             showCustomModal("Gagal menjalankan AI Koreksi: " + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "✨ Koreksi Otomatis AI";
         }
-        btn.disabled = false;
-        btn.innerText = "Koreksi AI";
     };
 
     window.saveGrade = async () => {
@@ -1296,7 +1447,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('assign-rubrik').value = '';
         document.getElementById('assign-deadline').value = '';
         if (document.getElementById('assign-jenis')) document.getElementById('assign-jenis').value = 'praktikum';
-        if (document.getElementById('assign-kognitif')) document.getElementById('assign-kognitif').value = 'hots';
         document.getElementById('assignment-modal').classList.remove('hidden');
     };
 
@@ -1304,55 +1454,232 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('assignment-modal').classList.add('hidden');
     };
 
-    window.insertAssignmentTemplate = (type) => {
-        const descEl = document.getElementById('assign-deskripsi');
-        if (!descEl) return;
-        if (type === 'lkpd') {
-            descEl.value = `🎯 Capaian & Tujuan Tugas:\nSiswa mampu menganalisis konsep pokok dan menyajikan solusi terstruktur.\n\n🛠️ Alat & Bahan:\n1. Perangkat komputer atau smartphone dengan akses internet\n2. Lembar kerja digital atau catatan ringkasan\n\n📋 Langkah-Langkah Pengerjaan:\n1. Pelajari materi bab terkait yang telah dibagikan di menu Materi Belajar.\n2. Lakukan pengamatan atau analisis terhadap studi kasus yang diberikan.\n3. Catat poin temuan penting dan rumuskan kesimpulan Anda secara runtut.\n\n📤 Ketentuan Pengumpulan:\nKetikkan laporan langsung pada Form Web atau unggah berkas tugas sebelum batas waktu.`;
-        } else if (type === 'proyek') {
-            descEl.value = `🎨 Tema Karya & Luaran:\nMembuat media informasi visual kreatif (Poster / Infografis Canva) yang informatif dan estetis.\n\n🛠️ Media & Aplikasi Rekomendasi:\nCanva, Google Docs, atau aplikasi desain lainnya.\n\n📋 Ketentuan Pembuatan Karya:\n1. Memuat judul topik yang jelas dan nama lengkap siswa.\n2. Memuat minimal 3 intisari materi pokok dengan bahasa sendiri.\n3. Dilengkapi ilustrasi atau visual pendukung yang relevan.\n\n📤 Ketentuan Pengumpulan:\nBagikan tautan publik Canva/Docs (akses melihat) atau unggah file PDF/Gambar hasil ekspor karya Anda.`;
+    window.renderFormBuilderQuestions = () => {
+        const totalCountEl = document.getElementById('form-total-soal');
+        const totalBobotEl = document.getElementById('form-total-bobot');
+        const list = document.getElementById('form-builder-questions-list');
+        if (!list) return;
+
+        let totalBobot = 0;
+        formBuilderQuestions.forEach(q => { totalBobot += Number(q.bobot) || 0; });
+
+        if (totalCountEl) totalCountEl.innerText = formBuilderQuestions.length;
+        if (totalBobotEl) totalBobotEl.innerText = totalBobot;
+
+        if (formBuilderQuestions.length === 0) {
+            list.innerHTML = `
+                <div class="p-6 text-center text-xs font-bold text-slate-500 bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl">
+                    Belum ada butir pertanyaan pada form ini. Klik tombol di atas untuk menambah soal Esai, Pilihan Ganda, atau minta AI membuatkan otomatis.
+                </div>
+            `;
+            return;
         }
-        descEl.focus();
+
+        list.innerHTML = formBuilderQuestions.map((q, idx) => {
+            const isPg = q.tipe === 'pg';
+            const isSingkat = q.tipe === 'singkat';
+            return `
+                <div class="border-2 border-black rounded-2xl p-4 bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-3">
+                    <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2.5 flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-lg bg-black text-white font-black text-xs flex items-center justify-center">
+                                ${idx + 1}
+                            </span>
+                            <select onchange="window.changeFormQuestionType(${idx}, this.value)" class="h-8 px-2 border-2 border-black rounded-lg font-black text-xs bg-slate-50 cursor-pointer">
+                                <option value="esai" ${q.tipe === 'esai' ? 'selected' : ''}>Esai / Uraian</option>
+                                <option value="pg" ${isPg ? 'selected' : ''}>Pilihan Ganda (PG)</option>
+                                <option value="singkat" ${isSingkat ? 'selected' : ''}>Isian Singkat</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-[11px] font-black uppercase text-slate-600">Bobot Poin:</label>
+                                <input type="number" min="1" max="100" value="${q.bobot || 25}" oninput="window.updateFormQuestionField(${idx}, 'bobot', this.value)" class="w-14 h-8 px-1.5 border-2 border-black rounded-lg font-black text-xs text-center bg-slate-50">
+                            </div>
+                            <button type="button" onclick="window.deleteFormQuestionItem(${idx})" title="Hapus Soal" class="w-8 h-8 rounded-lg border-2 border-red-500 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white flex items-center justify-center font-black transition">
+                                &times;
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-black uppercase text-black mb-1">Pertanyaan / Instruksi Soal #${idx + 1}</label>
+                        <textarea rows="2" placeholder="Tuliskan pertanyaan soal di sini..." oninput="window.updateFormQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.pertanyaan || '')}</textarea>
+                    </div>
+
+                    ${isPg ? `
+                        <div class="space-y-2 pt-1">
+                            <label class="block text-[11px] font-black uppercase text-black">Opsi Pilihan Jawaban & Kunci</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-6 text-center font-black text-xs text-slate-700">A</span>
+                                    <input type="text" placeholder="Teks opsi A..." value="${escapeHtml(q.opsi_a || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_a', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-6 text-center font-black text-xs text-slate-700">B</span>
+                                    <input type="text" placeholder="Teks opsi B..." value="${escapeHtml(q.opsi_b || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_b', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-6 text-center font-black text-xs text-slate-700">C</span>
+                                    <input type="text" placeholder="Teks opsi C..." value="${escapeHtml(q.opsi_c || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_c', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-6 text-center font-black text-xs text-slate-700">D</span>
+                                    <input type="text" placeholder="Teks opsi D..." value="${escapeHtml(q.opsi_d || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_d', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 pt-1">
+                                <label class="text-[11px] font-black uppercase text-black">Kunci Jawaban Benar:</label>
+                                <select onchange="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="h-8 px-3 border-2 border-black rounded-lg font-black text-xs bg-yellow-200 text-black cursor-pointer">
+                                    <option value="A" ${q.kunci === 'A' ? 'selected' : ''}>A</option>
+                                    <option value="B" ${q.kunci === 'B' ? 'selected' : ''}>B</option>
+                                    <option value="C" ${q.kunci === 'C' ? 'selected' : ''}>C</option>
+                                    <option value="D" ${q.kunci === 'D' ? 'selected' : ''}>D</option>
+                                </select>
+                            </div>
+                        </div>
+                    ` : `
+                        <div>
+                            <label class="block text-[11px] font-black uppercase text-purple-950 mb-1">🎯 Kunci Jawaban / Panduan Evaluasi AI (Acuan Penilaian)</label>
+                            <input type="text" placeholder="Tuliskan kata kunci jawaban yang diharapkan siswa..." value="${escapeHtml(q.kunci || '')}" oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="w-full h-9 px-3 border-2 border-purple-300 rounded-xl font-bold text-xs bg-purple-50 focus:bg-white text-purple-950">
+                        </div>
+                    `}
+                </div>
+            `;
+        }).join('');
     };
 
-    window.insertStandardRubric = (type) => {
-        const rubrikEl = document.getElementById('assign-rubrik');
-        if (!rubrikEl) return;
-        if (type === 'praktik') {
-            rubrikEl.value = `Kriteria 1: Ketepatan Prosedur & Langkah Kerja [40%], Kriteria 2: Kualitas & Kelengkapan Hasil Karya [35%], Kriteria 3: Kerapian, Estetika & Ketepatan Waktu [25%]`;
-        } else if (type === 'analisis') {
-            rubrikEl.value = `Kriteria 1: Penguasaan Konsep Materi Pokok [40%], Kriteria 2: Kedalaman Analisis & Argumentasi Kritis [35%], Kriteria 3: Orisinalitas Gagasan & Sistematika Penulisan [25%]`;
+    window.addFormQuestionItem = (type = 'esai') => {
+        formBuilderQuestions.push({
+            id: Date.now() + Math.random(),
+            tipe: type,
+            pertanyaan: '',
+            opsi_a: '',
+            opsi_b: '',
+            opsi_c: '',
+            opsi_d: '',
+            kunci: type === 'pg' ? 'A' : '',
+            bobot: type === 'pg' ? 15 : 25
+        });
+        renderFormBuilderQuestions();
+    };
+
+    window.deleteFormQuestionItem = (idx) => {
+        if (formBuilderQuestions.length <= 1) {
+            showCustomModal("Minimal form tugas harus memiliki 1 butir pertanyaan!");
+            return;
         }
-        rubrikEl.focus();
+        formBuilderQuestions.splice(idx, 1);
+        renderFormBuilderQuestions();
+    };
+
+    window.updateFormQuestionField = (idx, field, value) => {
+        if (formBuilderQuestions[idx]) {
+            formBuilderQuestions[idx][field] = value;
+            if (field === 'bobot') {
+                const totalBobotEl = document.getElementById('form-total-bobot');
+                let totalBobot = 0;
+                formBuilderQuestions.forEach(q => { totalBobot += Number(q.bobot) || 0; });
+                if (totalBobotEl) totalBobotEl.innerText = totalBobot;
+            }
+        }
+    };
+
+    window.changeFormQuestionType = (idx, newType) => {
+        if (formBuilderQuestions[idx]) {
+            formBuilderQuestions[idx].tipe = newType;
+            if (newType === 'pg' && !formBuilderQuestions[idx].kunci) {
+                formBuilderQuestions[idx].kunci = 'A';
+            }
+            renderFormBuilderQuestions();
+        }
+    };
+
+    window.openAssignmentModal = (assignment = null) => {
+        const kelasSelect = document.getElementById('assign-kelas');
+        if (kelasSelect) {
+            kelasSelect.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
+            stateKelas.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k; opt.textContent = `Kelas ${k}`;
+                kelasSelect.appendChild(opt);
+            });
+        }
+        const mapelSelect = document.getElementById('assign-mapel');
+        if (mapelSelect && currentTeacher?.mapel) {
+            mapelSelect.value = currentTeacher.mapel;
+        }
+
+        if (assignment) {
+            document.getElementById('assign-judul').value = assignment.judul_tugas || '';
+            document.getElementById('assign-deadline').value = assignment.deadline ? assignment.deadline.slice(0, 16) : '';
+            const parsed = parseAssignmentQuestions(assignment);
+            document.getElementById('assign-deskripsi').value = parsed.petunjuk || '';
+            formBuilderQuestions = parsed.questions && parsed.questions.length > 0 ? parsed.questions : [
+                { id: 1, tipe: 'esai', pertanyaan: '', kunci: '', bobot: 25 }
+            ];
+        } else {
+            document.getElementById('assign-judul').value = '';
+            document.getElementById('assign-deskripsi').value = 'Jawablah setiap butir pertanyaan tugas berikut dengan teliti dan jujur.';
+            document.getElementById('assign-deadline').value = '';
+            formBuilderQuestions = [
+                { id: 1, tipe: 'esai', pertanyaan: '', kunci: '', bobot: 25 },
+                { id: 2, tipe: 'pg', pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', kunci: 'A', bobot: 25 }
+            ];
+        }
+
+        renderFormBuilderQuestions();
+        document.getElementById('assignment-modal').classList.remove('hidden');
     };
 
     window.saveAssignment = async () => {
         const mapel = document.getElementById('assign-mapel')?.value || currentTeacher?.mapel || 'Informatika';
         const kelas = document.getElementById('assign-kelas')?.value || stateKelas[0] || 'Semua Kelas';
         const judul = document.getElementById('assign-judul').value.trim();
-        const deskripsi = document.getElementById('assign-deskripsi').value.trim();
-        const rubrik = document.getElementById('assign-rubrik').value.trim();
+        const petunjuk = document.getElementById('assign-deskripsi').value.trim();
         const deadline = document.getElementById('assign-deadline').value;
 
-        if (!judul || !deskripsi) {
-            showCustomModal("Judul dan instruksi penugasan wajib diisi!");
+        if (!judul) {
+            showCustomModal("Judul formulir tugas wajib diisi!");
             return;
+        }
+
+        if (formBuilderQuestions.length === 0) {
+            showCustomModal("Form tugas harus memiliki minimal 1 butir pertanyaan!");
+            return;
+        }
+
+        for (let i = 0; i < formBuilderQuestions.length; i++) {
+            if (!formBuilderQuestions[i].pertanyaan.trim()) {
+                showCustomModal(`Pertanyaan nomor ${i + 1} masih kosong. Mohon lengkapi teks pertanyaan.`);
+                return;
+            }
         }
 
         const btn = document.getElementById('btn-save-assignment');
         if (btn) {
             btn.disabled = true;
-            btn.innerText = "Menerbitkan Tugas...";
+            btn.innerText = "Menerbitkan Form Tugas...";
         }
 
         try {
+            const payloadDeskripsi = JSON.stringify({
+                petunjuk: petunjuk || 'Jawablah seluruh butir pertanyaan berikut dengan teliti.',
+                questions: formBuilderQuestions
+            });
+
+            const rubrikSummary = formBuilderQuestions
+                .filter(q => q.kunci)
+                .map((q, idx) => `Soal #${idx + 1} (${q.tipe}): ${q.kunci}`)
+                .join('; ');
+
             const { error } = await supabase.from('assignments').insert([{
                 teacher_id: currentSession?.user?.id,
                 mapel,
                 kelas,
                 judul_tugas: judul,
-                deskripsi,
-                rubrik_ai: rubrik,
+                deskripsi: payloadDeskripsi,
+                rubrik_ai: rubrikSummary || 'Kesesuaian jawaban dengan konsep materi dan kelengkapan pembahasan.',
                 deadline: deadline || null
             }]);
 
@@ -1363,13 +1690,13 @@ document.addEventListener('DOMContentLoaded', () => {
             closeAssignmentModal();
             loadAssignments();
             loadOptionsSettings();
-            showCustomModal(`✅ Penugasan "${judul}" berhasil diterbitkan untuk ${kelas}!`);
+            showCustomModal(`✅ Formulir tugas "${judul}" berisi ${formBuilderQuestions.length} butir soal berhasil dipublikasikan untuk ${kelas}!`);
         } catch (e) {
-            showCustomModal("Gagal menyimpan penugasan: " + e.message);
+            showCustomModal("Gagal menyimpan formulir tugas: " + e.message);
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = "💾 PUBLIKASIKAN TUGAS KE SISWA";
+                btn.innerText = "💾 PUBLIKASIKAN FORM TUGAS KE SISWA";
             }
         }
     };
@@ -1411,46 +1738,49 @@ document.addEventListener('DOMContentLoaded', () => {
     window.runAiGenerateAssignment = async () => {
         const mapel = document.getElementById('ai-assign-mapel')?.value || currentTeacher?.mapel || 'Informatika';
         const kelas = document.getElementById('ai-assign-kelas')?.value || stateKelas[0] || 'Semua Kelas';
-        const jenisTugas = document.getElementById('ai-assign-jenis').value;
-        const modelPembelajaran = document.getElementById('ai-assign-model').value;
-        const tingkatKognitif = document.getElementById('ai-assign-kognitif').value;
-        const alokasiWaktu = document.getElementById('ai-assign-alokasi').value;
-        const topik = document.getElementById('ai-assign-topik').value.trim();
+        const jumlah = Number(document.getElementById('ai-assign-jumlah')?.value) || 4;
+        const tipeSoal = document.getElementById('ai-assign-tipe')?.value || 'campuran';
+        const tingkatKognitif = document.getElementById('ai-assign-kognitif')?.value || 'hots';
+        const topik = document.getElementById('ai-assign-topik')?.value.trim();
 
         if (!topik) {
-            showCustomModal("Masukkan materi pokok / capaian pembelajaran terlebih dahulu!");
+            showCustomModal("Silakan masukkan materi pokok / capaian pembelajaran terlebih dahulu!");
             return;
         }
 
         const btn = document.getElementById('btn-run-ai-assign');
         btn.disabled = true;
-        btn.innerText = "Merumuskan Tugas Autentik...";
+        btn.innerText = "Merumuskan Butir Soal Form...";
 
         try {
-            const res = await aiGenerateAssignment({
+            const res = await aiGenerateFormQuestions({
                 mapel,
-                topik,
                 kelas,
-                jenisTugas,
-                tingkatKognitif,
-                modelPembelajaran,
-                alokasiWaktu
+                topik,
+                jmlSoal: jumlah,
+                tipeSoal,
+                tingkatKognitif
             });
 
             closeAiAssignmentModal();
             openAssignmentModal();
+
             if (document.getElementById('assign-mapel')) document.getElementById('assign-mapel').value = mapel;
             if (document.getElementById('assign-kelas')) document.getElementById('assign-kelas').value = kelas;
-            if (document.getElementById('assign-jenis')) document.getElementById('assign-jenis').value = jenisTugas;
-            if (document.getElementById('assign-kognitif')) document.getElementById('assign-kognitif').value = tingkatKognitif;
-            if (res.judul) document.getElementById('assign-judul').value = res.judul;
-            if (res.deskripsi) document.getElementById('assign-deskripsi').value = res.deskripsi;
-            if (res.rubrik) document.getElementById('assign-rubrik').value = res.rubrik;
+            if (document.getElementById('assign-judul')) document.getElementById('assign-judul').value = res.judul_tugas || `Tugas ${mapel} - ${topik}`;
+            if (document.getElementById('assign-deskripsi')) document.getElementById('assign-deskripsi').value = res.petunjuk || 'Jawablah setiap butir soal berikut dengan teliti.';
+
+            if (res.questions && res.questions.length > 0) {
+                formBuilderQuestions = res.questions;
+            }
+            renderFormBuilderQuestions();
+
+            showCustomModal(`✨ AI berhasil menyusun ${formBuilderQuestions.length} butir soal formulir tugas! Silakan periksa, sesuaikan, atau langsung publikasikan ke siswa.`);
         } catch (e) {
-            showCustomModal("Gagal generate tugas AI: " + e.message);
+            showCustomModal("Gagal generate soal form AI: " + e.message);
         } finally {
             btn.disabled = false;
-            btn.innerText = "🚀 GENERATE TUGAS & RUBRIK";
+            btn.innerText = "🚀 BUATKAN SOAL KE FORM BUILDER";
         }
     };
 
