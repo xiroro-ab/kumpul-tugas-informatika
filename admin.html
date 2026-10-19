@@ -775,15 +775,33 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-black uppercase mb-1">Jumlah Butir Pertanyaan</label>
-                        <select id="ai-assign-jumlah" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
-                            <option value="3">3 Butir Soal</option>
-                            <option value="4" selected>4 Butir Soal</option>
-                            <option value="5">5 Butir Soal</option>
-                            <option value="6">6 Butir Soal</option>
-                            <option value="8">8 Butir Soal</option>
-                            <option value="10">10 Butir Soal</option>
-                        </select>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-black uppercase">Jumlah Butir Pertanyaan</label>
+                            <button type="button" onclick="toggleAiAssignCustomTotal()" id="ai-assign-toggle-custom-btn" class="text-[11px] font-bold text-blue-700 hover:text-blue-900 underline flex items-center gap-1 cursor-pointer">
+                                <span>✏️ Isi Kustom</span>
+                            </button>
+                        </div>
+                        <div id="ai-assign-total-preset-box">
+                            <select id="ai-assign-jumlah" onchange="onAiAssignTotalSelectChange(this)" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                                <option value="3">3 Butir Soal</option>
+                                <option value="4" selected>4 Butir Soal</option>
+                                <option value="5">5 Butir Soal</option>
+                                <option value="6">6 Butir Soal</option>
+                                <option value="8">8 Butir Soal</option>
+                                <option value="10">10 Butir Soal</option>
+                                <option value="15">15 Butir Soal</option>
+                                <option value="20">20 Butir Soal</option>
+                                <option value="25">25 Butir Soal</option>
+                                <option value="30">30 Butir Soal</option>
+                                <option value="custom">✏️ Isi Kustom (Ketik Sendiri)...</option>
+                            </select>
+                        </div>
+                        <div id="ai-assign-total-custom-box" class="hidden flex items-center gap-1.5">
+                            <input type="number" id="ai-assign-jumlah-custom" min="1" max="50" placeholder="Ketik jumlah (1-50)" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white focus:outline-none">
+                            <button type="button" onclick="cancelAiAssignCustomTotal()" title="Kembali ke pilihan preset" class="h-10 px-3 bg-slate-200 hover:bg-slate-300 border-2 border-black rounded-xl font-bold text-xs shrink-0 cursor-pointer">
+                                ↺ Preset
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-xs font-black uppercase mb-1">Kombinasi Tipe Soal</label>
@@ -1211,13 +1229,31 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-black uppercase text-black mb-1">Total Butir Soal</label>
-                        <select id="ai-quiz-total-soal" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
-                            <option value="5" selected>5 Butir Soal</option>
-                            <option value="10">10 Butir Soal</option>
-                            <option value="15">15 Butir Soal</option>
-                            <option value="20">20 Butir Soal</option>
-                        </select>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-black uppercase text-black">Total Butir Soal</label>
+                            <button type="button" onclick="toggleAiQuizCustomTotal()" id="ai-quiz-toggle-custom-btn" class="text-[11px] font-bold text-blue-700 hover:text-blue-900 underline flex items-center gap-1 cursor-pointer">
+                                <span>✏️ Isi Kustom</span>
+                            </button>
+                        </div>
+                        <div id="ai-quiz-total-preset-box">
+                            <select id="ai-quiz-total-soal" onchange="onAiQuizTotalSelectChange(this)" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                                <option value="5" selected>5 Butir Soal</option>
+                                <option value="10">10 Butir Soal</option>
+                                <option value="15">15 Butir Soal</option>
+                                <option value="20">20 Butir Soal</option>
+                                <option value="25">25 Butir Soal</option>
+                                <option value="30">30 Butir Soal</option>
+                                <option value="40">40 Butir Soal</option>
+                                <option value="50">50 Butir Soal</option>
+                                <option value="custom">✏️ Isi Kustom (Ketik Sendiri)...</option>
+                            </select>
+                        </div>
+                        <div id="ai-quiz-total-custom-box" class="hidden flex items-center gap-1.5">
+                            <input type="number" id="ai-quiz-total-soal-custom" min="1" max="50" placeholder="Ketik jumlah butir (1-50)" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white focus:outline-none">
+                            <button type="button" onclick="cancelAiQuizCustomTotal()" title="Kembali ke pilihan preset" class="h-10 px-3 bg-slate-200 hover:bg-slate-300 border-2 border-black rounded-xl font-bold text-xs shrink-0 cursor-pointer">
+                                ↺ Preset
+                            </button>
+                        </div>
                     </div>
                 </div>
 

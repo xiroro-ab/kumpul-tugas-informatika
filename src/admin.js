@@ -2187,6 +2187,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    window.toggleAiAssignCustomTotal = () => {
+        const presetBox = document.getElementById('ai-assign-total-preset-box');
+        const customBox = document.getElementById('ai-assign-total-custom-box');
+        const customInput = document.getElementById('ai-assign-jumlah-custom');
+        const select = document.getElementById('ai-assign-jumlah');
+        const toggleBtn = document.getElementById('ai-assign-toggle-custom-btn');
+        if (!presetBox || !customBox) return;
+
+        const isCustomVisible = !customBox.classList.contains('hidden');
+        if (isCustomVisible) {
+            customBox.classList.add('hidden');
+            presetBox.classList.remove('hidden');
+            if (toggleBtn) toggleBtn.innerHTML = '<span>✏️ Isi Kustom</span>';
+            if (select && select.value === 'custom') select.value = '4';
+        } else {
+            presetBox.classList.add('hidden');
+            customBox.classList.remove('hidden');
+            if (toggleBtn) toggleBtn.innerHTML = '<span>↺ Pilihan Preset</span>';
+            if (customInput) {
+                if (!customInput.value && select && select.value !== 'custom') {
+                    customInput.value = select.value;
+                }
+                customInput.focus();
+            }
+        }
+    };
+
+    window.cancelAiAssignCustomTotal = () => {
+        const presetBox = document.getElementById('ai-assign-total-preset-box');
+        const customBox = document.getElementById('ai-assign-total-custom-box');
+        const select = document.getElementById('ai-assign-jumlah');
+        const toggleBtn = document.getElementById('ai-assign-toggle-custom-btn');
+        if (customBox) customBox.classList.add('hidden');
+        if (presetBox) presetBox.classList.remove('hidden');
+        if (toggleBtn) toggleBtn.innerHTML = '<span>✏️ Isi Kustom</span>';
+        if (select && select.value === 'custom') select.value = '4';
+    };
+
+    window.onAiAssignTotalSelectChange = (sel) => {
+        if (sel && sel.value === 'custom') {
+            window.toggleAiAssignCustomTotal();
+        }
+    };
+
     window.openAiAssignmentModal = () => {
         const kelasSelect = document.getElementById('ai-assign-kelas');
         populateTargetClassSelect(kelasSelect, 'Semua Kelas');
@@ -2195,6 +2239,11 @@ document.addEventListener('DOMContentLoaded', () => {
             mapelSelect.value = currentTeacher.mapel;
         }
         document.getElementById('ai-assign-topik').value = '';
+        window.cancelAiAssignCustomTotal();
+        const customInput = document.getElementById('ai-assign-jumlah-custom');
+        if (customInput) customInput.value = '';
+        const assignSelect = document.getElementById('ai-assign-jumlah');
+        if (assignSelect) assignSelect.value = '4';
         document.getElementById('ai-assignment-modal').classList.remove('hidden');
     };
 
@@ -2205,7 +2254,29 @@ document.addEventListener('DOMContentLoaded', () => {
     window.runAiGenerateAssignment = async () => {
         const mapel = document.getElementById('ai-assign-mapel')?.value || currentTeacher?.mapel || 'Informatika';
         const kelas = document.getElementById('ai-assign-kelas')?.value || stateKelas[0] || 'Semua Kelas';
-        const jumlah = Number(document.getElementById('ai-assign-jumlah')?.value) || 4;
+        
+        let jumlah = 4;
+        const assignCustomBox = document.getElementById('ai-assign-total-custom-box');
+        const assignCustomInput = document.getElementById('ai-assign-jumlah-custom');
+        const assignSelect = document.getElementById('ai-assign-jumlah');
+
+        if (assignCustomBox && !assignCustomBox.classList.contains('hidden') && assignCustomInput && assignCustomInput.value.trim() !== '') {
+            jumlah = parseInt(assignCustomInput.value.trim(), 10);
+        } else if (assignSelect && assignSelect.value === 'custom' && assignCustomInput && assignCustomInput.value.trim() !== '') {
+            jumlah = parseInt(assignCustomInput.value.trim(), 10);
+        } else if (assignSelect && assignSelect.value !== 'custom') {
+            jumlah = parseInt(assignSelect.value, 10) || 4;
+        }
+
+        if (isNaN(jumlah) || jumlah < 1) {
+            showCustomModal("Jumlah butir pertanyaan minimal 1 butir.");
+            return;
+        }
+        if (jumlah > 50) {
+            showCustomModal("Jumlah butir pertanyaan maksimal 50 butir.");
+            return;
+        }
+
         const tipeSoal = document.getElementById('ai-assign-tipe')?.value || 'campuran';
         const tingkatKognitif = document.getElementById('ai-assign-kognitif')?.value || 'hots';
         const topik = document.getElementById('ai-assign-topik')?.value.trim();
@@ -2548,6 +2619,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    window.toggleAiQuizCustomTotal = () => {
+        const presetBox = document.getElementById('ai-quiz-total-preset-box');
+        const customBox = document.getElementById('ai-quiz-total-custom-box');
+        const customInput = document.getElementById('ai-quiz-total-soal-custom');
+        const select = document.getElementById('ai-quiz-total-soal');
+        const toggleBtn = document.getElementById('ai-quiz-toggle-custom-btn');
+        if (!presetBox || !customBox) return;
+
+        const isCustomVisible = !customBox.classList.contains('hidden');
+        if (isCustomVisible) {
+            customBox.classList.add('hidden');
+            presetBox.classList.remove('hidden');
+            if (toggleBtn) toggleBtn.innerHTML = '<span>✏️ Isi Kustom</span>';
+            if (select && select.value === 'custom') select.value = '5';
+        } else {
+            presetBox.classList.add('hidden');
+            customBox.classList.remove('hidden');
+            if (toggleBtn) toggleBtn.innerHTML = '<span>↺ Pilihan Preset</span>';
+            if (customInput) {
+                if (!customInput.value && select && select.value !== 'custom') {
+                    customInput.value = select.value;
+                }
+                customInput.focus();
+            }
+        }
+    };
+
+    window.cancelAiQuizCustomTotal = () => {
+        const presetBox = document.getElementById('ai-quiz-total-preset-box');
+        const customBox = document.getElementById('ai-quiz-total-custom-box');
+        const select = document.getElementById('ai-quiz-total-soal');
+        const toggleBtn = document.getElementById('ai-quiz-toggle-custom-btn');
+        if (customBox) customBox.classList.add('hidden');
+        if (presetBox) presetBox.classList.remove('hidden');
+        if (toggleBtn) toggleBtn.innerHTML = '<span>✏️ Isi Kustom</span>';
+        if (select && select.value === 'custom') select.value = '5';
+    };
+
+    window.onAiQuizTotalSelectChange = (sel) => {
+        if (sel && sel.value === 'custom') {
+            window.toggleAiQuizCustomTotal();
+        }
+    };
+
     window.openAiQuizModal = () => {
         const kelasSelect = document.getElementById('ai-quiz-kelas');
         populateTargetClassSelect(kelasSelect, 'Semua Kelas');
@@ -2557,6 +2672,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById('ai-quiz-judul').value = '';
         document.getElementById('ai-quiz-topik').value = '';
+        window.cancelAiQuizCustomTotal();
+        const customInput = document.getElementById('ai-quiz-total-soal-custom');
+        if (customInput) customInput.value = '';
+        const quizSelect = document.getElementById('ai-quiz-total-soal');
+        if (quizSelect) quizSelect.value = '5';
         document.getElementById('ai-quiz-modal').classList.remove('hidden');
     };
 
@@ -2573,7 +2693,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const kesulitan = document.getElementById('ai-quiz-kesulitan').value;
         const stimulus = document.getElementById('ai-quiz-stimulus').value;
         const ragam = document.getElementById('ai-quiz-model-ragam')?.value || 'campuran';
-        const totalSoal = parseInt(document.getElementById('ai-quiz-total-soal')?.value, 10) || 5;
+        
+        let totalSoal = 5;
+        const quizCustomBox = document.getElementById('ai-quiz-total-custom-box');
+        const quizCustomInput = document.getElementById('ai-quiz-total-soal-custom');
+        const quizSelect = document.getElementById('ai-quiz-total-soal');
+
+        if (quizCustomBox && !quizCustomBox.classList.contains('hidden') && quizCustomInput && quizCustomInput.value.trim() !== '') {
+            totalSoal = parseInt(quizCustomInput.value.trim(), 10);
+        } else if (quizSelect && quizSelect.value === 'custom' && quizCustomInput && quizCustomInput.value.trim() !== '') {
+            totalSoal = parseInt(quizCustomInput.value.trim(), 10);
+        } else if (quizSelect && quizSelect.value !== 'custom') {
+            totalSoal = parseInt(quizSelect.value, 10) || 5;
+        }
+
+        if (isNaN(totalSoal) || totalSoal < 1) {
+            showCustomModal("Jumlah butir soal minimal 1 butir.");
+            return;
+        }
+        if (totalSoal > 50) {
+            showCustomModal("Jumlah butir soal maksimal 50 butir per pembuatan ujian.");
+            return;
+        }
+
         const durasi = parseInt(document.getElementById('ai-quiz-durasi').value, 10) || 45;
 
         if (!judul || !topik) {
