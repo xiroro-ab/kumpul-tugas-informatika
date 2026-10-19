@@ -675,6 +675,80 @@
         </div>
     </div>
 
+    <!-- ======================================================== -->
+    <!-- MODAL: VERIFIKASI TOKEN & KONFIRMASI MASUK UJIAN        -->
+    <!-- ======================================================== -->
+    <div id="exam-token-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[4px] border-black rounded-[32px] md:rounded-[40px] max-w-lg w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden my-auto">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b-2 border-black bg-yellow-300 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-9 h-9 bg-black text-white rounded-xl flex items-center justify-center text-lg font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">🔑</span>
+                    <div>
+                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Konfirmasi Masuk Ujian</h3>
+                        <p id="exam-token-modal-subtitle" class="text-[11px] font-bold text-black/80">Verifikasi token & identitas siswa sebelum memulai</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeExamTokenModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg transition">
+                    &times;
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-5 md:p-6 space-y-4">
+                <!-- Info Ujian -->
+                <div class="bg-slate-50 border-2 border-black rounded-2xl p-4 space-y-2">
+                    <div class="flex items-center justify-between flex-wrap gap-1">
+                        <span id="exam-token-mapel-badge" class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Informatika</span>
+                        <span id="exam-token-duration-badge" class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">⏱️ 45 Menit</span>
+                    </div>
+                    <h4 id="exam-token-quiz-title" class="text-base md:text-lg font-black text-black leading-snug">Judul Ujian</h4>
+                    <p id="exam-token-quiz-petunjuk" class="text-xs text-slate-600 font-medium leading-relaxed"></p>
+                </div>
+
+                <!-- Konfirmasi Identitas Siswa -->
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Nama Lengkap Siswa</label>
+                        <input type="text" id="exam-token-student-name" placeholder="Ketik nama lengkap Anda..." class="w-full h-11 px-3.5 border-2 border-black rounded-xl font-bold text-xs md:text-sm bg-slate-50 focus:bg-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Kelas Siswa</label>
+                        <input type="text" id="exam-token-student-kelas" readonly class="w-full h-11 px-3.5 border-2 border-black rounded-xl font-black text-xs md:text-sm bg-slate-100 text-slate-800 outline-none cursor-not-allowed">
+                    </div>
+
+                    <!-- Input Token -->
+                    <div id="exam-token-input-group" class="space-y-1 pt-1">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-xs font-black uppercase text-black">Masukkan Token Ujian</label>
+                            <span class="text-[10px] font-black text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded uppercase">Diberikan Guru</span>
+                        </div>
+                        <input type="text" id="exam-token-input" maxlength="12" placeholder="CONTOH: CBT58X" class="w-full h-12 px-4 border-2 border-black rounded-xl font-mono font-black text-lg md:text-xl text-center uppercase tracking-widest bg-yellow-50 focus:bg-yellow-100 outline-none placeholder:text-slate-400">
+                        <p class="text-[11px] text-slate-500 font-bold mt-1">Minta token ujian aktif kepada Guru Pengawas kelas Anda.</p>
+                    </div>
+
+                    <!-- Anti-Cheat Notice -->
+                    <div class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3 flex items-start gap-2.5 text-xs font-bold text-indigo-950">
+                        <span class="text-lg leading-none shrink-0">🛡️</span>
+                        <div class="leading-relaxed">
+                            <span>Sistem Anti-Kecurangan aktif. Layar penuh diwajibkan. Segala upaya pindah tab, minimize jendela, atau buka aplikasi lain akan dicatat dan dapat mendiskualifikasi ujian secara otomatis.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="px-6 py-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+                <button type="button" onclick="closeExamTokenModal()" class="px-5 h-11 bg-white border-2 border-black text-black font-black text-xs uppercase tracking-wider rounded-xl hover:bg-slate-100 transition">
+                    Batal
+                </button>
+                <button type="button" onclick="verifyAndStartExam()" id="btn-submit-exam-token" class="flex-1 h-11 bg-emerald-400 hover:bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2">
+                    <span>Mulai Kerjakan Ujian ✍️</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Custom Modal Standard Alert/Confirm (Theme-Compliant Neobrutalism) -->
     <div id="custom-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] p-6 md:p-8 max-w-md w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-3 my-auto">

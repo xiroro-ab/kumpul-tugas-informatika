@@ -133,8 +133,15 @@ create policy "Allow authenticated manage quiz_questions" on public.quiz_questio
 -- Kebijakan Jawaban Ujian Siswa
 create policy "Allow public submit quizzes" on public.quiz_submissions for insert to anon, authenticated with check (true);
 create policy "Allow public read quiz results" on public.quiz_submissions for select to anon, authenticated using (true);
+drop policy if exists "Allow public update quiz submissions" on public.quiz_submissions;
+create policy "Allow public update quiz submissions" on public.quiz_submissions for update to anon, authenticated using (true) with check (true);
 create policy "Allow authenticated manage quiz submissions" on public.quiz_submissions for all to authenticated using (true) with check (true);
+
+-- Tambahan Kolom Token Ujian pada Tabel Quizzes
+alter table public.quizzes add column if not exists token text default '';
+alter table public.quizzes add column if not exists token_required boolean default true;
 
 -- Update Kebijakan Tabel Files agar Guru Bisa Memberi Nilai
 drop policy if exists "Allow authenticated update files" on public.files;
 create policy "Allow authenticated update files" on public.files for update to authenticated using (true) with check (true);
+

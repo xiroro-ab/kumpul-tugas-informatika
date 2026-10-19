@@ -138,11 +138,18 @@ export function splitQuestionImage(text) {
     return { text, gambar_url: '' };
 }
 
-export function parseQuizConfig(petunjukRaw) {
+export function parseQuizConfig(petunjukRaw, quizObj = {}) {
+    const base = {
+        violation_limit: 3,
+        fullscreen: true,
+        token: (quizObj.token || '').toString().trim().toUpperCase(),
+        token_required: quizObj.token_required !== undefined ? !!quizObj.token_required : false
+    };
+
     if (!petunjukRaw || typeof petunjukRaw !== 'string') {
         return {
             cleanPetunjuk: petunjukRaw || '',
-            config: { violation_limit: 3, fullscreen: true }
+            config: base
         };
     }
     const match = petunjukRaw.match(/\[CONFIG:\s*(\{.*?\})\s*\]/);
@@ -150,18 +157,25 @@ export function parseQuizConfig(petunjukRaw) {
         try {
             const config = JSON.parse(match[1]);
             const cleanPetunjuk = petunjukRaw.replace(/\[CONFIG:\s*\{.*?\}\s*\]/, '').trim();
+            const tokenVal = (quizObj.token || config.token || '').toString().trim().toUpperCase();
+            const tokenReq = quizObj.token_required !== undefined 
+                ? !!quizObj.token_required 
+                : (config.token_required !== undefined ? !!config.token_required : (tokenVal.length > 0));
+
             return {
                 cleanPetunjuk,
                 config: {
                     violation_limit: config.violation_limit !== undefined ? config.violation_limit : 3,
-                    fullscreen: config.fullscreen !== undefined ? config.fullscreen : true
+                    fullscreen: config.fullscreen !== undefined ? config.fullscreen : true,
+                    token: tokenVal,
+                    token_required: tokenReq
                 }
             };
         } catch (_) {}
     }
     return {
         cleanPetunjuk: petunjukRaw,
-        config: { violation_limit: 3, fullscreen: true }
+        config: base
     };
 }
 
@@ -2431,6 +2445,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 5. Modul Bank Soal, Ujian & Hasil Koreksi
     // ==========================================
+    window.generateRandomQuizToken = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let randomStr = '';
+        for (let i = 0; i < 3; i++) {
+            randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const token = `CBT58${randomStr}`;
+        const input = document.getElementById('manual-quiz-token');
+        if (input) input.value = token;
+        return token;
+    };
+
+    window.copyQuizToken = async (token) => {
+        if (!token) return;
+        try {
+            await navigator.clipboard.writeText(token);
+            showCustomModal(`Token ujian [${token}] berhasil disalin ke clipboard! Bagikan token ini kepada siswa saat ujian dimulai.`, 'alert', 'Token Disalin', '📋');
+        } catch (_) {
+            showCustomModal(`Token Ujian: ${token}\nSilakan salin token di atas secara manual.`, 'alert', 'Token Ujian', '🔑');
+        }
+    };
+
     async function loadQuizzes() {
         const container = document.getElementById('quizzes-container');
         container.innerHTML = '<div class="text-center py-6 font-bold text-black uppercase">Memuat bank soal ujian...</div>';
@@ -2450,6 +2486,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 const questions = q.quiz_questions || [];
                 const pgCount = questions.filter(item => item.tipe === 'pg').length;
                 const esaiCount = questions.filter(item => item.tipe === 'esai').length;
+                const { config: qCfg } = parseQuizConfig(q.petunjuk || '', q);
+                const quizToken = qCfg.token || (q.token || '').trim().toUpperCase();
+
+                let tokenBadgeHtml = '';
+                if (quizToken && qCfg.token_required !== false) {
+                    tokenBadgeHtml = `
+                        <div class="inline-flex items-center gap-1.5 bg-yellow-200 border-2 border-black px-2.5 py-0.5 rounded-lg text-xs font-black text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                            <span>🔑 Token:</span>
+                            <span class="font-mono tracking-wider">${escapeHtml(quizToken)}</span>
+                            <button type="button" onclick="copyQuizToken('${escapeHtml(quizToken)}')" title="Salin Token" class="ml-1 hover:scale-110 active:scale-95 transition text-black">
+                                📋
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    tokenBadgeHtml = `
+                        <span class="bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            Tanpa Token
+                        </span>
+                    `;
+                }
 
                 const card = document.createElement('div');
                 card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4";
@@ -2462,6 +2519,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                                 Durasi: ${q.durasi_menit} Menit
                             </span>
+                            ${tokenBadgeHtml}
                         </div>
                         <h4 class="font-black text-xl text-black">${q.judul_kuis}</h4>
                         <p class="text-xs text-slate-600 font-bold mt-1">
@@ -2547,18 +2605,38 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const basePetunjuk = result.petunjuk || `Ujian ${topik}. Kerjakan dengan teliti dan jujur!`;
-            const antiCheatConfig = { violation_limit: 3, fullscreen: true };
+            const autoToken = window.generateRandomQuizToken();
+            const antiCheatConfig = { violation_limit: 3, fullscreen: true, token: autoToken, token_required: true };
             const fullPetunjuk = `${basePetunjuk}\n[CONFIG:${JSON.stringify(antiCheatConfig)}]`;
 
-            const { data: quizData, error: quizError } = await supabase.from('quizzes').insert([{
-                teacher_id: currentSession?.user?.id,
-                mapel,
-                kelas,
-                judul_kuis: judul,
-                petunjuk: fullPetunjuk,
-                durasi_menit: durasi,
-                status: 'aktif'
-            }]).select().single();
+            let quizData = null;
+            try {
+                const { data: qd, error: qErr } = await supabase.from('quizzes').insert([{
+                    teacher_id: currentSession?.user?.id,
+                    mapel,
+                    kelas,
+                    judul_kuis: judul,
+                    petunjuk: fullPetunjuk,
+                    durasi_menit: durasi,
+                    status: 'aktif',
+                    token: autoToken,
+                    token_required: true
+                }]).select().single();
+                if (qErr) throw qErr;
+                quizData = qd;
+            } catch (_) {
+                const { data: qd2, error: qErr2 } = await supabase.from('quizzes').insert([{
+                    teacher_id: currentSession?.user?.id,
+                    mapel,
+                    kelas,
+                    judul_kuis: judul,
+                    petunjuk: fullPetunjuk,
+                    durasi_menit: durasi,
+                    status: 'aktif'
+                }]).select().single();
+                if (qErr2) throw qErr2;
+                quizData = qd2;
+            }
 
             if (quizError) throw quizError;
 
@@ -2690,6 +2768,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const fsLock = document.getElementById('manual-quiz-fullscreen-lock');
         if (fsLock) fsLock.checked = true;
 
+        // Auto-generate token ujian aktif untuk kuis baru
+        window.generateRandomQuizToken();
+        const tokenEnabled = document.getElementById('manual-quiz-token-enabled');
+        if (tokenEnabled) tokenEnabled.checked = true;
+
         manualQuizQuestions = [
             {
                 id: Date.now(),
@@ -2742,7 +2825,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mapelSelect = document.getElementById('manual-quiz-mapel');
         if (mapelSelect) mapelSelect.value = quiz.mapel || 'Informatika';
 
-        const { cleanPetunjuk, config: quizCfg } = parseQuizConfig(quiz.petunjuk || '');
+        const { cleanPetunjuk, config: quizCfg } = parseQuizConfig(quiz.petunjuk || '', quiz);
         document.getElementById('manual-quiz-judul').value = quiz.judul_kuis || '';
         document.getElementById('manual-quiz-durasi').value = quiz.durasi_menit || '45';
         document.getElementById('manual-quiz-petunjuk').value = cleanPetunjuk || 'Kerjakan dengan teliti, jujur, dan mandiri.';
@@ -2750,6 +2833,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const editLimitSelect = document.getElementById('manual-quiz-violation-limit');
         if (editLimitSelect) editLimitSelect.value = String(quizCfg.violation_limit !== undefined ? quizCfg.violation_limit : '3');
         const editFsLock = document.getElementById('manual-quiz-fullscreen-lock');
+        if (editFsLock) editFsLock.checked = quizCfg.fullscreen !== undefined ? !!quizCfg.fullscreen : true;
+
+        const editTokenInput = document.getElementById('manual-quiz-token');
+        if (editTokenInput) editTokenInput.value = quizCfg.token || (quiz.token || '').toUpperCase();
+        const editTokenEnabled = document.getElementById('manual-quiz-token-enabled');
+        if (editTokenEnabled) editTokenEnabled.checked = quizCfg.token_required !== false;
         if (editFsLock) editFsLock.checked = quizCfg.fullscreen !== undefined ? !!quizCfg.fullscreen : true;
 
         const rawQuestions = Array.isArray(quiz.quiz_questions) ? [...quiz.quiz_questions] : [];
@@ -3172,7 +3261,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const petunjuk = document.getElementById('manual-quiz-petunjuk').value.trim() || 'Kerjakan dengan teliti, jujur, dan mandiri.';
         const violationLimit = parseInt(document.getElementById('manual-quiz-violation-limit')?.value || '3', 10);
         const fullscreenLock = document.getElementById('manual-quiz-fullscreen-lock')?.checked ?? true;
-        const configObj = { violation_limit: violationLimit, fullscreen: fullscreenLock };
+        const tokenVal = (document.getElementById('manual-quiz-token')?.value || '').trim().toUpperCase();
+        const tokenEnabled = document.getElementById('manual-quiz-token-enabled')?.checked ?? true;
+        const configObj = { 
+            violation_limit: violationLimit, 
+            fullscreen: fullscreenLock,
+            token: tokenVal,
+            token_required: tokenEnabled
+        };
         const fullPetunjuk = `${petunjuk}\n[CONFIG:${JSON.stringify(configObj)}]`;
 
         if (!judul) {
@@ -3218,13 +3314,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (editingQuizId) {
-                const { error: quizError } = await supabase.from('quizzes').update({
-                    mapel,
-                    kelas,
-                    judul_kuis: judul,
-                    petunjuk: fullPetunjuk,
-                    durasi_menit: durasi
-                }).eq('id', editingQuizId);
+                let quizError = null;
+                try {
+                    const { error: err1 } = await supabase.from('quizzes').update({
+                        mapel,
+                        kelas,
+                        judul_kuis: judul,
+                        petunjuk: fullPetunjuk,
+                        durasi_menit: durasi,
+                        token: tokenVal,
+                        token_required: tokenEnabled
+                    }).eq('id', editingQuizId);
+                    if (err1) throw err1;
+                } catch (_) {
+                    const { error: err2 } = await supabase.from('quizzes').update({
+                        mapel,
+                        kelas,
+                        judul_kuis: judul,
+                        petunjuk: fullPetunjuk,
+                        durasi_menit: durasi
+                    }).eq('id', editingQuizId);
+                    quizError = err2;
+                }
 
                 if (quizError) throw quizError;
 
@@ -3269,15 +3380,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 const typesSummary = [...new Set(manualQuizQuestions.map(q => q.tipe || 'pg'))].join(', ');
                 showCustomModal(`✅ Berhasil! Perubahan kuis "${judul}" (${manualQuizQuestions.length} butir soal: ${typesSummary}) telah disimpan!`);
             } else {
-                const { data: quizData, error: quizError } = await supabase.from('quizzes').insert([{
-                    teacher_id: currentSession?.user?.id,
-                    mapel,
-                    kelas,
-                    judul_kuis: judul,
-                    petunjuk: fullPetunjuk,
-                    durasi_menit: durasi,
-                    status: 'aktif'
-                }]).select().single();
+                let quizData = null;
+                let quizError = null;
+                try {
+                    const { data: qd, error: qErr } = await supabase.from('quizzes').insert([{
+                        teacher_id: currentSession?.user?.id,
+                        mapel,
+                        kelas,
+                        judul_kuis: judul,
+                        petunjuk: fullPetunjuk,
+                        durasi_menit: durasi,
+                        status: 'aktif',
+                        token: tokenVal,
+                        token_required: tokenEnabled
+                    }]).select().single();
+                    if (qErr) throw qErr;
+                    quizData = qd;
+                } catch (_) {
+                    const { data: qd2, error: qErr2 } = await supabase.from('quizzes').insert([{
+                        teacher_id: currentSession?.user?.id,
+                        mapel,
+                        kelas,
+                        judul_kuis: judul,
+                        petunjuk: fullPetunjuk,
+                        durasi_menit: durasi,
+                        status: 'aktif'
+                    }]).select().single();
+                    if (qErr2) throw qErr2;
+                    quizData = qd2;
+                }
 
                 if (quizError) throw quizError;
 
@@ -3383,38 +3514,115 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const isLocked = sub.status_koreksi === 'terkunci_curang';
+                const isOngoing = sub.status_koreksi === 'sedang_ujian';
+
                 let antiCheatBadge = '';
                 if (isLocked) {
-                    antiCheatBadge = `<span class="bg-red-100 text-red-900 border border-red-500 font-black px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} pelanggaran - Ujian dibekukan sistem">🔒 Dibekukan (${cheatAttempts})</span>`;
+                    antiCheatBadge = `<span class="bg-red-100 text-red-900 border border-red-500 font-black px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} pelanggaran - Ujian dibekukan sistem">🔒 Terkunci (${cheatAttempts}x Curang)</span>`;
+                } else if (isOngoing) {
+                    antiCheatBadge = `<span class="bg-yellow-200 text-yellow-950 border border-yellow-500 font-black px-2 py-0.5 rounded text-[10px] animate-pulse" title="Siswa sedang aktif membuka jendela CBT">🟡 Sedang Ujian</span>`;
                 } else if (cheatAttempts > 0) {
                     antiCheatBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-500 font-bold px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} peringatan tercatat">⚠️ ${cheatAttempts}x Peringatan</span>`;
                 } else {
                     antiCheatBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-bold px-2 py-0.5 rounded text-[10px]">🛡️ Tertib (0)</span>`;
                 }
 
+                let actionButtonsHtml = '';
+                if (isLocked) {
+                    actionButtonsHtml = `
+                        <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1 mx-auto">
+                            🔓 Buka Kunci Akun
+                        </button>
+                    `;
+                } else if (isOngoing) {
+                    actionButtonsHtml = `
+                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                            <button onclick="forceFinishStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-2.5 py-1 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ⏱️ Paksa Selesai
+                            </button>
+                            <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg font-black text-[11px] uppercase">
+                                🔄 Reset Sesi
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    actionButtonsHtml = `
+                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                            <button onclick="openExamReviewModal('${sub.id}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                                Periksa
+                            </button>
+                            <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Reset nilai agar siswa bisa ujian ulang" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-black border border-black rounded-lg font-black text-[11px] uppercase">
+                                🔄 Reset
+                            </button>
+                        </div>
+                    `;
+                }
+
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition";
                 tr.innerHTML = `
-                    <td class="px-4 py-3 font-black text-black border-b-2 border-black border-r-2">${sub.nama_siswa}</td>
-                    <td class="px-4 py-3 font-bold text-black border-b-2 border-black border-r-2">${sub.kelas}</td>
-                    <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-indigo-700">${sub.skor_pg}</td>
-                    <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-purple-700">${sub.skor_esai}</td>
+                    <td class="px-4 py-3 font-black text-black border-b-2 border-black border-r-2">${escapeHtml(sub.nama_siswa)}</td>
+                    <td class="px-4 py-3 font-bold text-black border-b-2 border-black border-r-2">${escapeHtml(sub.kelas)}</td>
+                    <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-indigo-700">${isOngoing ? '-' : (sub.skor_pg || 0)}</td>
+                    <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-purple-700">${isOngoing ? '-' : (sub.skor_esai || 0)}</td>
                     <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">
-                        <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-black px-2 py-0.5 rounded-lg text-sm">${sub.total_nilai}</span>
+                        <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-black px-2 py-0.5 rounded-lg text-sm">${isOngoing ? '...' : (sub.total_nilai || 0)}</span>
                     </td>
                     <td class="px-3 py-3 text-center border-b-2 border-black border-r-2">
                         ${antiCheatBadge}
                     </td>
                     <td class="px-4 py-3 text-center border-b-2 border-black">
-                        <button onclick="openExamReviewModal('${sub.id}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                            Periksa Jawaban
-                        </button>
+                        ${actionButtonsHtml}
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         } catch (e) {
             tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-red-600 font-bold uppercase">Gagal memuat: ${e.message}</td></tr>`;
+        }
+    };
+
+    window.unlockStudentExam = async (subId, studentName) => {
+        const conf = await showCustomModal(
+            `Buka kunci akun siswa "${studentName}"?\n\nSiswa akan dapat memasukkan token ujian dan mengerjakan kembali lembar soal dari awal.`,
+            'confirm',
+            'Buka Kunci Akun Siswa',
+            '🔓'
+        );
+        if (!conf) return;
+
+        try {
+            const { error } = await supabase.from('quiz_submissions').delete().eq('id', subId);
+            if (error) throw error;
+            await showCustomModal(`✅ Berhasil! Akun siswa "${studentName}" telah dibuka kembali. Siswa dapat login kembali menggunakan token aktif.`, 'alert', 'Akun Dibuka', '✅');
+            if (activeQuizForResults) {
+                openQuizResultsModal(activeQuizForResults.id);
+            }
+        } catch (err) {
+            showCustomModal("Gagal membuka kunci akun: " + err.message);
+        }
+    };
+
+    window.forceFinishStudentExam = async (subId, studentName) => {
+        const conf = await showCustomModal(
+            `Paksa selesai sesi ujian untuk siswa "${studentName}"?\n\nSesi ujian siswa akan ditutup dan status pengerjaan disimpan menjadi selesai.`,
+            'confirm',
+            'Paksa Selesai Ujian',
+            '⏱️'
+        );
+        if (!conf) return;
+
+        try {
+            const { error } = await supabase.from('quiz_submissions').update({
+                status_koreksi: 'selesai'
+            }).eq('id', subId);
+            if (error) throw error;
+            await showCustomModal(`✅ Sesi ujian siswa "${studentName}" telah diselesaikan oleh pengawas.`, 'alert', 'Ujian Ditutup', '✅');
+            if (activeQuizForResults) {
+                openQuizResultsModal(activeQuizForResults.id);
+            }
+        } catch (err) {
+            showCustomModal("Gagal menyelesaikan ujian: " + err.message);
         }
     };
 

@@ -36,11 +36,18 @@ export function splitQuestionImage(text) {
     return { text, gambar_url: '' };
 }
 
-export function parseQuizConfig(petunjukRaw) {
+export function parseQuizConfig(petunjukRaw, quizObj = {}) {
+    const base = {
+        violation_limit: 3,
+        fullscreen: true,
+        token: (quizObj.token || '').toString().trim().toUpperCase(),
+        token_required: quizObj.token_required !== undefined ? !!quizObj.token_required : false
+    };
+
     if (!petunjukRaw || typeof petunjukRaw !== 'string') {
         return {
             cleanPetunjuk: petunjukRaw || '',
-            config: { violation_limit: 3, fullscreen: true }
+            config: base
         };
     }
     const match = petunjukRaw.match(/\[CONFIG:\s*(\{.*?\})\s*\]/);
@@ -48,18 +55,25 @@ export function parseQuizConfig(petunjukRaw) {
         try {
             const config = JSON.parse(match[1]);
             const cleanPetunjuk = petunjukRaw.replace(/\[CONFIG:\s*\{.*?\}\s*\]/, '').trim();
+            const tokenVal = (quizObj.token || config.token || '').toString().trim().toUpperCase();
+            const tokenReq = quizObj.token_required !== undefined 
+                ? !!quizObj.token_required 
+                : (config.token_required !== undefined ? !!config.token_required : (tokenVal.length > 0));
+
             return {
                 cleanPetunjuk,
                 config: {
                     violation_limit: config.violation_limit !== undefined ? config.violation_limit : 3,
-                    fullscreen: config.fullscreen !== undefined ? config.fullscreen : true
+                    fullscreen: config.fullscreen !== undefined ? config.fullscreen : true,
+                    token: tokenVal,
+                    token_required: tokenReq
                 }
             };
         } catch (_) {}
     }
     return {
         cleanPetunjuk: petunjukRaw,
-        config: { violation_limit: 3, fullscreen: true }
+        config: base
     };
 }
 
@@ -1663,20 +1677,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (mySub) {
                 const isLocked = mySub.status_koreksi === 'terkunci_curang';
-                examStatusBadge = isLocked ? `
-                    <span class="bg-red-100 text-red-900 border border-red-500 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                        🔒 Dibekukan &bull; Skor: ${mySub.total_nilai}/100 &bull; Terkunci
-                    </span>
-                ` : `
-                    <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                        ✅ Selesai &bull; Skor: ${mySub.total_nilai}/100 &bull; 🔒 Terkunci 1x
-                    </span>
-                `;
-                actionBtnHtml = `
-                    <button type="button" onclick="showMyQuizResult(${JSON.stringify(mySub).replace(/"/g, '&quot;')}, '${q.judul_kuis.replace(/'/g, "\\'")}', '${q.mapel}')" class="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
-                        Lihat Skor Nilai 🎯
-                    </button>
-                `;
+                const isOngoing = mySub.status_koreksi === 'sedang_ujian';
+
+                if (isLocked) {
+                    examStatusBadge = `
+                        <span class="bg-red-100 text-red-900 border border-red-500 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            🔒 Dibekukan &bull; Pelanggaran Anti-Cheat
+                        </span>
+                    `;
+                    actionBtnHtml = `
+                        <button type="button" onclick="showMyQuizResult(${JSON.stringify(mySub).replace(/"/g, '&quot;')}, '${q.judul_kuis.replace(/'/g, "\\'")}', '${q.mapel}')" class="px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                            Status Pelanggaran 🔒
+                        </button>
+                    `;
+                } else if (isOngoing) {
+                    examStatusBadge = `
+                        <span class="bg-yellow-200 text-yellow-950 border border-yellow-500 text-[10px] font-black px-2 py-0.5 rounded uppercase animate-pulse">
+                            🟡 Sedang Dikerjakan (Live)
+                        </span>
+                    `;
+                    actionBtnHtml = `
+                        <button type="button" onclick="openExamTokenModal('${q.id}')" class="px-5 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                            Lanjutkan Ujian ✍️
+                        </button>
+                    `;
+                } else {
+                    examStatusBadge = `
+                        <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            ✅ Selesai &bull; Skor: ${mySub.total_nilai}/100 &bull; 🔒 Terkunci 1x
+                        </span>
+                    `;
+                    actionBtnHtml = `
+                        <button type="button" onclick="showMyQuizResult(${JSON.stringify(mySub).replace(/"/g, '&quot;')}, '${q.judul_kuis.replace(/'/g, "\\'")}', '${q.mapel}')" class="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                            Lihat Skor Nilai 🎯
+                        </button>
+                    `;
+                }
             } else {
                 examStatusBadge = `
                     <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
@@ -1684,7 +1720,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </span>
                 `;
                 actionBtnHtml = `
-                    <button type="button" onclick="startExam('${q.id}')" class="px-5 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                    <button type="button" onclick="openExamTokenModal('${q.id}')" class="px-5 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
                         Mulai Ujian ✍️
                     </button>
                 `;
@@ -1888,10 +1924,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const { autoScoreTotal } = calculateExamScore(exam.questions, exam.answers);
-            await supabase.from('quiz_submissions').insert([{
-                quiz_id: exam.quizData.id,
-                nama_siswa: exam.studentName,
-                kelas: exam.quizData.kelas,
+            const payload = {
                 jawaban_siswa: {
                     answers: exam.answers,
                     doubtful: exam.doubtful,
@@ -1904,7 +1937,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 skor_esai: 0,
                 total_nilai: autoScoreTotal,
                 status_koreksi: 'terkunci_curang'
-            }]);
+            };
+
+            if (exam.submissionId) {
+                await supabase.from('quiz_submissions').update(payload).eq('id', exam.submissionId);
+            } else {
+                await supabase.from('quiz_submissions').insert([{
+                    quiz_id: exam.quizData.id,
+                    nama_siswa: exam.studentName,
+                    kelas: exam.quizData.kelas,
+                    ...payload
+                }]);
+            }
         } catch (_) {}
 
         const lockedOverlay = document.getElementById('cheat-locked-overlay');
@@ -2368,33 +2412,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const { autoScoreTotal, hasSubjective } = calculateExamScore(exam.questions, exam.answers);
+            const finalStatus = hasSubjective ? 'belum_dikoreksi' : 'selesai';
 
-            // Cek duplikasi di DB
-            const { data: existingCheck } = await supabase
-                .from('quiz_submissions')
-                .select('id')
-                .eq('quiz_id', exam.quizData.id)
-                .ilike('nama_siswa', exam.studentName.trim())
-                .maybeSingle();
-
-            if (existingCheck) {
-                await showCustomModal(
-                    `Akses Dibatasi: Anda (${exam.studentName}) sudah pernah menyelesaikan ujian ini sebelumnya. Lembar ujian tidak dapat dikirim ulang.`,
-                    'alert',
-                    'Ujian Terkunci (1x Pengerjaan)',
-                    '🔒'
-                );
-                document.getElementById('quiz-room-container').classList.add('hidden');
-                document.getElementById('quiz-portal-landing').classList.remove('hidden');
-                activeCbtExam = null;
-                loadStudentQuizzes();
-                return;
-            }
-
-            const { error } = await supabase.from('quiz_submissions').insert([{
-                quiz_id: exam.quizData.id,
-                nama_siswa: exam.studentName,
-                kelas: exam.quizData.kelas,
+            const subPayload = {
                 jawaban_siswa: {
                     answers: exam.answers,
                     doubtful: exam.doubtful,
@@ -2405,10 +2425,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 skor_pg: autoScoreTotal,
                 skor_esai: 0,
                 total_nilai: autoScoreTotal,
-                status_koreksi: hasSubjective ? 'belum_dikoreksi' : 'selesai'
-            }]);
+                status_koreksi: finalStatus
+            };
 
-            if (error) throw error;
+            if (exam.submissionId) {
+                const { error: updErr } = await supabase.from('quiz_submissions').update(subPayload).eq('id', exam.submissionId);
+                if (updErr) throw updErr;
+            } else {
+                const { error: insErr } = await supabase.from('quiz_submissions').insert([{
+                    quiz_id: exam.quizData.id,
+                    nama_siswa: exam.studentName,
+                    kelas: exam.quizData.kelas,
+                    ...subPayload
+                }]);
+                if (insErr) throw insErr;
+            }
 
             try {
                 const key = `cbt_exam_${exam.quizData.id}_${encodeURIComponent(exam.studentName)}`;
@@ -2431,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.cancelExam = async () => {
-        const confExit = await showCustomModal("Apakah Anda yakin ingin membatalkan dan keluar dari ujian? Jawaban Anda tidak akan tersimpan.", 'confirm', 'Keluar Ujian', '⚠️');
+        const confExit = await showCustomModal("Apakah Anda yakin ingin membatalkan dan keluar dari ujian? Lembar pengerjaan sesi Anda akan ditutup.", 'confirm', 'Keluar Ujian', '⚠️');
         if (confExit && activeCbtExam) {
             removeAntiCheatListeners();
             exitFullscreenLock();
@@ -2444,137 +2475,275 @@ document.addEventListener('DOMContentLoaded', async () => {
             activeCbtExam = null;
             document.getElementById('quiz-room-container').classList.add('hidden');
             document.getElementById('quiz-portal-landing').classList.remove('hidden');
+            loadStudentQuizzes();
         }
     };
 
-    window.startExam = async (quizId) => {
-        const studentName = globalNameInput.value.trim();
+    let pendingExamQuiz = null;
+
+    window.openExamTokenModal = async (quizId) => {
+        const studentName = globalNameInput?.value?.trim() || '';
+        const studentKelas = globalKelasSelect?.value || '';
+
         if (!studentName) {
-            await showCustomModal("Silakan masukkan nama lengkap siswa pada kolom identitas siswa di atas sebelum memulai ujian.", 'alert', 'Nama Siswa Diperlukan', '⚠️');
+            await showCustomModal("Silakan masukkan nama lengkap siswa pada kolom identitas siswa di atas sebelum mengikuti ujian.", 'alert', 'Nama Siswa Diperlukan', '⚠️');
             return;
         }
 
-        // Database level check: Cegah ujian ulang atau akses berkali-kali
-        let existingSub = studentQuizSubmissions.find(s => String(s.quiz_id) === String(quizId));
-        if (!existingSub) {
+        let quiz = allQuizzes.find(q => String(q.id) === String(quizId));
+        if (!quiz || !quiz.quiz_questions) {
+            try {
+                const { data: freshQ, error: fErr } = await supabase.from('quizzes').select('*, quiz_questions(*)').eq('id', quizId).single();
+                if (fErr) throw fErr;
+                quiz = freshQ;
+            } catch (err) {
+                await showCustomModal("Gagal memuat informasi ujian: " + err.message, 'alert', 'Gagal', '❌');
+                return;
+            }
+        }
+
+        const { cleanPetunjuk, config } = parseQuizConfig(quiz.petunjuk || '', quiz);
+        pendingExamQuiz = { ...quiz, parsedConfig: config };
+
+        document.getElementById('exam-token-mapel-badge').textContent = `${quiz.mapel} • Kelas ${quiz.kelas}`;
+        document.getElementById('exam-token-duration-badge').textContent = `⏱️ ${quiz.durasi_menit || 45} Menit`;
+        document.getElementById('exam-token-quiz-title').textContent = quiz.judul_kuis;
+        document.getElementById('exam-token-quiz-petunjuk').textContent = cleanPetunjuk || 'Kerjakan dengan teliti, jujur, dan mandiri.';
+        document.getElementById('exam-token-student-name').value = studentName;
+        document.getElementById('exam-token-student-kelas').value = studentKelas || quiz.kelas;
+
+        const tokenInput = document.getElementById('exam-token-input');
+        if (tokenInput) tokenInput.value = '';
+
+        const tokenGroup = document.getElementById('exam-token-input-group');
+        const expectedToken = (config.token || quiz.token || '').toString().trim();
+        const isTokenRequired = config.token_required !== false && expectedToken.length > 0;
+        if (tokenGroup) {
+            tokenGroup.style.display = isTokenRequired ? 'block' : 'none';
+        }
+
+        const modal = document.getElementById('exam-token-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            if (isTokenRequired && tokenInput) {
+                setTimeout(() => tokenInput.focus(), 150);
+            }
+        }
+    };
+
+    window.closeExamTokenModal = () => {
+        pendingExamQuiz = null;
+        const modal = document.getElementById('exam-token-modal');
+        if (modal) modal.classList.add('hidden');
+    };
+
+    window.verifyAndStartExam = async () => {
+        if (!pendingExamQuiz) return;
+        const quiz = pendingExamQuiz;
+        const studentNameInput = document.getElementById('exam-token-student-name');
+        const studentName = (studentNameInput?.value || '').trim();
+
+        if (!studentName) {
+            await showCustomModal("Nama lengkap siswa wajib diisi untuk verifikasi lembar ujian!", 'alert', 'Nama Siswa Diperlukan', '⚠️');
+            return;
+        }
+
+        if (globalNameInput) globalNameInput.value = studentName;
+
+        const config = quiz.parsedConfig || {};
+        const expectedToken = (config.token || quiz.token || '').toString().trim().toUpperCase();
+        const isTokenRequired = config.token_required !== false && expectedToken.length > 0;
+
+        if (isTokenRequired) {
+            const enteredToken = (document.getElementById('exam-token-input')?.value || '').trim().toUpperCase();
+            if (!enteredToken) {
+                await showCustomModal("Silakan masukkan Token Ujian yang diberikan oleh Guru Pengawas kelas Anda!", 'alert', 'Token Wajib Diisi', '🔑');
+                return;
+            }
+            if (enteredToken !== expectedToken) {
+                await showCustomModal(`Token Ujian "${enteredToken}" salah atau tidak valid!\n\nSilakan periksa kembali huruf/angka token atau minta token aktif kepada Guru Pengawas.`, 'alert', 'Token Tidak Cocok', '❌');
+                return;
+            }
+        }
+
+        const btn = document.getElementById('btn-submit-exam-token');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Memverifikasi Sesi Ujian...";
+        }
+
+        try {
+            // Database level verification: cek sesi siswa di Supabase
+            let existingSub = null;
             try {
                 const { data: dbSub } = await supabase
                     .from('quiz_submissions')
-                    .select('id, total_nilai, status_koreksi, created_at')
-                    .eq('quiz_id', quizId)
+                    .select('*')
+                    .eq('quiz_id', quiz.id)
                     .ilike('nama_siswa', studentName.trim())
                     .maybeSingle();
                 if (dbSub) existingSub = dbSub;
             } catch (_) {}
-        }
 
-        if (existingSub) {
-            const skor = (existingSub.total_nilai !== null && existingSub.total_nilai !== undefined) ? `${existingSub.total_nilai}/100` : 'Selesai';
-            const isLocked = existingSub.status_koreksi === 'terkunci_curang';
-            const msg = isLocked
-                ? `Akses Dibatasi: Ujian Anda sebelumnya (${studentName}) telah DIBEKUKAN oleh sistem karena pelanggaran anti-kecurangan. Anda tidak dapat mengikuti ujian kembali.`
-                : `Akses Dibatasi: Anda (${studentName}) sudah menyelesaikan ujian ini dengan skor: ${skor}.\n\nSesuai ketentuan, setiap siswa hanya berhak mengakses dan mengerjakan ujian ini 1 kali.`;
-            await showCustomModal(msg, 'alert', 'Ujian Terkunci (1x Pengerjaan)', '🔒');
-            return;
-        }
+            let submissionId = null;
 
-        try {
-            const { data, error } = await supabase.from('quizzes').select('*, quiz_questions(*)').eq('id', quizId).single();
-            if (error) throw error;
-
-            const { config } = parseQuizConfig(data.petunjuk || '');
-            const questions = data.quiz_questions || [];
-            questions.sort((a, b) => (a.nomor || 0) - (b.nomor || 0));
-
-            if (questions.length === 0) {
-                await showCustomModal("Ujian ini belum memiliki butir soal yang aktif.", 'alert', 'Pemberitahuan', '⚠️');
-                return;
-            }
-
-            // Setup active CBT state
-            activeCbtExam = {
-                quizData: data,
-                studentName,
-                questions,
-                currentIndex: 0,
-                answers: {},
-                doubtful: {},
-                cheatAttempts: 0,
-                cheatLogs: [],
-                violationLimit: config.violation_limit !== undefined ? config.violation_limit : 3,
-                fullscreenEnabled: config.fullscreen !== undefined ? config.fullscreen : true,
-                timerInterval: null,
-                warningCountdownInterval: null,
-                timerSeconds: (data.durasi_menit || 45) * 60
-            };
-
-            // Coba pulihkan progress lokal jika ada
-            try {
-                const localKey = `cbt_exam_${data.id}_${encodeURIComponent(studentName)}`;
-                const savedRaw = localStorage.getItem(localKey);
-                if (savedRaw) {
-                    const savedState = JSON.parse(savedRaw);
-                    if (savedState.answers) activeCbtExam.answers = savedState.answers;
-                    if (savedState.doubtful) activeCbtExam.doubtful = savedState.doubtful;
-                    if (savedState.cheatAttempts) activeCbtExam.cheatAttempts = savedState.cheatAttempts;
-                    if (savedState.cheatLogs) activeCbtExam.cheatLogs = savedState.cheatLogs;
-                }
-            } catch (_) {}
-
-            // Setup UI
-            document.getElementById('quiz-portal-landing').classList.add('hidden');
-            const room = document.getElementById('quiz-room-container');
-            room.classList.remove('hidden');
-
-            document.getElementById('quiz-room-mapel').textContent = `${data.mapel} • Kelas ${data.kelas}`;
-            document.getElementById('quiz-room-title').textContent = data.judul_kuis;
-            const studentTag = document.getElementById('cbt-student-tag');
-            if (studentTag) studentTag.textContent = `Siswa: ${studentName}`;
-
-            const cheatIndText = document.getElementById('cbt-cheat-count-text');
-            const cheatIndBox = document.getElementById('cbt-cheat-indicator');
-            if (cheatIndText) {
-                cheatIndText.textContent = `Anti-Cheat: ${activeCbtExam.cheatAttempts} Pelanggaran`;
-            }
-            if (cheatIndBox) {
-                cheatIndBox.className = activeCbtExam.cheatAttempts > 0
-                    ? "bg-amber-100 border-2 border-amber-500 text-amber-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                    : "bg-emerald-100 border-2 border-emerald-400 text-emerald-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-            }
-
-            // Render first question
-            window.renderCbtQuestion(0);
-
-            // Timer
-            const timerEl = document.getElementById('quiz-timer');
-            if (quizTimerInterval) clearInterval(quizTimerInterval);
-
-            activeCbtExam.timerInterval = setInterval(() => {
-                activeCbtExam.timerSeconds--;
-                const m = Math.floor(activeCbtExam.timerSeconds / 60);
-                const s = activeCbtExam.timerSeconds % 60;
-                if (timerEl) {
-                    timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            if (existingSub) {
+                if (existingSub.status_koreksi === 'terkunci_curang') {
+                    if (btn) { btn.disabled = false; btn.innerText = "Mulai Kerjakan Ujian ✍️"; }
+                    closeExamTokenModal();
+                    await showCustomModal(
+                        `Akses Dibatasi: Akun ujian Anda (${studentName}) telah DIBEKUKAN oleh sistem karena terdeteksi pelanggaran anti-kecurangan.\n\nSilakan temui Guru Pengawas untuk membuka kembali akun Anda.`,
+                        'alert',
+                        'Ujian Terkunci (Pelanggaran)',
+                        '🔒'
+                    );
+                    return;
                 }
 
-                if (activeCbtExam.timerSeconds <= 0) {
-                    clearInterval(activeCbtExam.timerInterval);
-                    showCustomModal("Waktu ujian telah habis! Lembar ujian Anda dikumpulkan secara otomatis.", 'alert', 'Waktu Habis', '⏰');
-                    window.confirmSubmitCbtExam();
+                if (existingSub.status_koreksi === 'selesai') {
+                    if (btn) { btn.disabled = false; btn.innerText = "Mulai Kerjakan Ujian ✍️"; }
+                    closeExamTokenModal();
+                    await showCustomModal(
+                        `Akses Dibatasi: Anda (${studentName}) sudah pernah menyelesaikan ujian ini dengan skor: ${existingSub.total_nilai}/100.\n\nSesuai ketentuan, setiap siswa hanya berhak mengakses dan mengerjakan ujian ini 1 kali.`,
+                        'alert',
+                        'Ujian Terkunci (1x Pengerjaan)',
+                        '🔒'
+                    );
+                    return;
                 }
-            }, 1000);
 
-            // Activate Anti-Cheat
-            addAntiCheatListeners();
-            if (activeCbtExam.fullscreenEnabled) {
-                await requestFullscreenLock();
+                submissionId = existingSub.id;
+            } else {
+                // Buat sesi live baru di Supabase quiz_submissions
+                const studentKelas = globalKelasSelect?.value || quiz.kelas;
+                try {
+                    const { data: newSub, error: subErr } = await supabase.from('quiz_submissions').insert([{
+                        quiz_id: quiz.id,
+                        nama_siswa: studentName,
+                        kelas: studentKelas,
+                        jawaban_siswa: {
+                            answers: {},
+                            doubtful: {},
+                            cheatAttempts: 0,
+                            cheatLogs: [],
+                            startedAt: new Date().toISOString()
+                        },
+                        skor_pg: 0,
+                        skor_esai: 0,
+                        total_nilai: 0,
+                        status_koreksi: 'sedang_ujian'
+                    }]).select().single();
+
+                    if (subErr) throw subErr;
+                    submissionId = newSub.id;
+                } catch (err) {
+                    console.warn("Gagal membuat sesi live Supabase, melanjutkan lokal:", err);
+                }
             }
 
-            window.scrollTo({ top: room.offsetTop - 50, behavior: 'smooth' });
+            closeExamTokenModal();
+            await launchCbtExam(quiz, studentName, submissionId);
 
         } catch (e) {
             await showCustomModal("Gagal memulai ujian: " + e.message, 'alert', 'Gagal', '❌');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "Mulai Kerjakan Ujian ✍️";
+            }
         }
+    };
+
+    window.launchCbtExam = async (quizData, studentName, submissionId = null) => {
+        const { config } = parseQuizConfig(quizData.petunjuk || '', quizData);
+        const questions = quizData.quiz_questions || [];
+        questions.sort((a, b) => (a.nomor || 0) - (b.nomor || 0));
+
+        if (questions.length === 0) {
+            await showCustomModal("Ujian ini belum memiliki butir soal yang aktif.", 'alert', 'Pemberitahuan', '⚠️');
+            return;
+        }
+
+        activeCbtExam = {
+            quizData,
+            studentName,
+            submissionId,
+            questions,
+            currentIndex: 0,
+            answers: {},
+            doubtful: {},
+            cheatAttempts: 0,
+            cheatLogs: [],
+            violationLimit: config.violation_limit !== undefined ? config.violation_limit : 3,
+            fullscreenEnabled: config.fullscreen !== undefined ? config.fullscreen : true,
+            timerInterval: null,
+            warningCountdownInterval: null,
+            timerSeconds: (quizData.durasi_menit || 45) * 60
+        };
+
+        // Pulihkan progress lokal jika ada
+        try {
+            const localKey = `cbt_exam_${quizData.id}_${encodeURIComponent(studentName)}`;
+            const savedRaw = localStorage.getItem(localKey);
+            if (savedRaw) {
+                const savedState = JSON.parse(savedRaw);
+                if (savedState.answers) activeCbtExam.answers = savedState.answers;
+                if (savedState.doubtful) activeCbtExam.doubtful = savedState.doubtful;
+                if (savedState.cheatAttempts) activeCbtExam.cheatAttempts = savedState.cheatAttempts;
+                if (savedState.cheatLogs) activeCbtExam.cheatLogs = savedState.cheatLogs;
+            }
+        } catch (_) {}
+
+        document.getElementById('quiz-portal-landing').classList.add('hidden');
+        const room = document.getElementById('quiz-room-container');
+        room.classList.remove('hidden');
+
+        document.getElementById('quiz-room-mapel').textContent = `${quizData.mapel} • Kelas ${quizData.kelas}`;
+        document.getElementById('quiz-room-title').textContent = quizData.judul_kuis;
+        const studentTag = document.getElementById('cbt-student-tag');
+        if (studentTag) studentTag.textContent = `Siswa: ${studentName}`;
+
+        const cheatIndText = document.getElementById('cbt-cheat-count-text');
+        const cheatIndBox = document.getElementById('cbt-cheat-indicator');
+        if (cheatIndText) {
+            cheatIndText.textContent = `Anti-Cheat: ${activeCbtExam.cheatAttempts} Pelanggaran`;
+        }
+        if (cheatIndBox) {
+            cheatIndBox.className = activeCbtExam.cheatAttempts > 0
+                ? "bg-amber-100 border-2 border-amber-500 text-amber-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                : "bg-emerald-100 border-2 border-emerald-400 text-emerald-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+        }
+
+        window.renderCbtQuestion(0);
+
+        const timerEl = document.getElementById('quiz-timer');
+        if (quizTimerInterval) clearInterval(quizTimerInterval);
+
+        activeCbtExam.timerInterval = setInterval(() => {
+            activeCbtExam.timerSeconds--;
+            const m = Math.floor(activeCbtExam.timerSeconds / 60);
+            const s = activeCbtExam.timerSeconds % 60;
+            if (timerEl) {
+                timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }
+
+            if (activeCbtExam.timerSeconds <= 0) {
+                clearInterval(activeCbtExam.timerInterval);
+                showCustomModal("Waktu ujian telah habis! Lembar ujian Anda dikumpulkan secara otomatis.", 'alert', 'Waktu Habis', '⏰');
+                window.confirmSubmitCbtExam();
+            }
+        }, 1000);
+
+        addAntiCheatListeners();
+        if (activeCbtExam.fullscreenEnabled) {
+            await requestFullscreenLock();
+        }
+
+        window.scrollTo({ top: room.offsetTop - 50, behavior: 'smooth' });
+    };
+
+    window.startExam = async (quizId) => {
+        await window.openExamTokenModal(quizId);
     };
 
     // ==========================================

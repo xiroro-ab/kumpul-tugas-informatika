@@ -1315,6 +1315,21 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
                         <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-[11px] font-black uppercase text-black">🔑 Token Ujian Siswa</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer font-black text-[10px] uppercase select-none text-slate-700">
+                                    <input type="checkbox" id="manual-quiz-token-enabled" checked class="w-3.5 h-3.5 accent-indigo-600 rounded">
+                                    <span>Wajib Token</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="manual-quiz-token" placeholder="Contoh: CBT58X" maxlength="12" class="uppercase tracking-widest font-mono font-black text-sm w-full h-10 px-3 border-2 border-black rounded-xl bg-white focus:bg-yellow-50">
+                                <button type="button" onclick="generateRandomQuizToken()" title="Acak Token Otomatis" class="px-3 h-10 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0 flex items-center gap-1">
+                                    🎲 Acak
+                                </button>
+                            </div>
+                        </div>
+                        <div>
                             <label class="block text-[11px] font-black uppercase text-black mb-1">Batas Toleransi Anti-Cheat</label>
                             <select id="manual-quiz-violation-limit" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
                                 <option value="3" selected>3 Kali Pelanggaran (Standar CBT)</option>
@@ -1324,12 +1339,12 @@
                                 <option value="0">0 (Hanya Peringatan Tanpa Batas)</option>
                             </select>
                         </div>
-                        <div class="flex items-center gap-2 pt-4 sm:pt-6">
-                            <label class="flex items-center gap-2 cursor-pointer font-black text-xs uppercase select-none text-slate-900">
-                                <input type="checkbox" id="manual-quiz-fullscreen-lock" checked class="w-4 h-4 accent-indigo-600 rounded">
-                                <span>🛡️ Wajib Layar Penuh (Anti Pindah Tab)</span>
-                            </label>
-                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 pt-1">
+                        <label class="flex items-center gap-2 cursor-pointer font-black text-xs uppercase select-none text-slate-900">
+                            <input type="checkbox" id="manual-quiz-fullscreen-lock" checked class="w-4 h-4 accent-indigo-600 rounded">
+                            <span>🛡️ Wajib Layar Penuh (Anti Pindah Tab & Multi Monitor)</span>
+                        </label>
                     </div>
                 </div>
 
