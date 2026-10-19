@@ -13,10 +13,20 @@ import {
     aiGenerateFormQuestions,
     aiEvaluateFormSubmission
 } from './gemini.js';
+import { 
+    fetchStudentsFromDB, 
+    addStudentToDB, 
+    updateStudentInDB, 
+    deleteStudentFromDB, 
+    syncRosterToDB, 
+    parseRosterCsvText, 
+    initialStudents 
+} from './rosterData.js';
 
 let currentSession = null;
 let currentTeacher = null;
 let stateKelas = [];
+let stateStudents = [];
 let pendingFiles = [];
 let assignmentsList = [];
 let materialsList = [];
@@ -287,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tab Navigation
     window.switchTab = (tabName) => {
-        const tabs = ['tugas', 'penugasan', 'materi', 'kuis', 'setting', 'approval'];
+        const tabs = ['tugas', 'penugasan', 'materi', 'kuis', 'siswa', 'setting', 'approval'];
         tabs.forEach(t => {
             const btn = document.getElementById(`tab-btn-${t}`);
             const content = document.getElementById(`tab-content-${t}`);
@@ -297,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 if (btn) {
                     if (t === 'approval') {
-                        btn.className = "lms-tab-btn col-span-2 sm:col-span-5 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300";
+                        btn.className = "lms-tab-btn col-span-2 sm:col-span-6 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300";
                     } else {
                         btn.className = "lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100";
                     }
@@ -310,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabName === 'penugasan') loadAssignments();
         if (tabName === 'materi') loadMaterials();
         if (tabName === 'kuis') loadQuizzes();
+        if (tabName === 'siswa') loadStudentsRoster();
         if (tabName === 'approval') loadAllTeachers();
     };
 
@@ -3703,7 +3714,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition";
                 tr.innerHTML = `
-                    <td class="px-4 py-3 font-black text-black border-b-2 border-black border-r-2">${escapeHtml(sub.nama_siswa)}</td>
+                    <td class="px-4 py-3 font-black text-black border-b-2 border-black border-r-2">
+                        <div>${escapeHtml(sub.nama_siswa)}</div>
+                        ${sub.student_id ? `<div class="text-[10px] font-mono font-bold text-slate-500">NISN: ${escapeHtml(sub.student_id)}</div>` : ''}
+                    </td>
                     <td class="px-4 py-3 font-bold text-black border-b-2 border-black border-r-2">${escapeHtml(sub.kelas)}</td>
                     <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-indigo-700">${isOngoing ? '-' : (sub.skor_pg || 0)}</td>
                     <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-purple-700">${isOngoing ? '-' : (sub.skor_esai || 0)}</td>
@@ -4530,6 +4544,231 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             showCustomModal("Gagal memperbarui status guru: " + e.message);
         }
+    };
+
+    // ==========================================
+    // 7. Modul Master Data Siswa & Roster Ujian
+    // ==========================================
+    async function loadStudentsRoster() {
+        const tbody = document.getElementById('student-roster-tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-500 font-bold uppercase tracking-widest animate-pulse">Memuat data siswa dari database...</td></tr>';
+        }
+
+        stateStudents = await fetchStudentsFromDB();
+
+        // Populate kelas filter
+        const kelasFilter = document.getElementById('filter-roster-kelas');
+        if (kelasFilter) {
+            const currentVal = kelasFilter.value;
+            const uniqueClasses = [...new Set(stateStudents.map(s => String(s.kelas).trim()))].sort();
+            kelasFilter.innerHTML = '<option value="semua">Semua Kelas</option>' + 
+                uniqueClasses.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+            if (currentVal && uniqueClasses.includes(currentVal)) {
+                kelasFilter.value = currentVal;
+            }
+        }
+
+        renderStudentsRosterTable();
+    }
+
+    window.renderStudentsRosterTable = () => {
+        const tbody = document.getElementById('student-roster-tbody');
+        const badge = document.getElementById('student-roster-count-badge');
+        if (!tbody) return;
+
+        const filterKelas = (document.getElementById('filter-roster-kelas')?.value || 'semua').trim();
+        const searchKeyword = (document.getElementById('search-roster-siswa')?.value || '').trim().toLowerCase();
+
+        let filtered = stateStudents;
+
+        if (filterKelas && filterKelas !== 'semua') {
+            filtered = filtered.filter(s => String(s.kelas).trim() === filterKelas);
+        }
+
+        if (searchKeyword) {
+            filtered = filtered.filter(s => 
+                String(s.nama || '').toLowerCase().includes(searchKeyword) ||
+                String(s.nisn || '').toLowerCase().includes(searchKeyword) ||
+                String(s.id || '').toLowerCase().includes(searchKeyword)
+            );
+        }
+
+        if (badge) {
+            badge.textContent = `${filtered.length} Siswa Terdaftar (Total: ${stateStudents.length})`;
+        }
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-slate-500 font-bold uppercase tracking-wider">Tidak ada data siswa yang cocok dengan filter.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = filtered.map((s, idx) => {
+            const isPerempuan = String(s.jenis_kelamin || '').toLowerCase().startsWith('p');
+            const jkBadge = isPerempuan
+                ? `<span class="bg-pink-100 text-pink-800 border border-pink-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">P</span>`
+                : `<span class="bg-blue-100 text-blue-800 border border-blue-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">L</span>`;
+
+            return `
+                <tr class="hover:bg-slate-50 transition border-b-2 border-black">
+                    <td class="px-3 py-3 text-center border-r-2 border-black text-slate-700">${idx + 1}</td>
+                    <td class="px-3 py-3 border-r-2 border-black font-mono font-bold text-xs text-indigo-950">${escapeHtml(s.nisn || s.id)}</td>
+                    <td class="px-4 py-3 border-r-2 border-black font-black text-black uppercase">${escapeHtml(s.nama)}</td>
+                    <td class="px-3 py-3 text-center border-r-2 border-black">${jkBadge}</td>
+                    <td class="px-3 py-3 text-center border-r-2 border-black font-black text-xs text-purple-900 bg-purple-50/50">${escapeHtml(s.kelas)}</td>
+                    <td class="px-3 py-3 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="openEditStudentModal('${escapeHtml(s.id)}')" title="Ubah Data Siswa" class="px-2.5 py-1 bg-yellow-300 hover:bg-yellow-400 text-black border border-black rounded-lg text-xs font-black uppercase active:translate-y-0.5 transition cursor-pointer">
+                                ✏️
+                            </button>
+                            <button onclick="deleteStudentAction('${escapeHtml(s.id)}', '${escapeHtml(s.nama)}')" title="Hapus Siswa" class="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg text-xs font-black uppercase active:translate-y-0.5 transition cursor-pointer">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    };
+
+    window.openAddStudentModal = () => {
+        document.getElementById('student-input-id').value = '';
+        document.getElementById('student-input-nisn').value = '';
+        document.getElementById('student-input-nama').value = '';
+        document.getElementById('student-input-jk').value = 'Laki-Laki';
+        document.getElementById('student-modal-title').textContent = 'Tambah Siswa Baru';
+
+        const kelasSelect = document.getElementById('student-input-kelas');
+        if (kelasSelect) {
+            populateTargetClassSelect(kelasSelect, stateKelas[0] || 'VII.1');
+        }
+        document.getElementById('student-modal').classList.remove('hidden');
+    };
+
+    window.openEditStudentModal = (studentId) => {
+        const student = stateStudents.find(s => String(s.id) === String(studentId));
+        if (!student) return;
+
+        document.getElementById('student-input-id').value = student.id;
+        document.getElementById('student-input-nisn').value = student.nisn || '';
+        document.getElementById('student-input-nama').value = student.nama || '';
+        document.getElementById('student-input-jk').value = student.jenis_kelamin || 'Laki-Laki';
+        document.getElementById('student-modal-title').textContent = 'Edit Data Siswa';
+
+        const kelasSelect = document.getElementById('student-input-kelas');
+        if (kelasSelect) {
+            populateTargetClassSelect(kelasSelect, student.kelas || 'VII.1');
+        }
+        document.getElementById('student-modal').classList.remove('hidden');
+    };
+
+    window.closeStudentModal = () => {
+        document.getElementById('student-modal').classList.add('hidden');
+    };
+
+    window.handleSaveStudent = async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('student-input-id').value.trim();
+        const nisn = document.getElementById('student-input-nisn').value.trim();
+        const nama = document.getElementById('student-input-nama').value.trim();
+        const kelas = document.getElementById('student-input-kelas').value.trim();
+        const jk = document.getElementById('student-input-jk').value;
+
+        if (!nama || !kelas) {
+            showCustomModal("Nama siswa dan kelas wajib diisi!");
+            return;
+        }
+
+        const btn = document.getElementById('btn-save-student');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = "Menyimpan...";
+        }
+
+        try {
+            if (id) {
+                await updateStudentInDB(id, { nisn, nama, kelas, jenis_kelamin: jk });
+                showCustomModal(`Data siswa "${nama}" berhasil diperbarui!`);
+            } else {
+                await addStudentToDB({ nisn, nama, kelas, jenis_kelamin: jk });
+                showCustomModal(`Siswa "${nama}" berhasil ditambahkan ke kelas ${kelas}!`);
+            }
+            closeStudentModal();
+            await loadStudentsRoster();
+        } catch (err) {
+            showCustomModal("Gagal menyimpan data siswa: " + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "Simpan Data Siswa";
+            }
+        }
+    };
+
+    window.deleteStudentAction = async (studentId, studentName) => {
+        const confirmed = await showCustomModal(
+            `Apakah Anda yakin ingin menghapus siswa "${studentName}" dari master data sekolah?\n\nPerhatian: Siswa yang dihapus tidak akan dapat login ke ujian CBT.`,
+            'confirm',
+            'Konfirmasi Hapus Siswa',
+            '🗑️'
+        );
+        if (!confirmed) return;
+
+        try {
+            await deleteStudentFromDB(studentId);
+            showCustomModal(`Siswa "${studentName}" berhasil dihapus.`);
+            await loadStudentsRoster();
+        } catch (err) {
+            showCustomModal("Gagal menghapus siswa: " + err.message);
+        }
+    };
+
+    window.syncDefaultRosterBtn = async () => {
+        const btn = document.getElementById('btn-sync-roster-csv');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = "Menyinkronkan...";
+        }
+        try {
+            const res = await syncRosterToDB(initialStudents);
+            showCustomModal(`Berhasil menyinkronkan ${res.count || initialStudents.length} siswa resmi SMPN 58 Palembang ke database Supabase!`);
+            await loadStudentsRoster();
+        } catch (err) {
+            showCustomModal("Gagal sinkronisasi roster: " + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "🔄 Sinkronkan Roster CSV";
+            }
+        }
+    };
+
+    window.handleRosterCsvFileUpload = async (input) => {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const text = e.target.result;
+            const parsed = parseRosterCsvText(text);
+            if (parsed.length === 0) {
+                showCustomModal("Format berkas CSV tidak valid atau data kosong. Pastikan baris header memuat kolom Nama, Kelas, dan NISN.");
+                input.value = '';
+                return;
+            }
+            const confirmed = await showCustomModal(
+                `Ditemukan ${parsed.length} data siswa dari file "${file.name}".\n\nApakah Anda ingin mengimpor dan menyinkronkan data ini ke database Supabase?`,
+                'confirm',
+                'Impor Data Roster CSV',
+                '📥'
+            );
+            if (confirmed) {
+                const res = await syncRosterToDB(parsed);
+                showCustomModal(`Berhasil mengimpor ${res.count || parsed.length} data siswa!`);
+                await loadStudentsRoster();
+            }
+            input.value = '';
+        };
+        reader.readAsText(file);
     };
 
 });

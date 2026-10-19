@@ -706,15 +706,22 @@
                     <p id="exam-token-quiz-petunjuk" class="text-xs text-slate-600 font-medium leading-relaxed"></p>
                 </div>
 
-                <!-- Konfirmasi Identitas Siswa -->
+                <!-- Konfirmasi Identitas Siswa (Terkunci Sesuai Roster Resmi) -->
                 <div class="space-y-3">
                     <div>
-                        <label class="block text-xs font-black uppercase text-black mb-1">Nama Lengkap Siswa</label>
-                        <input type="text" id="exam-token-student-name" placeholder="Ketik nama lengkap Anda..." class="w-full h-11 px-3.5 border-2 border-black rounded-xl font-bold text-xs md:text-sm bg-slate-50 focus:bg-white outline-none">
+                        <label class="block text-xs font-black uppercase text-black mb-1">1. Pilih Kelas Anda</label>
+                        <select id="exam-token-kelas-select" onchange="onExamTokenKelasChange(this.value)" class="w-full h-11 px-3.5 border-2 border-black rounded-xl font-black text-xs md:text-sm bg-slate-50 focus:bg-white outline-none cursor-pointer">
+                            <option value="">-- Pilih Kelas --</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-black uppercase text-black mb-1">Kelas Siswa</label>
-                        <input type="text" id="exam-token-student-kelas" readonly class="w-full h-11 px-3.5 border-2 border-black rounded-xl font-black text-xs md:text-sm bg-slate-100 text-slate-800 outline-none cursor-not-allowed">
+                        <label class="block text-xs font-black uppercase text-black mb-1">2. Pilih Nama Siswa (Sesuai Roster Resmi)</label>
+                        <select id="exam-token-student-select" onchange="onExamTokenStudentSelectChange(this)" class="w-full h-11 px-3.5 border-2 border-black rounded-xl font-bold text-xs md:text-sm bg-slate-50 focus:bg-white outline-none cursor-pointer" disabled>
+                            <option value="">Pilih kelas terlebih dahulu</option>
+                        </select>
+                        <input type="hidden" id="exam-token-student-id">
+                        <input type="hidden" id="exam-token-student-name">
+                        <input type="hidden" id="exam-token-student-kelas">
                     </div>
 
                     <!-- Input Token -->

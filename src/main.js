@@ -1,5 +1,7 @@
 import { supabase } from './supabase.js';
+import { fetchStudentsFromDB, getCachedStudents } from './rosterData.js';
 
+let rosterStudents = [];
 let allAssignments = [];
 let allMaterials = [];
 let allQuizzes = [];
@@ -1944,6 +1946,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 await supabase.from('quiz_submissions').insert([{
                     quiz_id: exam.quizData.id,
+                    student_id: exam.studentId || '',
                     nama_siswa: exam.studentName,
                     kelas: exam.quizData.kelas,
                     ...payload
@@ -2434,6 +2437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 const { error: insErr } = await supabase.from('quiz_submissions').insert([{
                     quiz_id: exam.quizData.id,
+                    student_id: exam.studentId || '',
                     nama_siswa: exam.studentName,
                     kelas: exam.quizData.kelas,
                     ...subPayload
@@ -2481,15 +2485,70 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let pendingExamQuiz = null;
 
-    window.openExamTokenModal = async (quizId) => {
-        const studentName = globalNameInput?.value?.trim() || '';
-        const studentKelas = globalKelasSelect?.value || '';
+    window.onExamTokenKelasChange = (selectedKelas) => {
+        const studentSelect = document.getElementById('exam-token-student-select');
+        const idInput = document.getElementById('exam-token-student-id');
+        const nameInput = document.getElementById('exam-token-student-name');
+        const kelasInput = document.getElementById('exam-token-student-kelas');
+        if (!studentSelect) return;
 
-        if (!studentName) {
-            await showCustomModal("Silakan masukkan nama lengkap siswa pada kolom identitas siswa di atas sebelum mengikuti ujian.", 'alert', 'Nama Siswa Diperlukan', '⚠️');
+        if (idInput) idInput.value = '';
+        if (nameInput) nameInput.value = '';
+        if (kelasInput) kelasInput.value = selectedKelas || '';
+
+        if (!selectedKelas) {
+            studentSelect.disabled = true;
+            studentSelect.innerHTML = '<option value="">Pilih kelas terlebih dahulu</option>';
             return;
         }
 
+        const filtered = rosterStudents.filter(s => String(s.kelas).trim() === String(selectedKelas).trim());
+        if (filtered.length === 0) {
+            studentSelect.disabled = true;
+            studentSelect.innerHTML = '<option value="">Belum ada siswa terdaftar di kelas ini</option>';
+            return;
+        }
+
+        studentSelect.disabled = false;
+        studentSelect.innerHTML = '<option value="">-- Pilih Nama Anda --</option>' +
+            filtered.map(s => {
+                const nisnText = s.nisn ? ` (NISN: ${s.nisn})` : '';
+                return `<option value="${escapeHtml(s.id)}" data-name="${escapeHtml(s.nama)}" data-nisn="${escapeHtml(s.nisn || '')}" data-kelas="${escapeHtml(s.kelas)}">${escapeHtml(s.nama)}${nisnText}</option>`;
+            }).join('');
+
+        const savedName = (globalNameInput?.value || '').trim().toLowerCase();
+        if (savedName) {
+            const matched = filtered.find(s => s.nama.toLowerCase() === savedName);
+            if (matched) {
+                studentSelect.value = matched.id;
+                window.onExamTokenStudentSelectChange(studentSelect);
+            }
+        }
+    };
+
+    window.onExamTokenStudentSelectChange = (sel) => {
+        const idInput = document.getElementById('exam-token-student-id');
+        const nameInput = document.getElementById('exam-token-student-name');
+        const kelasInput = document.getElementById('exam-token-student-kelas');
+        if (!sel || !sel.value) {
+            if (idInput) idInput.value = '';
+            if (nameInput) nameInput.value = '';
+            return;
+        }
+        const opt = sel.options[sel.selectedIndex];
+        const studentId = sel.value;
+        const studentName = opt.getAttribute('data-name') || opt.text;
+        const studentKelas = opt.getAttribute('data-kelas') || document.getElementById('exam-token-kelas-select')?.value;
+
+        if (idInput) idInput.value = studentId;
+        if (nameInput) nameInput.value = studentName;
+        if (kelasInput) kelasInput.value = studentKelas;
+
+        if (globalNameInput) globalNameInput.value = studentName;
+        if (globalKelasSelect && studentKelas) globalKelasSelect.value = studentKelas;
+    };
+
+    window.openExamTokenModal = async (quizId) => {
         let quiz = allQuizzes.find(q => String(q.id) === String(quizId));
         if (!quiz || !quiz.quiz_questions) {
             try {
@@ -2509,8 +2568,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('exam-token-duration-badge').textContent = `⏱️ ${quiz.durasi_menit || 45} Menit`;
         document.getElementById('exam-token-quiz-title').textContent = quiz.judul_kuis;
         document.getElementById('exam-token-quiz-petunjuk').textContent = cleanPetunjuk || 'Kerjakan dengan teliti, jujur, dan mandiri.';
-        document.getElementById('exam-token-student-name').value = studentName;
-        document.getElementById('exam-token-student-kelas').value = studentKelas || quiz.kelas;
+
+        if (!rosterStudents || rosterStudents.length === 0) {
+            rosterStudents = await fetchStudentsFromDB();
+        }
+
+        const kelasSelect = document.getElementById('exam-token-kelas-select');
+        if (kelasSelect) {
+            const uniqueClasses = [...new Set(rosterStudents.map(s => String(s.kelas).trim()))].sort();
+            kelasSelect.innerHTML = '<option value="">-- Pilih Kelas --</option>' +
+                uniqueClasses.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+
+            const targetKelas = (quiz.kelas && quiz.kelas !== 'Semua Kelas') ? quiz.kelas : (globalKelasSelect?.value || '');
+            if (targetKelas && uniqueClasses.includes(targetKelas)) {
+                kelasSelect.value = targetKelas;
+            } else if (uniqueClasses.length > 0) {
+                kelasSelect.value = uniqueClasses[0];
+            }
+            window.onExamTokenKelasChange(kelasSelect.value);
+        }
 
         const tokenInput = document.getElementById('exam-token-input');
         if (tokenInput) tokenInput.value = '';
@@ -2540,15 +2616,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.verifyAndStartExam = async () => {
         if (!pendingExamQuiz) return;
         const quiz = pendingExamQuiz;
-        const studentNameInput = document.getElementById('exam-token-student-name');
-        const studentName = (studentNameInput?.value || '').trim();
 
-        if (!studentName) {
-            await showCustomModal("Nama lengkap siswa wajib diisi untuk verifikasi lembar ujian!", 'alert', 'Nama Siswa Diperlukan', '⚠️');
+        const studentId = document.getElementById('exam-token-student-id')?.value;
+        const studentName = document.getElementById('exam-token-student-name')?.value;
+        const studentKelas = document.getElementById('exam-token-student-kelas')?.value;
+
+        if (!studentId || !studentName) {
+            await showCustomModal("Silakan pilih kelas dan nama lengkap Anda dari daftar resmi peserta didik!", 'alert', 'Pilih Nama Siswa', '⚠️');
             return;
         }
-
-        if (globalNameInput) globalNameInput.value = studentName;
 
         const config = quiz.parsedConfig || {};
         const expectedToken = (config.token || quiz.token || '').toString().trim().toUpperCase();
@@ -2576,12 +2652,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Database level verification: cek sesi siswa di Supabase
             let existingSub = null;
             try {
-                const { data: dbSub } = await supabase
+                let query = supabase
                     .from('quiz_submissions')
                     .select('*')
-                    .eq('quiz_id', quiz.id)
-                    .ilike('nama_siswa', studentName.trim())
-                    .maybeSingle();
+                    .eq('quiz_id', quiz.id);
+
+                if (studentId) {
+                    query = query.or(`student_id.eq.${studentId},and(nama_siswa.ilike.${studentName.trim()},kelas.eq.${studentKelas})`);
+                } else {
+                    query = query.ilike('nama_siswa', studentName.trim()).eq('kelas', studentKelas);
+                }
+
+                const { data: dbSub } = await query.maybeSingle();
                 if (dbSub) existingSub = dbSub;
             } catch (_) {}
 
@@ -2600,13 +2682,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
-                if (existingSub.status_koreksi === 'selesai') {
+                if (existingSub.status_koreksi === 'selesai' || existingSub.status_koreksi === 'perlu_dinilai') {
                     if (btn) { btn.disabled = false; btn.innerText = "Mulai Kerjakan Ujian ✍️"; }
                     closeExamTokenModal();
                     await showCustomModal(
-                        `Akses Dibatasi: Anda (${studentName}) sudah pernah menyelesaikan ujian ini dengan skor: ${existingSub.total_nilai}/100.\n\nSesuai ketentuan, setiap siswa hanya berhak mengakses dan mengerjakan ujian ini 1 kali.`,
+                        `Akses Dibatasi: Anda (${studentName}) sudah pernah menyelesaikan ujian ini dengan skor: ${existingSub.total_nilai}/100.\n\nSesuai ketentuan CBT, setiap siswa hanya berhak mengakses dan mengerjakan ujian ini 1 kali. Nilai Anda telah tercatat permanen di database sekolah.`,
                         'alert',
-                        'Ujian Terkunci (1x Pengerjaan)',
+                        'Ujian Selesai (1x Pengerjaan)',
                         '🔒'
                     );
                     return;
@@ -2614,11 +2696,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 submissionId = existingSub.id;
             } else {
-                // Buat sesi live baru di Supabase quiz_submissions
-                const studentKelas = globalKelasSelect?.value || quiz.kelas;
+                // Buat sesi live baru di Supabase quiz_submissions dengan student_id
                 try {
                     const { data: newSub, error: subErr } = await supabase.from('quiz_submissions').insert([{
                         quiz_id: quiz.id,
+                        student_id: studentId,
                         nama_siswa: studentName,
                         kelas: studentKelas,
                         jawaban_siswa: {
@@ -2642,7 +2724,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             closeExamTokenModal();
-            await launchCbtExam(quiz, studentName, submissionId);
+            await launchCbtExam(quiz, studentName, submissionId, studentId);
 
         } catch (e) {
             await showCustomModal("Gagal memulai ujian: " + e.message, 'alert', 'Gagal', '❌');
@@ -2654,7 +2736,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    window.launchCbtExam = async (quizData, studentName, submissionId = null) => {
+    window.launchCbtExam = async (quizData, studentName, submissionId = null, studentId = '') => {
         const { config } = parseQuizConfig(quizData.petunjuk || '', quizData);
         const questions = quizData.quiz_questions || [];
         questions.sort((a, b) => (a.nomor || 0) - (b.nomor || 0));
@@ -2668,6 +2750,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             quizData,
             studentName,
             submissionId,
+            studentId,
             questions,
             currentIndex: 0,
             answers: {},

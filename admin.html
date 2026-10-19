@@ -141,7 +141,7 @@
             </div>
 
             <!-- LMS Navigation Tabs (Neobrutalism Style) -->
-            <div id="lms-tabs-bar" class="grid grid-cols-2 sm:grid-cols-5 gap-2 md:gap-3">
+            <div id="lms-tabs-bar" class="grid grid-cols-2 sm:grid-cols-6 gap-2 md:gap-3">
                 <button onclick="switchTab('tugas')" id="tab-btn-tugas" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                     📋 Koreksi Tugas
                 </button>
@@ -154,10 +154,13 @@
                 <button onclick="switchTab('kuis')" id="tab-btn-kuis" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100">
                     📝 Bank Soal & Ujian
                 </button>
+                <button onclick="switchTab('siswa')" id="tab-btn-siswa" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100">
+                    🎓 Data Siswa
+                </button>
                 <button onclick="switchTab('setting')" id="tab-btn-setting" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100">
                     ⚙️ AI & Model
                 </button>
-                <button onclick="switchTab('approval')" id="tab-btn-approval" class="lms-tab-btn col-span-2 sm:col-span-5 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all hidden items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300">
+                <button onclick="switchTab('approval')" id="tab-btn-approval" class="lms-tab-btn col-span-2 sm:col-span-6 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all hidden items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300">
                     👥 Persetujuan Guru (Superadmin)
                 </button>
             </div>
@@ -307,8 +310,71 @@
             </div>
 
             <!-- ======================================================= -->
+            <!-- TAB 5: MASTER DATA SISWA & ROSTER UJIAN (MASTER SISWA)  -->
             <!-- ======================================================= -->
-            <!-- TAB 5: PENGATURAN KELAS, MAPEL, KUNCI & MODEL AI        -->
+            <div id="tab-content-siswa" class="space-y-6 hidden">
+                <div class="bg-white border-[3px] border-black rounded-[32px] md:rounded-[40px] p-5 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="text-2xl font-black text-black uppercase tracking-tight">Master Data Siswa & Roster Ujian</h3>
+                                <span id="student-roster-count-badge" class="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2 py-0.5 rounded border border-emerald-400">301 Siswa Terdaftar</span>
+                            </div>
+                            <p class="text-slate-500 font-bold text-xs mt-1">Daftar resmi peserta didik. Siswa hanya dapat login dan mengerjakan ujian jika terdaftar pada roster ini.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <button onclick="openAddStudentModal()" class="bg-cyan-300 hover:bg-cyan-400 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer">
+                                ➕ Tambah Siswa
+                            </button>
+                            <button onclick="syncDefaultRosterBtn()" id="btn-sync-roster-csv" class="bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer">
+                                🔄 Sinkronkan Roster CSV
+                            </button>
+                            <button onclick="document.getElementById('input-roster-csv-file').click()" class="bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 cursor-pointer">
+                                📁 Impor File CSV
+                            </button>
+                            <input type="file" id="input-roster-csv-file" accept=".csv" class="hidden" onchange="handleRosterCsvFileUpload(this)">
+                        </div>
+                    </div>
+
+                    <!-- Filter & Pencarian Siswa -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <label class="block text-[11px] font-black uppercase text-slate-700 mb-1">Filter Kelas</label>
+                            <select id="filter-roster-kelas" onchange="renderStudentsRosterTable()" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                                <option value="semua">Semua Kelas</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-[11px] font-black uppercase text-slate-700 mb-1">Cari Nama / NISN</label>
+                            <input type="text" id="search-roster-siswa" oninput="renderStudentsRosterTable()" placeholder="Ketik nama siswa atau NISN..." class="w-full h-11 px-4 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Tabel Siswa -->
+                    <div class="overflow-x-auto border-2 border-black rounded-2xl">
+                        <table class="w-full text-left border-collapse bg-white">
+                            <thead>
+                                <tr class="bg-black text-white text-xs uppercase font-black tracking-wider">
+                                    <th class="w-12 px-3 py-3 text-center border-r border-slate-700">No</th>
+                                    <th class="w-36 px-3 py-3 border-r border-slate-700">NISN / ID</th>
+                                    <th class="px-4 py-3 border-r border-slate-700">Nama Lengkap Siswa</th>
+                                    <th class="w-28 px-3 py-3 text-center border-r border-slate-700">L/P</th>
+                                    <th class="w-24 px-3 py-3 text-center border-r border-slate-700">Kelas</th>
+                                    <th class="w-28 px-3 py-3 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="student-roster-tbody" class="text-xs font-bold divide-y-2 divide-black">
+                                <tr>
+                                    <td colspan="6" class="px-6 py-8 text-center text-slate-500 font-bold uppercase tracking-widest animate-pulse">Memuat data siswa...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================= -->
+            <!-- TAB 6: PENGATURAN KELAS, MAPEL, KUNCI & MODEL AI        -->
             <!-- ======================================================= -->
             <div id="tab-content-setting" class="space-y-6 hidden">
                 
@@ -1462,6 +1528,59 @@
                 </button>
             </div>
 
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- MODAL: TAMBAH / EDIT DATA SISWA                         -->
+    <!-- ======================================================= -->
+    <div id="student-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-md w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden my-auto">
+            <div class="px-6 py-4 border-b-2 border-black bg-cyan-300 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 bg-black text-white rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">🎓</span>
+                    <div>
+                        <h3 id="student-modal-title" class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Tambah Siswa Baru</h3>
+                        <p id="student-modal-subtitle" class="text-[11px] font-bold text-black/80">Masukkan NISN, nama, dan kelas siswa</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeStudentModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg cursor-pointer">
+                    &times;
+                </button>
+            </div>
+            <form onsubmit="handleSaveStudent(event)" class="p-5 md:p-6 space-y-3.5">
+                <input type="hidden" id="student-input-id">
+                <div>
+                    <label class="block text-xs font-black uppercase text-black mb-1">NISN / ID Siswa</label>
+                    <input type="text" id="student-input-nisn" placeholder="Contoh: 0124380120" class="w-full h-11 px-3 border-2 border-black rounded-xl font-mono font-bold text-xs bg-slate-50 focus:bg-white outline-none">
+                    <p class="text-[10px] text-slate-500 font-semibold mt-0.5">NISN digunakan sebagai identifikasi unik anti-duplikasi saat ujian.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-black uppercase text-black mb-1">Nama Lengkap Siswa</label>
+                    <input type="text" id="student-input-nama" required placeholder="Contoh: AHMAD FAUZI" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white outline-none uppercase">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Kelas Siswa</label>
+                        <select id="student-input-kelas" required class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Jenis Kelamin</label>
+                        <select id="student-input-jk" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="Laki-Laki">Laki-Laki</option>
+                            <option value="Perempuan">Perempuan</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pt-2 flex items-center justify-end gap-2 border-t border-slate-200">
+                    <button type="button" onclick="closeStudentModal()" class="px-4 h-11 bg-slate-100 hover:bg-slate-200 border-2 border-black rounded-xl font-black text-xs uppercase cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="submit" id="btn-save-student" class="flex-1 h-11 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer">
+                        Simpan Data Siswa
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
