@@ -295,6 +295,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // Helper Modal Loading Notifikasi AI Beranimasi (Neobrutalisme)
+    let aiLoadingInterval = null;
+
+    window.showAiLoadingModal = (options = {}) => {
+        const modal = document.getElementById('ai-loading-modal');
+        const badgeEl = document.getElementById('ai-loading-badge');
+        const titleEl = document.getElementById('ai-loading-title');
+        const stepEl = document.getElementById('ai-loading-step');
+        if (!modal) return;
+
+        if (badgeEl) badgeEl.textContent = options.badge || 'ASISTEN AI SMPN 58';
+        if (titleEl) titleEl.textContent = options.title || 'Sedang Memproses...';
+
+        const steps = options.steps && options.steps.length > 0 ? options.steps : [
+            'Menghubungkan ke Google Gemini AI...',
+            'Menganalisis materi pokok dan capaian pembelajaran...',
+            'Merumuskan butir-butir instrumen berkualitas...',
+            'Menyusun kunci jawaban dan panduan evaluasi...',
+            'Memvalidasi format dan menyimpan ke sistem...'
+        ];
+
+        let currentStepIdx = 0;
+        if (stepEl) stepEl.textContent = steps[0];
+
+        if (aiLoadingInterval) clearInterval(aiLoadingInterval);
+        aiLoadingInterval = setInterval(() => {
+            currentStepIdx = (currentStepIdx + 1) % steps.length;
+            if (stepEl) {
+                stepEl.textContent = steps[currentStepIdx];
+            }
+        }, 2200);
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    };
+
+    window.hideAiLoadingModal = () => {
+        if (aiLoadingInterval) {
+            clearInterval(aiLoadingInterval);
+            aiLoadingInterval = null;
+        }
+        const modal = document.getElementById('ai-loading-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    };
+
     // Tab Navigation
     window.switchTab = (tabName) => {
         const tabs = ['tugas', 'penugasan', 'materi', 'kuis', 'siswa', 'setting', 'approval'];
@@ -1028,6 +1076,18 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = true;
         btn.innerText = "Menganalisis Jawaban...";
 
+        showAiLoadingModal({
+            badge: 'KOREKSI TUGAS AI',
+            title: 'Mengevaluasi Jawaban Siswa...',
+            steps: [
+                'Menghubungkan ke Google Gemini AI...',
+                'Membaca teks/berkas pengerjaan siswa...',
+                'Mengevaluasi kesesuaian dengan rubrik tugas...',
+                'Menghitung estimasi skor capaian...',
+                'Menyusun masukan evaluasi dan catatan guru...'
+            ]
+        });
+
         try {
             let isForm = false;
             let formItems = [];
@@ -1112,6 +1172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             showCustomModal("Gagal menjalankan AI Koreksi: " + e.message);
         } finally {
+            hideAiLoadingModal();
             btn.disabled = false;
             btn.innerText = "Koreksi Otomatis AI";
         }
@@ -2295,6 +2356,18 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = true;
         btn.innerText = "Merumuskan Butir Soal Form...";
 
+        showAiLoadingModal({
+            badge: 'GENERATOR TUGAS AI',
+            title: 'Menyusun Formulir Tugas Interaktif...',
+            steps: [
+                'Menghubungkan ke Google Gemini AI...',
+                `Menganalisis capaian topik "${topik}" untuk kelas ${kelas}...`,
+                'Merumuskan butir-butir pertanyaan tugas siswa...',
+                'Menyusun rubrik penilaian dan panduan guru...',
+                'Menyiapkan form builder tugas online...'
+            ]
+        });
+
         try {
             const res = await aiGenerateFormQuestions({
                 mapel,
@@ -2322,6 +2395,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             showCustomModal("Gagal generate soal form AI: " + e.message);
         } finally {
+            hideAiLoadingModal();
             btn.disabled = false;
             btn.innerText = "BUATKAN SOAL KE FORM BUILDER";
         }
@@ -2492,6 +2566,18 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = true;
         btn.innerText = "Menyusun Modul Ajar Komprehensif...";
 
+        showAiLoadingModal({
+            badge: 'GENERATOR MODUL AJAR AI',
+            title: 'Menyusun Modul Ajar Komprehensif...',
+            steps: [
+                'Menghubungkan ke Google Gemini AI...',
+                `Menganalisis materi pokok "${topik}" untuk kelas ${kelas}...`,
+                'Menyusun capaian pembelajaran & tujuan belajar...',
+                'Menyusun uraian konsep, studi kasus kontekstual & glosarium...',
+                'Memformat teks modul ajar ke editor...'
+            ]
+        });
+
         try {
             const generatedText = await aiGenerateMaterial({
                 mapel,
@@ -2513,6 +2599,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             showCustomModal("Gagal generate materi: " + e.message);
         } finally {
+            hideAiLoadingModal();
             btn.disabled = false;
             btn.innerText = "GENERATE MODUL AJAR SEKARANG";
         }
@@ -2727,6 +2814,18 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = true;
         btn.innerText = "Menyusun Bank Soal dengan AI...";
 
+        showAiLoadingModal({
+            badge: 'GENERATOR BANK SOAL AI',
+            title: 'Menyusun Naskah Bank Soal & Ujian...',
+            steps: [
+                'Menghubungkan ke Google Gemini AI...',
+                `Menganalisis materi pokok "${topik}" untuk kelas ${kelas}...`,
+                'Merumuskan butir soal AKM, PG, dan Esai berkualitas...',
+                'Menyusun stimulus kasus kontekstual dan kunci jawaban...',
+                'Memvalidasi struktur instrumen soal ke database...'
+            ]
+        });
+
         try {
             const result = await aiGenerateQuestions({
                 mapel,
@@ -2780,7 +2879,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 quizData = qd2;
             }
 
-            if (quizError) throw quizError;
+            if (!quizData || !quizData.id) {
+                throw new Error("Gagal menyimpan data kuis ke database.");
+            }
 
             const questionsPayload = questions.map((q, idx) => {
                 let rubrik = q.rubrik_esai || '';
@@ -2812,6 +2913,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             showCustomModal("Gagal generate bank soal AI: " + e.message);
         } finally {
+            hideAiLoadingModal();
             btn.disabled = false;
             btn.innerText = "GENERATE BANK SOAL SEKARANG";
         }
@@ -3552,7 +3654,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     quizData = qd2;
                 }
 
-                if (quizError) throw quizError;
+                if (!quizData || !quizData.id) {
+                    throw new Error("Gagal menyimpan data kuis ke database.");
+                }
 
                 const questionsPayload = manualQuizQuestions.map((q, idx) => {
                     let rubrik = q.rubrik_esai ? q.rubrik_esai.trim() : '';
@@ -4203,8 +4307,21 @@ document.addEventListener('DOMContentLoaded', () => {
     window.runAiGradeAllEssays = async () => {
         if (!activeReviewSubmission || !activeQuizForResults) return;
         const btn = document.getElementById('btn-ai-grade-all-essays');
-        btn.disabled = true;
-        btn.innerText = "Menganalisis Jawaban...";
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Menganalisis Jawaban...";
+        }
+
+        showAiLoadingModal({
+            badge: 'KOREKSI ESAI UJIAN AI',
+            title: 'Mengevaluasi Lembar Jawaban Ujian...',
+            steps: [
+                'Membaca teks lembar jawaban siswa...',
+                'Mencocokkan rubrik penilaian dan indikator kunci...',
+                'Mengalkulasi estimasi perolehan skor objektif...',
+                'Menyusun feedback konstruktif untuk siswa...'
+            ]
+        });
 
         const questions = activeQuizForResults.quiz_questions || [];
         const answers = activeReviewSubmission.jawaban_siswa || {};
@@ -4224,9 +4341,13 @@ document.addEventListener('DOMContentLoaded', () => {
             showCustomModal("Seluruh butir soal non-PG berhasil dianalisis oleh AI! Anda dapat menyesuaikan skor sebelum disimpan.");
         } catch (e) {
             showCustomModal("Gagal koreksi AI: " + e.message);
+        } finally {
+            hideAiLoadingModal();
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "Koreksi Semua Jawaban dengan AI";
+            }
         }
-        btn.disabled = false;
-        btn.innerText = "Koreksi Semua Jawaban dengan AI";
     };
 
     window.saveExamReviewGrades = async () => {
