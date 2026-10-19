@@ -808,6 +808,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.openAiAssignmentModal = () => {
+        const kelasSelect = document.getElementById('ai-assign-kelas');
+        if (kelasSelect) {
+            kelasSelect.innerHTML = '';
+            stateKelas.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k; opt.textContent = k;
+                kelasSelect.appendChild(opt);
+            });
+        }
         document.getElementById('ai-assign-topik').value = '';
         document.getElementById('ai-assignment-modal').classList.remove('hidden');
     };
@@ -818,8 +827,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.runAiGenerateAssignment = async () => {
         const topik = document.getElementById('ai-assign-topik').value.trim();
+        const kelas = document.getElementById('ai-assign-kelas').value || stateKelas[0] || 'VII.1';
+        const jenisTugas = document.getElementById('ai-assign-jenis').value;
+        const tingkatKognitif = document.getElementById('ai-assign-kognitif').value;
+
         if (!topik) {
-            showCustomModal("Masukkan materi penugasan terlebih dahulu!");
+            showCustomModal("Masukkan materi pokok / capaian pembelajaran terlebih dahulu!");
             return;
         }
 
@@ -828,14 +841,17 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerText = "Merumuskan Tugas & Rubrik...";
 
         try {
-            const res = await aiGenerateAssignment(
-                currentTeacher?.mapel || 'Informatika',
+            const res = await aiGenerateAssignment({
+                mapel: currentTeacher?.mapel || 'Informatika',
                 topik,
-                'SMP Kelas 7-9'
-            );
+                kelas,
+                jenisTugas,
+                tingkatKognitif
+            });
 
             closeAiAssignmentModal();
             openAssignmentModal();
+            if (document.getElementById('assign-kelas')) document.getElementById('assign-kelas').value = kelas;
             if (res.judul) document.getElementById('assign-judul').value = res.judul;
             if (res.deskripsi) document.getElementById('assign-deskripsi').value = res.deskripsi;
             if (res.rubrik) document.getElementById('assign-rubrik').value = res.rubrik;
@@ -843,7 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showCustomModal("Gagal generate tugas AI: " + e.message);
         }
         btn.disabled = false;
-        btn.innerText = "🚀 GENERATE TUGAS & RUBRIK SEKARANG";
+        btn.innerText = "🚀 GENERATE TUGAS & RUBRIK";
     };
 
     // ==========================================
@@ -1042,6 +1058,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.openAiQuizModal = () => {
+        const kelasSelect = document.getElementById('ai-quiz-kelas');
+        if (kelasSelect) {
+            kelasSelect.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
+            stateKelas.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k; opt.textContent = `Kelas ${k}`;
+                kelasSelect.appendChild(opt);
+            });
+        }
+        const mapelSelect = document.getElementById('ai-quiz-mapel');
+        if (mapelSelect && currentTeacher?.mapel) {
+            mapelSelect.value = currentTeacher.mapel;
+        }
         document.getElementById('ai-quiz-judul').value = '';
         document.getElementById('ai-quiz-topik').value = '';
         document.getElementById('ai-quiz-modal').classList.remove('hidden');
@@ -1052,13 +1081,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.runAiGenerateQuiz = async () => {
+        const mapel = document.getElementById('ai-quiz-mapel').value;
+        const kelas = document.getElementById('ai-quiz-kelas').value || stateKelas[0] || 'Semua Kelas';
         const judul = document.getElementById('ai-quiz-judul').value.trim();
         const topik = document.getElementById('ai-quiz-topik').value.trim();
+        const taksonomi = document.getElementById('ai-quiz-taksonomi').value;
+        const kesulitan = document.getElementById('ai-quiz-kesulitan').value;
+        const stimulus = document.getElementById('ai-quiz-stimulus').value;
         const countPG = parseInt(document.getElementById('ai-quiz-count-pg').value, 10) || 5;
-        const countEsai = parseInt(document.getElementById('ai-quiz-count-esai').value, 10) || 2;
+        const countEsai = parseInt(document.getElementById('ai-quiz-count-esai').value, 10) || 0;
+        const durasi = parseInt(document.getElementById('ai-quiz-durasi').value, 10) || 45;
 
         if (!judul || !topik) {
-            showCustomModal("Judul dan topik ujian wajib diisi!");
+            showCustomModal("Judul ujian dan materi pokok wajib diisi!");
             return;
         }
 
@@ -1067,25 +1102,31 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerText = "Menyusun Bank Soal dengan AI...";
 
         try {
-            const questions = await aiGenerateQuestions(
-                currentTeacher?.mapel || 'Informatika',
+            const result = await aiGenerateQuestions({
+                mapel,
                 topik,
-                'SMP Kelas 7-9',
-                countPG,
-                countEsai
-            );
+                kelas,
+                taksonomi,
+                kesulitan,
+                stimulus,
+                jmlPg: countPG,
+                jmlEsai: countEsai,
+                durasi
+            });
+
+            const questions = Array.isArray(result) ? result : (result?.soal || result?.questions || []);
 
             if (!Array.isArray(questions) || questions.length === 0) {
-                throw new Error("Format soal AI tidak terduga.");
+                throw new Error("AI tidak berhasil menghasilkan butir soal. Silakan coba kembali dengan materi pokok yang lebih spesifik.");
             }
 
             const { data: quizData, error: quizError } = await supabase.from('quizzes').insert([{
                 teacher_id: currentSession?.user?.id,
-                mapel: currentTeacher?.mapel || 'Informatika',
-                kelas: stateKelas[0] || 'Semua Kelas',
+                mapel,
+                kelas,
                 judul_kuis: judul,
-                petunjuk: `Ujian ${topik}. Kerjakan dengan teliti dan jujur!`,
-                durasi_menit: 45,
+                petunjuk: result.petunjuk || `Ujian ${topik}. Kerjakan dengan teliti dan jujur!`,
+                durasi_menit: durasi,
                 status: 'aktif'
             }]).select().single();
 
@@ -1102,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 opsi_d: q.opsi_d || '',
                 kunci_pg: q.kunci_pg || '',
                 rubrik_esai: q.rubrik_esai || '',
-                bobot: q.bobot || 10
+                bobot: q.bobot || (q.tipe === 'esai' ? 25 : 10)
             }));
 
             const { error: qError } = await supabase.from('quiz_questions').insert(questionsPayload);
@@ -1110,12 +1151,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             closeAiQuizModal();
             loadQuizzes();
-            showCustomModal(`Berhasil membuat kuis "${judul}" berisi ${questions.length} butir soal!`);
+            showCustomModal(`✅ Berhasil! Kuis "${judul}" berisi ${questions.length} butir soal (${countPG} PG & ${countEsai} Esai) telah dipublikasikan ke ${kelas}!`);
         } catch (e) {
-            showCustomModal("Gagal generate soal kuis: " + e.message);
+            showCustomModal("Gagal generate bank soal AI: " + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "🚀 GENERATE BANK SOAL SEKARANG";
         }
-        btn.disabled = false;
-        btn.innerText = "🚀 GENERATE BANK SOAL";
     };
 
     window.openQuizModal = () => {

@@ -5,6 +5,8 @@ let allMaterials = [];
 let allQuizzes = [];
 let studentFiles = [];
 let studentQuizzes = [];
+let studentQuizSubmissions = [];
+let currentAssignmentStatusFilter = 'all';
 let activeQuizData = null;
 let quizTimerInterval = null;
 let currentSubmissionMode = 'file';
@@ -85,17 +87,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateStudentProfileUI(savedName, savedKelas);
 
     if (btnSaveProfile) {
-        btnSaveProfile.addEventListener('click', () => {
+        btnSaveProfile.addEventListener('click', async () => {
             const name = globalNameInput.value.trim();
             const kelas = globalKelasSelect.value;
             localStorage.setItem('student_nama', name);
             localStorage.setItem('student_kelas', kelas);
             updateStudentProfileUI(name, kelas);
 
-            // Re-render konten sesuai kelas yang dipilih
-            renderStudentAssignments();
-            renderStudentMaterials();
-            renderStudentQuizzes();
+            // Re-fetch dan render konten sesuai profil siswa aktif
+            await loadStudentAssignments();
+            await loadStudentMaterials();
+            await loadStudentQuizzes();
             updatePortalOverviewStats();
         });
     }
@@ -219,6 +221,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    window.setAssignmentStatusFilter = (status) => {
+        currentAssignmentStatusFilter = status;
+        const pills = ['all', 'todo', 'submitted', 'graded'];
+        pills.forEach(p => {
+            const btn = document.getElementById(`filter-btn-${p}`);
+            if (!btn) return;
+            if (p === status) {
+                btn.className = "assign-filter-pill px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider border-2 border-black bg-black text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap active:translate-y-0.5 transition";
+            } else {
+                btn.className = "assign-filter-pill px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider border-2 border-black bg-white hover:bg-slate-100 text-slate-800 whitespace-nowrap active:translate-y-0.5 transition";
+            }
+        });
+        renderStudentAssignments();
+    };
+
     function renderStudentAssignments() {
         const container = document.getElementById('student-assignments-list');
         const filterMapel = document.getElementById('filter-tugas-mapel')?.value || '';
@@ -227,18 +244,70 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!container) return;
         container.innerHTML = '';
 
-        const filtered = allAssignments.filter(a => {
+        // Kumpulan tugas relevan berdasarkan filter Mapel & Kelas
+        const relevant = allAssignments.filter(a => {
             const matchMapel = !filterMapel || a.mapel === filterMapel;
             const matchKelas = !studentKelas || a.kelas === studentKelas || a.kelas.toLowerCase().includes('semua');
             return matchMapel && matchKelas;
         });
 
+        // Hitung statistik status To-Do siswa
+        let countAll = relevant.length;
+        let countTodo = 0;
+        let countSubmitted = 0;
+        let countGraded = 0;
+
+        relevant.forEach(a => {
+            const sub = studentFiles.find(f => 
+                (f.assignment_id && String(f.assignment_id) === String(a.id)) ||
+                (f.materi && f.materi.toLowerCase().trim() === a.judul_tugas.toLowerCase().trim())
+            );
+            if (!sub) {
+                countTodo++;
+            } else if (sub.nilai !== null && sub.nilai !== undefined && sub.nilai !== '') {
+                countGraded++;
+            } else {
+                countSubmitted++;
+            }
+        });
+
+        // Perbarui angka di badge filter
+        const countAllEl = document.getElementById('count-filter-all');
+        const countTodoEl = document.getElementById('count-filter-todo');
+        const countSubmittedEl = document.getElementById('count-filter-submitted');
+        const countGradedEl = document.getElementById('count-filter-graded');
+        if (countAllEl) countAllEl.textContent = countAll;
+        if (countTodoEl) countTodoEl.textContent = countTodo;
+        if (countSubmittedEl) countSubmittedEl.textContent = countSubmitted;
+        if (countGradedEl) countGradedEl.textContent = countGraded;
+
+        // Filter berdasarkan status tab To-Do
+        const filtered = relevant.filter(a => {
+            const sub = studentFiles.find(f => 
+                (f.assignment_id && String(f.assignment_id) === String(a.id)) ||
+                (f.materi && f.materi.toLowerCase().trim() === a.judul_tugas.toLowerCase().trim())
+            );
+            if (currentAssignmentStatusFilter === 'todo') return !sub;
+            if (currentAssignmentStatusFilter === 'submitted') return sub && (sub.nilai === null || sub.nilai === undefined || sub.nilai === '');
+            if (currentAssignmentStatusFilter === 'graded') return sub && sub.nilai !== null && sub.nilai !== undefined && sub.nilai !== '';
+            return true;
+        });
+
         if (filtered.length === 0) {
+            let emptyMsg = `Saat ini belum ada tugas untuk kelas ${studentKelas || 'ini'} pada mata pelajaran yang dipilih.`;
+            if (currentAssignmentStatusFilter === 'todo') {
+                emptyMsg = `Hore! Tidak ada tugas yang tertunda. Seluruh tugas telah Anda kumpulkan! 🎉`;
+            } else if (currentAssignmentStatusFilter === 'submitted') {
+                emptyMsg = `Belum ada tugas yang sedang menunggu koreksi guru/AI.`;
+            } else if (currentAssignmentStatusFilter === 'graded') {
+                emptyMsg = `Belum ada tugas yang selesai dinilai. Silakan kumpulkan tugas Anda terlebih dahulu.`;
+            }
+
             container.innerHTML = `
                 <div class="col-span-2 bg-white border-[3px] border-black rounded-[28px] p-8 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                     <span class="text-4xl block mb-2">🎉</span>
-                    <h4 class="font-black text-lg text-black uppercase">Tidak Ada Tugas Tertunda</h4>
-                    <p class="text-xs font-bold text-slate-500 mt-1">Saat ini belum ada tugas untuk kelas ${studentKelas || 'ini'} pada mata pelajaran yang dipilih.</p>
+                    <h4 class="font-black text-lg text-black uppercase">Daftar Tugas Kosong</h4>
+                    <p class="text-xs font-bold text-slate-500 mt-1">${emptyMsg}</p>
                 </div>
             `;
             return;
@@ -274,13 +343,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             let actionBtnClass = 'bg-indigo-600 hover:bg-black text-white';
 
             if (mySubmission) {
-                if (mySubmission.nilai !== null && mySubmission.nilai !== undefined) {
+                if (mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '') {
                     submissionBadge = `<span class="bg-emerald-400 text-black border-2 border-black font-black text-xs px-2.5 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">✅ Nilai: ${mySubmission.nilai}/100</span>`;
                 } else {
-                    submissionBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs px-2 py-0.5 rounded-lg">✅ Sudah Dikumpulkan</span>`;
+                    submissionBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs px-2 py-0.5 rounded-lg">✅ Sudah Dikumpulkan (Menunggu Koreksi)</span>`;
                 }
                 actionBtnText = 'Kirim Ulang / Perbarui ✏️';
                 actionBtnClass = 'bg-white hover:bg-slate-100 text-black border-2 border-black';
+            } else {
+                submissionBadge = `<span class="bg-red-100 text-red-800 border border-red-300 font-bold text-xs px-2 py-0.5 rounded-lg">🔴 Belum Dikerjakan</span>`;
             }
 
             const card = document.createElement('div');
@@ -739,6 +810,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error) throw error;
             allQuizzes = data || [];
 
+            // Ambil riwayat submit kuis siswa aktif
+            const studentName = globalNameInput?.value?.trim();
+            if (studentName) {
+                const { data: mySubs } = await supabase
+                    .from('quiz_submissions')
+                    .select('*')
+                    .ilike('nama_siswa', `%${studentName}%`);
+                studentQuizSubmissions = mySubs || [];
+            } else {
+                studentQuizSubmissions = [];
+            }
+
             // Populate Mapel Filter
             const mapelSet = new Set(allQuizzes.map(q => q.mapel));
             if (filterSelect) {
@@ -756,6 +839,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             container.innerHTML = `<div class="bg-white border-2 border-black rounded-2xl p-6 text-center text-red-600 font-bold">Gagal memuat ujian: ${e.message}</div>`;
         }
     }
+
+    window.showMyQuizResult = (sub, judul, mapel) => {
+        alert(
+            `📊 HASIL UJIAN SISWA LMS SMPN 58\n\n` +
+            `Mata Pelajaran: ${mapel}\n` +
+            `Judul Ujian: ${judul}\n` +
+            `Nama Siswa: ${sub.nama_siswa} (${sub.kelas})\n` +
+            `-----------------------------------------\n` +
+            `Skor Pilihan Ganda : ${sub.skor_pg || 0}\n` +
+            `Skor Esai         : ${sub.skor_esai || 0}\n` +
+            `TOTAL NILAI AKHIR : ${sub.total_nilai || 0} / 100\n` +
+            `-----------------------------------------\n` +
+            `Status: ${sub.status_koreksi === 'selesai' ? 'Sudah Dinilai Lengkap' : 'Menunggu Koreksi Guru'}`
+        );
+    };
 
     function renderStudentQuizzes() {
         const container = document.getElementById('student-quizzes-list');
@@ -778,6 +876,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         filtered.forEach(q => {
             const questions = q.quiz_questions || [];
+            const mySub = studentQuizSubmissions.find(s => String(s.quiz_id) === String(q.id));
+
+            let examStatusBadge = '';
+            let actionBtnHtml = '';
+
+            if (mySub) {
+                examStatusBadge = `
+                    <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                        ✅ Sudah Dikerjakan &bull; Total Skor: ${mySub.total_nilai}/100
+                    </span>
+                `;
+                actionBtnHtml = `
+                    <button type="button" onclick="showMyQuizResult(${JSON.stringify(mySub).replace(/"/g, '&quot;')}, '${q.judul_kuis.replace(/'/g, "\\'")}', '${q.mapel}')" class="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                        Lihat Skor Nilai 🎯
+                    </button>
+                `;
+            } else {
+                examStatusBadge = `
+                    <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                        🔴 Belum Dikerjakan
+                    </span>
+                `;
+                actionBtnHtml = `
+                    <button type="button" onclick="startExam('${q.id}')" class="px-5 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                        Mulai Ujian ✍️
+                    </button>
+                `;
+            }
+
             const card = document.createElement('div');
             card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4";
             card.innerHTML = `
@@ -792,13 +919,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                             ${questions.length} Soal
                         </span>
+                        ${examStatusBadge}
                     </div>
                     <h4 class="font-black text-xl text-black">${q.judul_kuis}</h4>
                     <p class="text-xs text-slate-600 font-bold mt-0.5">${q.petunjuk || 'Kerjakan dengan teliti dan jujur.'}</p>
                 </div>
-                <button type="button" onclick="startExam('${q.id}')" class="px-5 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
-                    Mulai Ujian ✍️
-                </button>
+                ${actionBtnHtml}
             `;
             container.appendChild(card);
         });
@@ -813,6 +939,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!studentName) {
             alert("Nama lengkap wajib diisi sebelum memulai ujian.");
             return;
+        }
+
+        const mySub = studentQuizSubmissions.find(s => String(s.quiz_id) === String(quizId));
+        if (mySub) {
+            const retake = confirm(`Anda sudah mengerjakan ujian ini dengan skor: ${mySub.total_nilai}/100.\n\nApakah Anda yakin ingin mengulang pengerjaan ujian ini?`);
+            if (!retake) return;
         }
 
         try {

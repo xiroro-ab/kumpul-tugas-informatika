@@ -540,22 +540,60 @@
     <!-- ======================================================= -->
     <!-- MODAL: AI BUAT TUGAS & RUBRIK                           -->
     <!-- ======================================================= -->
-    <div id="ai-assignment-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-yellow-300 border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-lg w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4">
-            <div class="flex justify-between items-center border-b-2 border-black pb-3">
-                <h3 class="text-2xl font-black text-black uppercase">✨ AI Perancang Tugas & Rubrik</h3>
-                <button onclick="closeAiAssignmentModal()" class="text-2xl font-black">&times;</button>
+    <div id="ai-assignment-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-lg w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[90vh] overflow-hidden my-auto">
+            <div class="flex justify-between items-center border-b-2 border-black px-6 py-4 bg-yellow-300 shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="w-8 h-8 bg-black text-white rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">✨</span>
+                    <div>
+                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">AI Perancang Tugas & Rubrik</h3>
+                        <p class="text-[11px] font-bold text-black/80">Rancang penugasan autentik dengan rubrik penilaian bertingkat</p>
+                    </div>
+                </div>
+                <button onclick="closeAiAssignmentModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg">&times;</button>
             </div>
-            <p class="text-black font-bold text-xs">Ketik materi atau kompetensi dasar, AI akan merumuskan tugas siswa beserta rubrik penilaiannya.</p>
             
-            <div>
-                <label class="block text-xs font-black uppercase mb-1">Materi / Topik Tugas</label>
-                <input type="text" id="ai-assign-topik" placeholder="Contoh: Analisis Data dengan Lembar Kerja Excel" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+            <div class="p-6 overflow-y-auto flex-1 space-y-3.5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1">Target Kelas</label>
+                        <select id="ai-assign-kelas" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1">Bentuk Tugas / Luaran</label>
+                        <select id="ai-assign-jenis" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="praktikum" selected>Praktik Mandiri / Pemecahan Masalah</option>
+                            <option value="infografis">Infografis / Desain Canva</option>
+                            <option value="video">Presentasi Video Pendek</option>
+                            <option value="laporan">Laporan Tertulis & Analisis Kasus</option>
+                            <option value="proyek">Proyek Studi Kasus Nyata</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Tingkat Kognitif / Karakter Penugasan</label>
+                    <select id="ai-assign-kognitif" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                        <option value="hots" selected>HOTS (C4 Analisis, C5 Evaluasi, C6 Kreasi Produk)</option>
+                        <option value="mots">MOTS (C3 Penerapan Prosedur & Rumus Praktis)</option>
+                        <option value="lots">LOTS (C1-C2 Pemahaman Konsep & Rangkuman)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Materi Pokok / Capaian Pembelajaran</label>
+                    <textarea id="ai-assign-topik" rows="3" placeholder="Contoh: Analisis Data dengan Rumus Excel / Canva Desain Poster Lingkungan..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white"></textarea>
+                </div>
             </div>
 
-            <button onclick="runAiGenerateAssignment()" id="btn-run-ai-assign" class="bg-black text-white hover:bg-slate-800 font-black py-3 rounded-xl uppercase text-xs tracking-wider transition">
-                🚀 GENERATE TUGAS & RUBRIK SEKARANG
-            </button>
+            <div class="px-6 py-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+                <button onclick="closeAiAssignmentModal()" class="px-5 h-11 bg-white border-2 border-black text-black font-black text-xs uppercase tracking-wider rounded-xl hover:bg-slate-100 transition">
+                    Batal
+                </button>
+                <button onclick="runAiGenerateAssignment()" id="btn-run-ai-assign" class="flex-1 h-11 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2">
+                    <span>🚀 GENERATE TUGAS & RUBRIK</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -689,40 +727,133 @@
     </div>
 
     <!-- ======================================================= -->
-    <!-- MODAL: AI GENERATOR BANK SOAL                           -->
+    <!-- MODAL: AI GENERATOR BANK SOAL & UJIAN                   -->
     <!-- ======================================================= -->
-    <div id="ai-quiz-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-emerald-300 border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-lg w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4">
-            <div class="flex justify-between items-center border-b-2 border-black pb-3">
-                <h3 class="text-2xl font-black text-black uppercase">✨ AI Generator Bank Soal</h3>
-                <button onclick="closeAiQuizModal()" class="text-2xl font-black">&times;</button>
-            </div>
-            <p class="text-black font-bold text-xs">AI akan membuat soal Pilihan Ganda beserta kunci jawaban dan soal Esai beserta rubrik evaluasinya.</p>
+    <div id="ai-quiz-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-xl w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[90vh] overflow-hidden my-auto">
             
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-black uppercase mb-1">Judul Ujian / Kuis</label>
-                    <input type="text" id="ai-quiz-judul" placeholder="Contoh: Penilaian Harian 1 Informatika" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
-                </div>
-                <div>
-                    <label class="block text-xs font-black uppercase mb-1">Topik Materi</label>
-                    <input type="text" id="ai-quiz-topik" placeholder="Contoh: Jaringan Komputer dan Internet" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
-                </div>
-                <div class="grid grid-cols-2 gap-3">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b-2 border-black bg-emerald-300 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-8 h-8 bg-black text-white rounded-xl flex items-center justify-center text-sm font-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">✨</span>
                     <div>
-                        <label class="block text-xs font-black uppercase mb-1">Jml Pilihan Ganda</label>
-                        <input type="number" id="ai-quiz-count-pg" value="5" min="1" max="20" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-black uppercase mb-1">Jml Esai</label>
-                        <input type="number" id="ai-quiz-count-esai" value="2" min="0" max="5" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">AI Generator Bank Soal & Ujian</h3>
+                        <p class="text-[11px] font-bold text-black/80">Penyusunan instrumen soal berbasis Taksonomi Bloom & Standar AKM</p>
                     </div>
                 </div>
+                <button onclick="closeAiQuizModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg">
+                    &times;
+                </button>
             </div>
 
-            <button onclick="runAiGenerateQuiz()" id="btn-run-ai-quiz" class="bg-black text-white hover:bg-slate-800 font-black py-3 rounded-xl uppercase text-xs tracking-wider transition">
-                🚀 GENERATE BANK SOAL
-            </button>
+            <!-- Form Body (Scrollable) -->
+            <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Mata Pelajaran</label>
+                        <select id="ai-quiz-mapel" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white">
+                            <option value="Informatika">Informatika</option>
+                            <option value="Matematika">Matematika</option>
+                            <option value="IPA">IPA</option>
+                            <option value="IPS">IPS</option>
+                            <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                            <option value="Bahasa Inggris">Bahasa Inggris</option>
+                            <option value="PAI">PAI</option>
+                            <option value="PPKn">PPKn</option>
+                            <option value="PJOK">PJOK</option>
+                            <option value="Seni Budaya">Seni Budaya</option>
+                            <option value="Prakarya">Prakarya</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Target Kelas</label>
+                        <select id="ai-quiz-kelas" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white"></select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-black uppercase text-black mb-1">Judul Ujian / Kuis</label>
+                    <input type="text" id="ai-quiz-judul" placeholder="Contoh: Asesmen Sumatif Bab 2 - Jaringan Komputer" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-black uppercase text-black mb-1">Capaian Pembelajaran (CP) / Materi Pokok</label>
+                    <textarea id="ai-quiz-topik" rows="2" placeholder="Sebutkan materi pokok spesifik, misal: Topologi Jaringan, Alamat IP, dan Protokol Internet..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Tingkat Kognitif (Bloom)</label>
+                        <select id="ai-quiz-taksonomi" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="campuran" selected>Kombinasi Berimbang (LOTS 30%, MOTS 40%, HOTS 30%)</option>
+                            <option value="hots">Dominan HOTS (C4 Analisis, C5 Evaluasi, C6 Kreasi)</option>
+                            <option value="mots">MOTS (C3 Penerapan Prosedur & Rumus)</option>
+                            <option value="lots">LOTS (C1 Mengingat & C2 Pemahaman Faktual)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Tingkat Kesulitan</label>
+                        <select id="ai-quiz-kesulitan" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="berimbang" selected>Berimbang (30% Mudah, 50% Sedang, 20% Sulit)</option>
+                            <option value="mudah">Mudah (Pemahaman Awal / Remedial)</option>
+                            <option value="sedang">Sedang (Standar Penilaian Harian)</option>
+                            <option value="sukar">Sukar / Pengayaan (Penalaran Tinggi)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Karakteristik Soal</label>
+                        <select id="ai-quiz-stimulus" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="kontekstual" selected>Stimulus Kasus AKM</option>
+                            <option value="langsung">Langsung & Teoretis</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Jml Pilihan Ganda</label>
+                        <select id="ai-quiz-count-pg" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="5" selected>5 Soal PG</option>
+                            <option value="10">10 Soal PG</option>
+                            <option value="15">15 Soal PG</option>
+                            <option value="20">20 Soal PG</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Jml Soal Esai</label>
+                        <select id="ai-quiz-count-esai" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="0">0 Esai (Hanya PG)</option>
+                            <option value="1">1 Soal Esai</option>
+                            <option value="2" selected>2 Soal Esai</option>
+                            <option value="3">3 Soal Esai</option>
+                            <option value="5">5 Soal Esai</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-black uppercase text-black mb-1">Durasi Pengerjaan Siswa (Menit)</label>
+                    <select id="ai-quiz-durasi" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                        <option value="30">30 Menit</option>
+                        <option value="45" selected>45 Menit (Standar 1 Jam Pelajaran)</option>
+                        <option value="60">60 Menit</option>
+                        <option value="90">90 Menit (Ujian Sumatif Akhir)</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+                <button onclick="closeAiQuizModal()" class="px-5 h-11 bg-white border-2 border-black text-black font-black text-xs uppercase tracking-wider rounded-xl hover:bg-slate-100 transition">
+                    Batal
+                </button>
+                <button onclick="runAiGenerateQuiz()" id="btn-run-ai-quiz" class="flex-1 h-11 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2">
+                    <span>🚀 GENERATE BANK SOAL SEKARANG</span>
+                </button>
+            </div>
+
         </div>
     </div>
 

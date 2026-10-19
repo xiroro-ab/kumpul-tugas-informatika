@@ -166,24 +166,53 @@ Tulis langsung isi materinya tanpa basa-basi pembuka.`;
 }
 
 /**
- * AI Generator Tugas Siswa & Rubrik Penilaian
+ * AI Generator Tugas Siswa & Rubrik Penilaian (Spesifik & Terstruktur)
  */
-export async function aiGenerateAssignment(mapel, topik, kelas) {
-    const system = `Anda adalah pengembang kurikulum sekolah menengah pertama (SMP).
-Hasilkan rencana tugas yang kontekstual, menarik bagi murid SMP, dan rubrik penilaian yang adil.
+export async function aiGenerateAssignment(mapelOrConfig, topik = '', kelas = 'Kelas 7', jenisTugas = 'praktikum', tingkatKognitif = 'hots') {
+    let cfg = {};
+    if (typeof mapelOrConfig === 'object' && mapelOrConfig !== null) {
+        cfg = mapelOrConfig;
+    } else {
+        cfg = {
+            mapel: mapelOrConfig || 'Informatika',
+            topik: topik || 'Materi Pembelajaran',
+            kelas: kelas || 'Kelas 7',
+            jenisTugas: jenisTugas || 'praktikum',
+            tingkatKognitif: tingkatKognitif || 'hots'
+        };
+    }
+
+    const jenisTugasDesc = {
+        praktikum: 'Praktik Mandiri / Pemecahan Masalah Komputasional (Siswa mengerjakan proyek/langkah konkret)',
+        infografis: 'Infografis / Media Visual Canva (Siswa merangkum konsep ke dalam karya visual yang estetis dan informatif)',
+        video: 'Presentasi Video Singkat / Penjelasan Mandiri (Siswa menjelaskan pemahaman dalam video 2-3 menit)',
+        laporan: 'Laporan Tertulis & Analisis Kasus (Siswa menyusun resume terstruktur)',
+        proyek: 'Proyek Terpadu / Kolaborasi (Siswa menyusun solusi untuk skenario nyata)'
+    }[cfg.jenisTugas] || 'Praktik Mandiri';
+
+    const kognitifDesc = {
+        hots: 'Tingkat Kognitif HOTS (C4 Analisis, C5 Evaluasi, C6 Kreasi): Mendorong siswa berpikir kritis, menganalisis solusi, dan membuat karya orisinal.',
+        mots: 'Tingkat Kognitif MOTS (C3 Aplikasi): Siswa menerapkan konsep yang dipelajari pada contoh studi kasus konkret.',
+        lots: 'Tingkat Kognitif LOTS (C1-C2 Pemahaman): Siswa merangkum dan menjelaskan ulang konsep inti materi.'
+    }[cfg.tingkatKognitif] || 'HOTS';
+
+    const system = `Anda adalah konsultan kurikulum dan asesmen SMP Negeri 58 Palembang berstandar Kurikulum Merdeka.
+Buatkan rencana penugasan siswa yang spesifik, aplikatif, dan tidak abstrak.
 Kembalikan HANYA JSON:
 {
-  "judul": "...",
-  "deskripsi": "...",
-  "rubrik": "..."
+  "judul": "string (Judul penugasan yang spesifik dan menarik)",
+  "deskripsi": "string (Petunjuk rinci: 1. Latar Belakang & Tujuan, 2. Langkah Pengerjaan Step-by-Step, 3. Format Pengumpulan)",
+  "rubrik": "string (Kriteria penilaian kuantitatif: Kesesuaian Materi [40%], Kedalaman Analisis [30%], Orisinalitas & Kerapian [30%])"
 }`;
 
-    const prompt = `Rancang tugas siswa untuk:
-Mata Pelajaran: ${mapel}
-Kelas: ${kelas}
-Topik: ${topik}
+    const prompt = `Rancang tugas siswa SMP dengan parameter:
+- Mata Pelajaran: ${cfg.mapel}
+- Kelas: ${cfg.kelas}
+- Capaian Pembelajaran / Topik: ${cfg.topik}
+- Bentuk Tugas: ${jenisTugasDesc}
+- Pendekatan Kognitif: ${kognitifDesc}
 
-Buat tugas yang praktis (bisa dibuat dalam bentuk berkas PDF/Word atau tautan Canva/Docs/Video singkat).`;
+Pastikan instruksi mudah dipahami murid SMP dan rubrik penilaian dapat menjadi acuan objektif bagi guru maupun AI auto-koreksi.`;
 
     const raw = await callGemini(prompt, system, true);
     try {
@@ -195,51 +224,140 @@ Buat tugas yang praktis (bisa dibuat dalam bentuk berkas PDF/Word atau tautan Ca
 }
 
 /**
- * AI Generator Soal Ujian (Pilihan Ganda & Esai)
+ * AI Generator Butir Soal Ujian (Pilihan Ganda & Esai)
+ * Mendukung Taksonomi Bloom (LOTS/MOTS/HOTS), Tingkat Kesulitan, dan Stimulus AKM
  */
-export async function aiGenerateQuestions(mapel, topik, kelas, jmlPg = 5, jmlEsai = 2) {
-    const system = `Anda adalah pembuat butir soal ujian SMPN 58 Palembang berstandar kurikulum nasional.
-Kembalikan HANYA JSON berformat:
+export async function aiGenerateQuestions(
+    mapelOrConfig, 
+    topik = '', 
+    kelas = 'Kelas 7', 
+    jmlPg = 5, 
+    jmlEsai = 2,
+    taksonomi = 'campuran',
+    kesulitan = 'berimbang',
+    stimulus = 'kontekstual',
+    durasi = 45
+) {
+    let cfg = {};
+    if (typeof mapelOrConfig === 'object' && mapelOrConfig !== null) {
+        cfg = mapelOrConfig;
+    } else {
+        cfg = {
+            mapel: mapelOrConfig || 'Informatika',
+            topik: topik || 'Topik Pembelajaran',
+            kelas: kelas || 'Kelas 7',
+            jmlPg: Number(jmlPg) || 5,
+            jmlEsai: Number(jmlEsai) || 2,
+            taksonomi: taksonomi || 'campuran',
+            kesulitan: kesulitan || 'berimbang',
+            stimulus: stimulus || 'kontekstual',
+            durasi: Number(durasi) || 45
+        };
+    }
+
+    const taksonomiDescriptions = {
+        campuran: 'Kombinasi Berimbang Kurikulum Nasional: LOTS 30% (C1-C2 Pemahaman Dasar), MOTS 40% (C3 Aplikasi Konsep), HOTS 30% (C4 Analisis & C5 Evaluasi).',
+        hots: 'Dominan HOTS (Higher Order Thinking Skills): C4 Analisis data/kasus, C5 Evaluasi keputusan, C6 Kreasi solusi. Soal menuntut nalar kritis siswa, bukan sekadar hafalan definisi.',
+        mots: 'Fokus MOTS (Middle Order Thinking Skills): C3 Penerapan konsep, prosedur, dan rumus pada situasi baru.',
+        lots: 'Fokus LOTS (Lower Order Thinking Skills): C1 Mengingat istilah dan C2 Memahami konsep dasar secara langsung.'
+    }[cfg.taksonomi] || 'Kombinasi Berimbang';
+
+    const kesulitanDescriptions = {
+        berimbang: 'Proporsi berimbang standar ujian sekolah: 30% Mudah, 50% Sedang, 20% Sukar.',
+        mudah: 'Tingkat kesulitan mudah (pemahaman dasar / remedial).',
+        sedang: 'Tingkat kesulitan sedang (standar penilaian harian reguler).',
+        sukar: 'Tingkat kesulitan tinggi/sukar (soal pengayaan dan penalaran kompleks).'
+    }[cfg.kesulitan] || 'Berimbang';
+
+    const stimulusDescriptions = {
+        kontekstual: 'Gunakan stimulus cerita/kasus nyata (standar Asesmen Nasional / AKM). Setiap nomor soal (atau kluster soal) diawali narasi situasi nyata, kutipan informasi, atau studi kasus praktis siswa sebelum mengajukan pertanyaan.',
+        langsung: 'Pertanyaan langsung to-the-point dan konseptual tanpa narasi cerita panjang.'
+    }[cfg.stimulus] || 'Kontekstual';
+
+    const system = `Anda adalah ahli pengembang asesmen pendidikan SMP Negeri 58 Palembang berstandar Kurikulum Merdeka dan AKM Kemendikbudristek.
+Tugas Anda merancang instrumen evaluasi kuis/ujian dengan kriteria profesional:
+1. Pilihan Ganda (PG):
+   - Pokok soal jelas, tegas, tidak multitafsir.
+   - Memiliki tepat 4 opsi jawaban (A, B, C, D) yang masuk akal dan pengecoh berfungsi.
+   - Wajib menyertakan "kunci_pg" HANYA satu huruf: "A", "B", "C", atau "D".
+   - Wajib menyertakan "pembahasan" ringkas mengapa jawaban tersebut benar.
+   - Bobot PG standar: 10 poin per soal.
+2. Soal Esai / Uraian:
+   - Soal menguji penalaran dan daya analisis siswa.
+   - Wajib menyertakan "rubrik_esai" berupa kriteria penilaian bertingkat dan kata kunci jawaban untuk guru.
+   - Bobot Esai standar: 20-25 poin per soal.
+3. Wajib menyertakan "tingkat_kognitif" (contoh: "HOTS (C4 Analisis)", "MOTS (C3 Aplikasi)", atau "LOTS (C2 Pemahaman)").
+
+KEMBALIKAN HANYA JSON MURNI SESUAI SCHEMA:
 {
-  "judul_kuis": "...",
-  "petunjuk": "...",
-  "durasi_menit": 45,
+  "judul_kuis": "string",
+  "petunjuk": "string",
+  "durasi_menit": number,
   "soal": [
     {
       "nomor": 1,
       "tipe": "pg",
-      "pertanyaan": "...",
-      "opsi_a": "...",
-      "opsi_b": "...",
-      "opsi_c": "...",
-      "opsi_d": "...",
-      "kunci_pg": "A",
+      "tingkat_kognitif": "string",
+      "pertanyaan": "string",
+      "opsi_a": "string",
+      "opsi_b": "string",
+      "opsi_c": "string",
+      "opsi_d": "string",
+      "kunci_pg": "A/B/C/D",
+      "pembahasan": "string",
       "bobot": 10
     },
     {
       "nomor": 2,
       "tipe": "esai",
-      "pertanyaan": "...",
-      "rubrik_esai": "Kunci dan indikator jawaban esai...",
-      "bobot": 25
+      "tingkat_kognitif": "string",
+      "pertanyaan": "string",
+      "rubrik_esai": "string",
+      "bobot": 20
     }
   ]
 }`;
 
-    const prompt = `Buatkan soal ujian SMP:
-Mata Pelajaran: ${mapel}
-Kelas: ${kelas}
-Topik: ${topik}
-Jumlah Soal PG: ${jmlPg}
-Jumlah Soal Esai: ${jmlEsai}`;
+    const prompt = `Susunlah instrumen ujian SMP dengan spesifikasi:
+- Mata Pelajaran: ${cfg.mapel}
+- Kelas: ${cfg.kelas}
+- Materi Pokok / Capaian Pembelajaran: ${cfg.topik}
+- Taksonomi Bloom: ${taksonomiDescriptions}
+- Tingkat Kesulitan: ${kesulitanDescriptions}
+- Karakteristik Stimulus: ${stimulusDescriptions}
+- Jumlah Soal Pilihan Ganda: ${cfg.jmlPg} butir
+- Jumlah Soal Esai: ${cfg.jmlEsai} butir
+- Alokasi Durasi Ujian: ${cfg.durasi} menit`;
 
     const raw = await callGemini(prompt, system, true);
+    let parsed = null;
     try {
-        return JSON.parse(raw);
+        parsed = JSON.parse(raw);
     } catch {
         const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(clean);
+        parsed = JSON.parse(clean);
     }
+
+    // Ekstraksi array soal yang fleksibel dan kebal format
+    let items = [];
+    if (Array.isArray(parsed)) {
+        items = parsed;
+    } else if (parsed && Array.isArray(parsed.soal)) {
+        items = parsed.soal;
+    } else if (parsed && Array.isArray(parsed.questions)) {
+        items = parsed.questions;
+    } else if (parsed && typeof parsed === 'object') {
+        const found = Object.values(parsed).find(v => Array.isArray(v));
+        if (found) items = found;
+    }
+
+    // Pastikan properti array dapat dibaca baik sebagai array langsung maupun objek kuis
+    items.judul_kuis = parsed?.judul_kuis || `Ujian ${cfg.mapel} - ${cfg.topik}`;
+    items.petunjuk = parsed?.petunjuk || `Ujian ${cfg.topik}. Kerjakan dengan teliti dan jujur!`;
+    items.durasi_menit = Number(parsed?.durasi_menit) || Number(cfg.durasi) || 45;
+    items.soal = items;
+
+    return items;
 }
 
 /**
