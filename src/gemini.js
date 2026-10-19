@@ -566,6 +566,63 @@ KEMBALIKAN HANYA JSON MURNI TANPA MARKDOWN BACKTICKS SESUAI SCHEMA:
         if (found) items = found;
     }
 
+    // Normalisasi tipe dari AI agar selalu cocok dengan engine CBT.
+    items = items.filter(q => q && typeof q === 'object').map((q, idx) => {
+        const rawPairs = q.pasangan ?? q.pairs ?? q.matching;
+        const rawRubric = q.rubrik_esai ?? q.rubrik ?? q.rubric;
+        const rawType = String(q.tipe || q.type || '').toLowerCase();
+        let tipe = 'pg';
+        if (rawType.includes('kompleks') || rawType.includes('multiple')) tipe = 'pg_kompleks';
+        else if (rawType.includes('benar') || rawType.includes('true') || rawType.includes('salah')) tipe = 'benar_salah';
+        else if (rawType.includes('singkat') || rawType.includes('isian')) tipe = 'singkat';
+        else if (rawType.includes('jodoh') || rawType.includes('match')) tipe = 'menjodohkan';
+        else if (rawType.includes('foto') || rawType.includes('upload') || rawType.includes('berkas')) tipe = 'upload_foto';
+        else if (rawType.includes('esai') || rawType.includes('uraian') || rawType.includes('essay')) tipe = 'esai';
+        else if (rawPairs && (Array.isArray(rawPairs) || typeof rawPairs === 'object')) tipe = 'menjodohkan';
+        else if (rawRubric) tipe = 'esai';
+        else if (!q.opsi_a && !q.opsi_b && !(q.opsi && typeof q.opsi === 'object') && !(q.options && typeof q.options === 'object')) tipe = 'esai';
+
+        // AI kadang memakai nama field lain. Samakan agar kunci tidak hilang.
+        const rawKey = q.kunci_pg ?? q.kunci ?? q.jawaban_benar ?? q.jawaban ?? '';
+        let kunci = Array.isArray(rawKey) ? rawKey.join(',') : String(rawKey).trim();
+        if (tipe === 'benar_salah') {
+            const k = kunci.toLowerCase();
+            kunci = ['true', 'benar', 'b'].includes(k) ? 'Benar' : (['false', 'salah', 's'].includes(k) ? 'Salah' : kunci);
+        }
+
+        let pasangan = rawPairs;
+        if (pasangan && !Array.isArray(pasangan) && typeof pasangan === 'object') {
+            pasangan = Object.entries(pasangan).map(([kiri, kanan]) => ({ kiri, kanan }));
+        }
+        pasangan = Array.isArray(pasangan)
+            ? pasangan.filter(p => p && String(p.kiri || '').trim() && String(p.kanan || '').trim())
+            : [];
+
+        const opsi = Array.isArray(q.opsi)
+            ? q.opsi
+            : (Array.isArray(q.options)
+                ? q.options
+                : (q.options && typeof q.options === 'object' ? Object.values(q.options) : []));
+        const opsiField = (i, name) => {
+            const val = q[name] || opsi[i] || '';
+            return typeof val === 'string' ? val : (val?.text || val?.teks || val?.label || '');
+        };
+
+        return {
+            ...q,
+            nomor: idx + 1,
+            tipe,
+            bobot: Number(q.bobot) || (tipe === 'esai' || tipe === 'menjodohkan' || tipe === 'upload_foto' ? 20 : 10),
+            opsi_a: opsiField(0, 'opsi_a'),
+            opsi_b: opsiField(1, 'opsi_b'),
+            opsi_c: opsiField(2, 'opsi_c'),
+            opsi_d: opsiField(3, 'opsi_d'),
+            kunci_pg: kunci,
+            rubrik_esai: String(rawRubric || '').trim(),
+            pasangan
+        };
+    });
+
     // Pastikan properti array dapat dibaca baik sebagai array langsung maupun objek kuis
     items.judul_kuis = parsed?.judul_kuis || `Ujian ${cfg.mapel} - ${cfg.topik}`;
     items.petunjuk = parsed?.petunjuk || `Ujian ${cfg.topik}. Kerjakan dengan teliti dan jujur!`;

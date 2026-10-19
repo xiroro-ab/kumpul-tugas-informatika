@@ -145,25 +145,28 @@ drop policy if exists "Allow authenticated manage assignments" on public.assignm
 create policy "Allow authenticated manage assignments" on public.assignments for all to authenticated using (true) with check (true);
 
 -- Kebijakan Kuis & Soal
+-- Guru (authenticated) kelola penuh. Siswa (anon) TIDAK boleh baca langsung:
+-- kunci jawaban (quiz_questions.kunci_pg/rubrik_esai) & token dilindungi via RPC.
 drop policy if exists "Allow public read quizzes" on public.quizzes;
-create policy "Allow public read quizzes" on public.quizzes for select to anon, authenticated using (true);
 drop policy if exists "Allow authenticated manage quizzes" on public.quizzes;
 create policy "Allow authenticated manage quizzes" on public.quizzes for all to authenticated using (true) with check (true);
 
 drop policy if exists "Allow public read quiz_questions" on public.quiz_questions;
-create policy "Allow public read quiz_questions" on public.quiz_questions for select to anon, authenticated using (true);
 drop policy if exists "Allow authenticated manage quiz_questions" on public.quiz_questions;
 create policy "Allow authenticated manage quiz_questions" on public.quiz_questions for all to authenticated using (true) with check (true);
 
--- Kebijakan Jawaban Ujian Siswa
+-- Kebijakan Jawaban Ujian Siswa: hanya guru. Siswa lewat RPC (security definer).
 drop policy if exists "Allow public submit quizzes" on public.quiz_submissions;
-create policy "Allow public submit quizzes" on public.quiz_submissions for insert to anon, authenticated with check (true);
 drop policy if exists "Allow public read quiz results" on public.quiz_submissions;
-create policy "Allow public read quiz results" on public.quiz_submissions for select to anon, authenticated using (true);
 drop policy if exists "Allow public update quiz submissions" on public.quiz_submissions;
-create policy "Allow public update quiz submissions" on public.quiz_submissions for update to anon, authenticated using (true) with check (true);
 drop policy if exists "Allow authenticated manage quiz submissions" on public.quiz_submissions;
 create policy "Allow authenticated manage quiz submissions" on public.quiz_submissions for all to authenticated using (true) with check (true);
+
+-- Cabut hak akses tabel langsung dari anon (siswa tidak login). Tidak ada data mentah
+-- ujian yang tersisa untuk dibaca/ditulis tanpa melewati fungsi RPC di bawah.
+revoke all on public.quizzes from anon;
+revoke all on public.quiz_questions from anon;
+revoke all on public.quiz_submissions from anon;
 
 -- Tambahan Kolom Token Ujian pada Tabel Quizzes
 alter table public.quizzes add column if not exists token text default '';

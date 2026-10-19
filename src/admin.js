@@ -22,6 +22,7 @@ import {
     parseRosterCsvText, 
     initialStudents 
 } from './rosterData.js';
+import { calculateExamScore, getMaxScore, toPercent, getSubmissionAnswers } from './examScoring.js';
 
 let currentSession = null;
 let currentTeacher = null;
@@ -2853,9 +2854,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 durasi
             });
 
-            const questions = Array.isArray(result) ? result : (result?.soal || result?.questions || []);
+            const rawQuestions = Array.isArray(result) ? result : (result?.soal || result?.questions || []);
+            const questions = (Array.isArray(rawQuestions) ? rawQuestions : [])
+                .filter(q => q && q.pertanyaan && String(q.pertanyaan).trim());
 
-            if (!Array.isArray(questions) || questions.length === 0) {
+            if (questions.length === 0) {
                 throw new Error("AI tidak berhasil menghasilkan butir soal. Silakan coba kembali dengan materi pokok yang lebih spesifik.");
             }
 
@@ -3899,6 +3902,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     liveState = 'focus';
                 }
+            } else if (sub.status_koreksi === 'belum_dikoreksi' || sub.status_koreksi === 'perlu_dinilai') {
+                liveState = 'review';
             }
 
             return {
@@ -3928,9 +3933,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const statFocus = classFiltered.filter(s => s.liveState === 'focus').length;
         const statUnfocus = classFiltered.filter(s => s.liveState === 'unfocus').length;
         const statLocked = classFiltered.filter(s => s.liveState === 'locked').length;
-        const statDone = classFiltered.filter(s => s.liveState === 'done').length;
+        const statDone = classFiltered.filter(s => s.liveState === 'done' || s.liveState === 'review').length;
 
-        const completedList = classFiltered.filter(s => s.status_koreksi === 'selesai' || s.status_koreksi === 'perlu_dinilai');
+        const completedList = classFiltered.filter(s => s.status_koreksi === 'selesai');
         const statAvg = completedList.length > 0
             ? Math.round(completedList.reduce((acc, s) => acc + Number(s.total_nilai || 0), 0) / completedList.length)
             : 0;
@@ -4017,10 +4022,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 }
             } else {
+                const isReview = sub.status_koreksi === 'belum_dikoreksi' || sub.status_koreksi === 'perlu_dinilai';
                 antiCheatBadge = `
                     <div class="inline-flex flex-col items-center gap-0.5">
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-800 border border-slate-400 rounded-xl font-bold text-[11px] uppercase">
-                            Selesai Ujian
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 ${isReview ? 'bg-amber-100 text-amber-900 border-2 border-amber-500' : 'bg-slate-100 text-slate-800 border border-slate-400'} rounded-xl font-bold text-[11px] uppercase">
+                            ${isReview ? 'Perlu Dinilai Esai' : 'Selesai Ujian'}
                         </span>
                         ${sub.cheatAttempts > 0 ? `<span class="text-[10px] font-bold text-amber-700">(${sub.cheatAttempts}x Peringatan)</span>` : ''}
                     </div>
@@ -4056,16 +4062,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         Periksa
                     </button>
                     ${sub.isLocked ? `
-                        <button type="button" onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Buka kunci akun agar siswa dapat melanjutkan" class="h-8 px-3 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                        <button type="button" onclick="unlockStudentExam('${sub.id}')" title="Buka kunci akun agar siswa dapat melanjutkan" class="h-8 px-3 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
                             Buka Kunci
                         </button>
                     ` : ''}
                     ${sub.isOngoing ? `
-                        <button type="button" onclick="forceFinishStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Paksa selesai dan kumpulkan ujian siswa" class="h-8 px-3 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                        <button type="button" onclick="forceFinishStudentExam('${sub.id}')" title="Paksa selesai dan kumpulkan ujian siswa" class="h-8 px-3 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
                             Paksa Selesai
                         </button>
                     ` : ''}
-                    <button type="button" onclick="resetStudentExamSession('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Hapus sesi agar siswa bisa ujian dari awal" class="h-8 px-3 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-400 rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                    <button type="button" onclick="resetStudentExamSession('${sub.id}')" title="Hapus sesi agar siswa bisa ujian dari awal" class="h-8 px-3 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-400 rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
                         Reset
                     </button>
                 </div>
@@ -4088,7 +4094,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     };
 
-    window.unlockStudentExam = async (subId, studentName) => {
+    window.unlockStudentExam = async (subId) => {
+        const subRef = activeQuizSubmissions.find(s => String(s.id) === String(subId));
+        const studentName = subRef?.nama_siswa || 'siswa ini';
         const conf = await showCustomModal(
             `Buka kunci akun siswa "${studentName}"?\n\nSiswa akan diizinkan login kembali menggunakan token aktif dan melanjutkan pengerjaan soal. Jumlah pelanggaran anti-kecurangan akan di-reset ke 0, dan seluruh jawaban yang sudah diisi sebelumnya tetap tersimpan utuh.`,
             'confirm',
@@ -4129,7 +4137,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.resetStudentExamSession = async (subId, studentName) => {
+    window.resetStudentExamSession = async (subId) => {
+        const subRef = activeQuizSubmissions.find(s => String(s.id) === String(subId));
+        const studentName = subRef?.nama_siswa || 'siswa ini';
         const conf = await showCustomModal(
             `PERINGATAN: Reset sesi ujian siswa "${studentName}"?\n\nSemua jawaban dan nilai siswa ini akan DIHAPUS dari sistem. Siswa harus mengerjakan ujian dari soal nomor 1 kembali.`,
             'confirm',
@@ -4152,13 +4162,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.unlockCurrentReviewStudent = async () => {
         if (!activeReviewSubmission) return;
-        await window.unlockStudentExam(activeReviewSubmission.id, activeReviewSubmission.nama_siswa);
+        await window.unlockStudentExam(activeReviewSubmission.id);
         closeExamReviewModal();
     };
 
-    window.forceFinishStudentExam = async (subId, studentName) => {
+    window.forceFinishStudentExam = async (subId) => {
+        const subRef = activeQuizSubmissions.find(s => String(s.id) === String(subId));
+        const studentName = subRef?.nama_siswa || 'siswa ini';
         const conf = await showCustomModal(
-            `Paksa selesai sesi ujian untuk siswa "${studentName}"?\n\nSesi ujian siswa akan ditutup dan status pengerjaan disimpan menjadi selesai.`,
+            `Paksa selesai sesi ujian untuk siswa "${studentName}"?\n\nJawaban yang sudah tersimpan akan dinilai otomatis, lalu sesi ujian ditutup.`,
             'confirm',
             'Paksa Selesai Ujian',
             ''
@@ -4166,10 +4178,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!conf) return;
 
         try {
-            const { error } = await supabase.from('quiz_submissions').update({
-                status_koreksi: 'selesai'
-            }).eq('id', subId);
+            const { data: cur, error: getErr } = await supabase.from('quiz_submissions').select('*').eq('id', subId).single();
+            if (getErr) throw getErr;
+
+            const questions = activeQuizForResults?.quiz_questions || [];
+            const answers = getSubmissionAnswers(cur);
+            const { autoScoreTotal, autoSubjectiveScore, hasSubjective } = calculateExamScore(questions, answers);
+            const finalStatus = hasSubjective ? 'belum_dikoreksi' : 'selesai';
+            const finalScore = toPercent(autoScoreTotal + autoSubjectiveScore, getMaxScore(questions));
+
+            const { data: updatedRows, error } = await supabase.from('quiz_submissions').update({
+                skor_pg: autoScoreTotal,
+                skor_esai: autoSubjectiveScore,
+                total_nilai: finalScore,
+                status_koreksi: finalStatus
+            }).eq('id', subId).eq('status_koreksi', 'sedang_ujian').select('id');
             if (error) throw error;
+            if (!updatedRows || updatedRows.length === 0) {
+                throw new Error('Sesi sudah dikumpulkan oleh siswa. Muat ulang daftar hasil.');
+            }
             await showCustomModal(`Sesi ujian siswa "${studentName}" telah diselesaikan oleh pengawas.`, 'alert', 'Ujian Ditutup', '');
             if (activeQuizForResults) {
                 openQuizResultsModal(activeQuizForResults.id);
@@ -4211,7 +4238,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         filtered.forEach((s, idx) => {
             const dateStr = s.updated_at || s.created_at ? new Date(s.updated_at || s.created_at).toLocaleString('id-ID') : '';
-            const statusStr = (s.total_nilai || 0) >= 75 ? 'Tuntas' : 'Remedial';
+            let statusStr = 'Menunggu Koreksi';
+            if (s.status_koreksi === 'selesai') statusStr = (s.total_nilai || 0) >= 75 ? 'Tuntas' : 'Remedial';
+            else if (s.status_koreksi === 'terkunci_curang') statusStr = 'Didiskualifikasi';
+            else if (s.status_koreksi === 'sedang_ujian') statusStr = 'Sedang Ujian';
 
             let cheatAttempts = 0;
             let answeredCount = 0;
@@ -4229,7 +4259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let statusUjian = 'Selesai';
             if (s.status_koreksi === 'terkunci_curang') statusUjian = 'Terkunci Curang';
             else if (s.status_koreksi === 'sedang_ujian') statusUjian = 'Sedang Mengerjakan';
-            else if (s.status_koreksi === 'perlu_dinilai') statusUjian = 'Perlu Dinilai';
+            else if (s.status_koreksi === 'belum_dikoreksi' || s.status_koreksi === 'perlu_dinilai') statusUjian = 'Perlu Dinilai';
 
             const progressStr = `${answeredCount}/${totalQ}`;
 
@@ -4290,6 +4320,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusKetuntasan = 'Didiskualifikasi (Curang)';
             } else if (s.status_koreksi === 'sedang_ujian') {
                 statusKetuntasan = 'Sedang Ujian';
+            } else if (s.status_koreksi === 'belum_dikoreksi') {
+                statusKetuntasan = 'Menunggu Koreksi';
             }
 
             rowsHtml += `
@@ -4399,7 +4431,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activeReviewSubmission = sub;
 
         document.getElementById('exam-review-student-name').textContent = sub.nama_siswa;
-        document.getElementById('exam-review-meta').textContent = `Kelas: ${sub.kelas} • Skor PG: ${sub.skor_pg} • Total Nilai Saat Ini: ${sub.total_nilai}`;
+        document.getElementById('exam-review-meta').textContent = `Kelas: ${sub.kelas} • Skor Objektif: ${sub.skor_pg} • Total Nilai Saat Ini: ${sub.total_nilai}/100`;
 
         const container = document.getElementById('exam-review-questions-container');
         container.innerHTML = '';
@@ -4464,7 +4496,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (q.tipe === 'pg') {
                 const studentAns = answers[q.id] || '(Tidak dijawab)';
-                const isCorrect = studentAns.toUpperCase() === (q.kunci_pg || '').toUpperCase();
+                const isCorrect = String(studentAns).toUpperCase() === (q.kunci_pg || '').toUpperCase();
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
                         <span class="font-black text-xs text-black">No. ${idx + 1} (Pilihan Ganda)</span>
@@ -4540,7 +4572,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="sm:col-span-3">
                             <label class="block text-[10px] font-black uppercase text-black mb-0.5">Catatan / Evaluasi</label>
-                            <input type="text" id="essay-feedback-${q.id}" value="${currentFeedback.feedback || ''}" placeholder="Catatan evaluasi guru..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                            <input type="text" id="essay-feedback-${q.id}" value="${escapeHtml(currentFeedback.feedback || '')}" placeholder="Catatan evaluasi guru..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
                         </div>
                     </div>
                 `;
@@ -4594,14 +4626,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="sm:col-span-3">
                             <label class="block text-[10px] font-black uppercase text-black mb-0.5">Masukan / Feedback Guru</label>
-                            <input type="text" id="essay-feedback-${q.id}" value="${currentFeedback.feedback || ''}" placeholder="Catatan evaluasi menjodohkan..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                            <input type="text" id="essay-feedback-${q.id}" value="${escapeHtml(currentFeedback.feedback || '')}" placeholder="Catatan evaluasi menjodohkan..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
                         </div>
                     </div>
                 `;
             } else if (q.tipe === 'upload_foto') {
                 const fileUrl = answers[q.id] || '';
                 const currentFeedback = aiFeedback[q.id] || {};
-                const isImage = fileUrl.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i);
+                const safeFileUrl = /^https?:\/\//i.test(String(fileUrl)) ? String(fileUrl) : '';
+                const isImage = safeFileUrl.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i);
 
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
@@ -4613,11 +4646,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${q.rubrik_esai ? `<div class="bg-yellow-50 p-2 rounded border border-yellow-200 text-[11px] font-bold text-yellow-900"><strong>Rubrik Kunci Guru:</strong> ${escapeHtml(q.rubrik_esai)}</div>` : ''}
                     <div class="bg-white p-3 rounded-xl border border-slate-300 space-y-2">
                         <span class="text-[10px] font-black text-slate-400 block uppercase">Berkas Lampiran Hasil Pengerjaan Siswa:</span>
-                        ${fileUrl ? `
+                        ${safeFileUrl ? `
                             <div class="flex items-center gap-3">
-                                ${isImage ? `<a href="${fileUrl}" target="_blank" title="Klik untuk memperbesar foto"><img src="${fileUrl}" class="w-24 h-24 object-cover rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:scale-105 transition-transform cursor-pointer"></a>` : ''}
+                                ${isImage ? `<a href="${escapeHtml(safeFileUrl)}" target="_blank" title="Klik untuk memperbesar foto"><img src="${escapeHtml(safeFileUrl)}" class="w-24 h-24 object-cover rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:scale-105 transition-transform cursor-pointer"></a>` : ''}
                                 <div>
-                                    <a href="${fileUrl}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-black text-white rounded-lg font-black text-xs transition">
+                                    <a href="${escapeHtml(safeFileUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-black text-white rounded-lg font-black text-xs transition">
                                         <span></span> Buka Berkas Penuh ↗
                                     </a>
                                 </div>
@@ -4631,7 +4664,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="sm:col-span-3">
                             <label class="block text-[10px] font-black uppercase text-black mb-0.5">Masukan / Feedback Guru</label>
-                            <input type="text" id="essay-feedback-${q.id}" value="${currentFeedback.feedback || ''}" placeholder="Catatan evaluasi lembar kerja..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                            <input type="text" id="essay-feedback-${q.id}" value="${escapeHtml(currentFeedback.feedback || '')}" placeholder="Catatan evaluasi lembar kerja..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
                         </div>
                     </div>
                 `;
@@ -4657,7 +4690,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="sm:col-span-3">
                             <label class="block text-[10px] font-black uppercase text-black mb-0.5">Masukan / Feedback Esai</label>
-                            <input type="text" id="essay-feedback-${q.id}" value="${currentFeedback.feedback || ''}" placeholder="Catatan evaluasi esai..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                            <input type="text" id="essay-feedback-${q.id}" value="${escapeHtml(currentFeedback.feedback || '')}" placeholder="Catatan evaluasi esai..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
                         </div>
                     </div>
                 `;
@@ -4702,7 +4735,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const questions = activeQuizForResults.quiz_questions || [];
-        const answers = activeReviewSubmission.jawaban_siswa || {};
+        const answers = getSubmissionAnswers(activeReviewSubmission);
 
         try {
             for (const q of questions) {
@@ -4732,23 +4765,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!activeReviewSubmission || !activeQuizForResults) return;
 
         const questions = activeQuizForResults.quiz_questions || [];
+        const answers = getSubmissionAnswers(activeReviewSubmission);
+        const { autoScoreTotal } = calculateExamScore(questions, answers);
         let totalManualScore = 0;
         let aiFeedbackObj = {};
 
         questions.forEach(q => {
             const scoreInput = document.getElementById(`essay-score-${q.id}`);
             if (scoreInput) {
-                const scoreVal = parseInt(scoreInput.value || '0', 10);
+                const maxScore = Number(q.bobot) || 20;
+                const scoreVal = Math.min(maxScore, Math.max(0, parseInt(scoreInput.value || '0', 10) || 0));
                 const fbVal = document.getElementById(`essay-feedback-${q.id}`)?.value || '';
-                totalManualScore += isNaN(scoreVal) ? 0 : scoreVal;
+                totalManualScore += scoreVal;
                 aiFeedbackObj[q.id] = { skor: scoreVal, feedback: fbVal };
             }
         });
 
-        const totalFinalScore = (activeReviewSubmission.skor_pg || 0) + totalManualScore;
+        const totalFinalScore = toPercent(autoScoreTotal + totalManualScore, getMaxScore(questions));
 
         try {
             const { error } = await supabase.from('quiz_submissions').update({
+                skor_pg: autoScoreTotal,
                 skor_esai: totalManualScore,
                 total_nilai: totalFinalScore,
                 ai_feedback: aiFeedbackObj,
