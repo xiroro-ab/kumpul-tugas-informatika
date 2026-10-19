@@ -404,10 +404,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const subNamaInput = document.getElementById('sub-nama');
     const subMapelSelect = document.getElementById('sub-mapel');
     const subMateriInput = document.getElementById('sub-materi');
+    const tabModeText = document.getElementById('tabModeText');
     const tabModeFile = document.getElementById('tabModeFile');
     const tabModeLink = document.getElementById('tabModeLink');
+    const sectionText = document.getElementById('sectionText');
     const sectionFile = document.getElementById('sectionFile');
     const sectionLink = document.getElementById('sectionLink');
+    const subTextAnswerInput = document.getElementById('sub-text-answer');
+    const subTextCount = document.getElementById('sub-text-count');
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('sub-file');
     const fileInfo = document.getElementById('file-info');
@@ -418,6 +422,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const linkNoteInput = document.getElementById('sub-link-note');
     const platformBadge = document.getElementById('platformBadge');
     const subSubmitBtn = document.getElementById('sub-btn-submit');
+
+    // Live word & character counter for web form answers
+    if (subTextAnswerInput) {
+        subTextAnswerInput.addEventListener('input', () => {
+            const val = subTextAnswerInput.value.trim();
+            const words = val ? val.split(/\s+/).filter(Boolean).length : 0;
+            const chars = val.length;
+            if (subTextCount) subTextCount.textContent = `${words} kata | ${chars} karakter`;
+        });
+    }
 
     // Buka Modal Terkait Tugas Tertentu
     window.openAssignmentSubmissionModal = (assignment) => {
@@ -434,10 +448,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         subMateriInput.value = assignment.judul_tugas || '';
         subMateriInput.readOnly = true;
 
+        if (subTextAnswerInput) subTextAnswerInput.value = '';
+        if (subTextCount) subTextCount.textContent = '0 kata | 0 karakter';
         resetFileInput();
         if (linkUrlInput) linkUrlInput.value = '';
         if (linkNoteInput) linkNoteInput.value = '';
-        setSubmissionMode('file');
+        setSubmissionMode('text');
 
         subModal.classList.remove('hidden');
         subModal.classList.add('flex');
@@ -449,7 +465,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modal-banner-mapel').textContent = 'Tugas Mandiri';
         document.getElementById('modal-banner-kelas').textContent = 'Bebas';
         document.getElementById('modal-banner-title').textContent = 'Pengumpulan Tugas Bebas';
-        document.getElementById('modal-banner-desc').textContent = 'Kumpulkan tugas atau PR lain yang diinstruksikan oleh guru kelas.';
+        document.getElementById('modal-banner-desc').textContent = 'Ketik jawaban tugas langsung di web, unggah berkas, atau tautkan link pekerjaan Anda.';
         document.getElementById('modal-assignment-banner').classList.remove('hidden');
 
         subNamaInput.value = globalNameInput.value.trim();
@@ -457,10 +473,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         subMateriInput.value = '';
         subMateriInput.readOnly = false;
 
+        if (subTextAnswerInput) subTextAnswerInput.value = '';
+        if (subTextCount) subTextCount.textContent = '0 kata | 0 karakter';
         resetFileInput();
         if (linkUrlInput) linkUrlInput.value = '';
         if (linkNoteInput) linkNoteInput.value = '';
-        setSubmissionMode('file');
+        setSubmissionMode('text');
 
         subModal.classList.remove('hidden');
         subModal.classList.add('flex');
@@ -473,21 +491,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.setSubmissionMode = (mode) => {
         currentSubmissionMode = mode;
-        if (mode === 'file') {
-            tabModeFile.className = "py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-            tabModeLink.className = "py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-slate-500 hover:text-black";
-            sectionFile.classList.remove('hidden');
-            sectionLink.classList.add('hidden');
-            fileInput.required = true;
-            linkUrlInput.required = false;
-        } else {
-            tabModeLink.className = "py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-            tabModeFile.className = "py-2 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-slate-500 hover:text-black";
-            sectionLink.classList.remove('hidden');
-            sectionFile.classList.add('hidden');
-            fileInput.required = false;
-            linkUrlInput.required = true;
-        }
+        const activeTabClass = "py-1.5 px-1.5 rounded-lg font-black text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+        const inactiveTabClass = "py-1.5 px-1.5 rounded-lg font-black text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 text-slate-500 hover:text-black";
+
+        if (tabModeText) tabModeText.className = (mode === 'text') ? activeTabClass : inactiveTabClass;
+        if (tabModeFile) tabModeFile.className = (mode === 'file') ? activeTabClass : inactiveTabClass;
+        if (tabModeLink) tabModeLink.className = (mode === 'link') ? activeTabClass : inactiveTabClass;
+
+        if (sectionText) sectionText.classList.toggle('hidden', mode !== 'text');
+        if (sectionFile) sectionFile.classList.toggle('hidden', mode !== 'file');
+        if (sectionLink) sectionLink.classList.toggle('hidden', mode !== 'link');
+
+        if (subTextAnswerInput) subTextAnswerInput.required = (mode === 'text');
+        if (fileInput) fileInput.required = (mode === 'file');
+        if (linkUrlInput) linkUrlInput.required = (mode === 'link');
     };
 
     // Deteksi Platform Link
@@ -585,7 +602,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalKelasSelect.value = kelas;
         updateStudentProfileUI(nama, kelas);
 
-        if (currentSubmissionMode === 'file') {
+        if (currentSubmissionMode === 'text') {
+            const textAnswer = subTextAnswerInput.value.trim();
+            if (!textAnswer) {
+                alert('Silakan tuliskan lembar jawaban tugas Anda terlebih dahulu.');
+                return;
+            }
+        } else if (currentSubmissionMode === 'file') {
             if (!fileInput.files || fileInput.files.length === 0) {
                 alert('Silakan pilih setidaknya 1 berkas tugas.');
                 return;
@@ -610,7 +633,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             let submittedDetail = '';
 
-            if (currentSubmissionMode === 'file') {
+            if (currentSubmissionMode === 'text') {
+                const textAnswer = subTextAnswerInput.value.trim();
+                const displayFilename = `[Form Web] ${materi}`;
+
+                const payload = {
+                    nama,
+                    kelas,
+                    materi,
+                    mapel,
+                    assignment_id: assignmentId,
+                    filename: displayFilename,
+                    storage_path: `TEXT:${textAnswer}`,
+                    link_url: null,
+                    tipe: 'text',
+                    status_koreksi: 'belum_dikoreksi'
+                };
+
+                const { error: dbError } = await supabase.from('files').insert([payload]);
+                if (dbError) throw dbError;
+                submittedDetail = textAnswer.length > 90 ? textAnswer.slice(0, 90) + '...' : textAnswer;
+            } else if (currentSubmissionMode === 'file') {
                 let fileNames = [];
                 for (let i = 0; i < fileInput.files.length; i++) {
                     const file = fileInput.files[i];

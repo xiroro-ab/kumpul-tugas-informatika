@@ -384,7 +384,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 2. Koreksi Tugas Masuk dari Siswa
     // ==========================================
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function isTextSubmission(f) {
+        return f.tipe === 'text' || (f.storage_path && f.storage_path.startsWith('TEXT:'));
+    }
+
+    function getTextContent(f) {
+        if (f.storage_path && f.storage_path.startsWith('TEXT:')) {
+            return f.storage_path.replace('TEXT:', '');
+        }
+        return f.link_url || '';
+    }
+
     function isLinkSubmission(f) {
+        if (isTextSubmission(f)) return false;
         return f.tipe === 'link' || 
                (f.storage_path && (f.storage_path.startsWith('LINK:') || f.storage_path.startsWith('http://') || f.storage_path.startsWith('https://'))) || 
                Boolean(f.link_url);
@@ -396,6 +418,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (f.storage_path && (f.storage_path.startsWith('http://') || f.storage_path.startsWith('https://'))) return f.storage_path;
         return '';
     }
+
+    window.downloadSubmissionFile = async (url, filename) => {
+        try {
+            const res = await fetch(url);
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename || 'berkas_tugas_siswa';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch {
+            window.open(url, '_blank');
+        }
+    };
 
     async function loadFilesTable() {
         const tbody = document.getElementById('files-tbody');
@@ -448,19 +487,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = document.createElement('tr');
             tr.className = "hover:bg-slate-50 transition-colors";
             
+            const isText = isTextSubmission(f);
             const isLink = isLinkSubmission(f);
             let detailCell = '';
-            let targetUrl = '';
+            let downloadBtnHtml = '';
 
-            if (isLink) {
-                targetUrl = getLinkUrl(f);
+            if (isText) {
+                const textSnippet = getTextContent(f);
+                detailCell = `
+                    <div class="flex flex-col gap-1 py-0.5 w-full pr-2">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="inline-flex items-center shrink-0 bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded border border-amber-300 uppercase">
+                                📝 FORM WEB
+                            </span>
+                            <span class="font-bold text-xs text-slate-800 break-all">${escapeHtml(f.filename || 'Jawaban Form Web')}</span>
+                        </div>
+                        <p class="text-xs text-slate-600 font-medium line-clamp-2 italic bg-amber-50/60 p-1.5 rounded border border-amber-200">${escapeHtml(textSnippet)}</p>
+                    </div>
+                `;
+            } else if (isLink) {
+                const targetUrl = getLinkUrl(f);
                 detailCell = `
                     <div class="flex flex-col gap-1 py-0.5 w-full pr-2">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span class="inline-flex items-center shrink-0 bg-purple-100 text-purple-900 text-[10px] font-black px-1.5 py-0.5 rounded border border-purple-300 uppercase">
                                 🔗 LINK
                             </span>
-                            <span class="font-bold text-xs text-slate-800 break-all">${f.filename || 'Tautan Tugas'}</span>
+                            <span class="font-bold text-xs text-slate-800 break-all">${escapeHtml(f.filename || 'Tautan Tugas')}</span>
                         </div>
                         <a href="${targetUrl}" target="_blank" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs break-all hover:underline" title="${targetUrl}">
                             ${targetUrl} ↗
@@ -469,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             } else {
                 const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(f.storage_path);
-                targetUrl = publicUrlData.publicUrl;
+                const targetUrl = publicUrlData.publicUrl;
                 detailCell = `
                     <div class="flex items-start gap-1.5 py-0.5 w-full pr-2">
                         <span class="inline-flex items-center shrink-0 bg-blue-100 text-blue-900 text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-300 uppercase mt-0.5">
@@ -479,6 +532,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${f.filename} ↗
                         </a>
                     </div>
+                `;
+                downloadBtnHtml = `
+                    <button onclick="downloadSubmissionFile('${targetUrl}', '${f.filename.replace(/'/g, "\\'")}')" title="Unduh Berkas Siswa ke Komputer" class="inline-flex items-center bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-slate-300">
+                        ⬇️ Unduh
+                    </button>
                 `;
             }
 
@@ -508,7 +566,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button onclick="openGradeModal('${f.id}')" class="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
                             Koreksi
                         </button>
-                        <button onclick="deleteFile('${f.id}', '${f.storage_path}', ${isLink})" class="inline-flex items-center bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-red-300">
+                        ${downloadBtnHtml}
+                        <button onclick="deleteFile('${f.id}', '${f.storage_path}', ${isLink || isText})" class="inline-flex items-center bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-red-300">
                             Hapus
                         </button>
                     </div>
@@ -528,8 +587,23 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('grade-modal-meta').textContent = `Kelas: ${item.kelas} • Tugas: ${item.materi}`;
         
         const previewBox = document.getElementById('grade-modal-preview-box');
+        const isText = isTextSubmission(item);
         const isLink = isLinkSubmission(item);
-        if (isLink) {
+
+        if (isText) {
+            const textContent = getTextContent(item);
+            previewBox.innerHTML = `
+                <div class="space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <span class="font-black text-amber-950 text-xs">Jawaban Siswa (Dikerjakan Langsung di Form Web):</span>
+                        <span class="text-[10px] bg-amber-200 text-amber-950 font-black px-2 py-0.5 rounded border border-amber-300">Form Online</span>
+                    </div>
+                    <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3.5 text-xs font-semibold text-slate-900 whitespace-pre-line max-h-56 overflow-y-auto leading-relaxed shadow-inner">
+                        ${escapeHtml(textContent)}
+                    </div>
+                </div>
+            `;
+        } else if (isLink) {
             const url = getLinkUrl(item);
             previewBox.innerHTML = `
                 <div class="space-y-1">
@@ -542,7 +616,10 @@ document.addEventListener('DOMContentLoaded', () => {
             previewBox.innerHTML = `
                 <div class="flex items-center justify-between gap-2">
                     <span class="font-bold text-slate-800 truncate">${item.filename}</span>
-                    <a href="${publicUrlData.publicUrl}" target="_blank" class="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-lg border border-indigo-300 shrink-0">Buka Berkas ↗</a>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <a href="${publicUrlData.publicUrl}" target="_blank" class="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-lg border border-indigo-300">Buka Berkas ↗</a>
+                        <button type="button" onclick="downloadSubmissionFile('${publicUrlData.publicUrl}', '${item.filename.replace(/'/g, "\\'")}')" class="bg-slate-100 text-slate-800 font-bold px-3 py-1 rounded-lg border border-slate-300">⬇️ Unduh</button>
+                    </div>
                 </div>
             `;
         }
@@ -564,15 +641,20 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerText = "Menganalisis...";
 
         try {
-            const studentContent = isLinkSubmission(activeGradeItem) 
-                ? getLinkUrl(activeGradeItem) 
-                : activeGradeItem.filename;
+            let studentContent = '';
+            if (isTextSubmission(activeGradeItem)) {
+                studentContent = getTextContent(activeGradeItem);
+            } else if (isLinkSubmission(activeGradeItem)) {
+                studentContent = getLinkUrl(activeGradeItem);
+            } else {
+                studentContent = activeGradeItem.filename;
+            }
 
             const result = await aiEvaluateSubmission(
                 currentTeacher?.mapel || 'Informatika',
                 activeGradeItem.materi,
                 activeGradeItem.materi,
-                'Kesesuaian tugas dengan instruksi, kelengkapan, dan kerapian pengerjaan.',
+                'Kesesuaian tugas dengan instruksi, kelengkapan pembahasan, dan kerapian pengerjaan.',
                 studentContent
             );
 
@@ -659,18 +741,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Kelas,Materi/Tugas,Nama Siswa,Tipe,Rincian/Tautan/File,Nilai,Catatan Guru,Waktu Pengumpulan\n";
+        let csvContent = "\uFEFF";
+        csvContent += "No,Kelas,Mata Pelajaran,Judul Tugas/Materi,Nama Siswa,Metode Pengerjaan,Rincian/Tautan/Jawaban,Nilai Angka,Catatan Guru / Evaluasi AI,Waktu Pengumpulan\n";
         
-        pendingFiles.forEach(f => {
+        pendingFiles.forEach((f, idx) => {
+            const isText = isTextSubmission(f);
             const isLink = isLinkSubmission(f);
-            const tipeStr = isLink ? "Tautan / Link" : "File";
-            const detailStr = isLink ? getLinkUrl(f) : f.filename;
-            const nilaiStr = f.nilai !== null && f.nilai !== undefined ? f.nilai : "";
-            const catatanStr = (f.catatan_guru || "").replace(/"/g, '""');
+            let tipeStr = "Berkas File";
+            let detailStr = f.filename;
+            if (isText) {
+                tipeStr = "Formulir Web";
+                detailStr = getTextContent(f).replace(/"/g, '""');
+            } else if (isLink) {
+                tipeStr = "Tautan / Link";
+                detailStr = getLinkUrl(f);
+            }
+            const mapelStr = (f.mapel || currentTeacher?.mapel || "Informatika").replace(/"/g, '""');
+            const nilaiStr = f.nilai !== null && f.nilai !== undefined && f.nilai !== '' ? f.nilai : "";
+            const catatanStr = (f.catatan_guru || f.ai_feedback || "").replace(/"/g, '""');
             const dateStr = f.created_at ? new Date(f.created_at).toLocaleString('id-ID') : '';
             const row = [
+                idx + 1,
                 `"${f.kelas}"`,
+                `"${mapelStr}"`,
                 `"${f.materi}"`,
                 `"${f.nama}"`,
                 `"${tipeStr}"`,
@@ -682,13 +775,130 @@ document.addEventListener('DOMContentLoaded', () => {
             csvContent += row + "\n";
         });
         
-        const encodedUri = encodeURI(csvContent);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
+        link.setAttribute("href", url);
         link.setAttribute("download", `Rekap_Nilai_Tugas_SMPN58_${new Date().toISOString().slice(0,10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    window.printOfficialGradebook = () => {
+        if (!pendingFiles || pendingFiles.length === 0) {
+            showCustomModal("Tidak ada data nilai tugas untuk dicetak.");
+            return;
+        }
+
+        const mapel = currentTeacher?.mapel || 'Informatika';
+        const teacherName = currentTeacher?.name || currentSession?.user?.email || 'Guru Pengampu';
+        const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        const graded = pendingFiles.filter(f => f.nilai !== null && f.nilai !== undefined && f.nilai !== '');
+        const avg = graded.length > 0 ? (graded.reduce((acc, f) => acc + Number(f.nilai), 0) / graded.length).toFixed(1) : 0;
+
+        let rowsHtml = '';
+        pendingFiles.forEach((f, idx) => {
+            const isText = isTextSubmission(f);
+            const isLink = isLinkSubmission(f);
+            const tipeStr = isText ? "Form Web" : (isLink ? "Tautan Link" : "Berkas File");
+            const scoreVal = f.nilai !== null && f.nilai !== undefined && f.nilai !== '' ? f.nilai : '-';
+            const statusStr = scoreVal !== '-' ? 'Tuntas' : 'Belum Dinilai';
+
+            rowsHtml += `
+                <tr>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${idx + 1}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold;">${escapeHtml(f.kelas)}</td>
+                    <td style="border: 1px solid black; padding: 6px; font-weight: bold;">${escapeHtml(f.nama)}</td>
+                    <td style="border: 1px solid black; padding: 6px;">${escapeHtml(f.materi)}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${tipeStr}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold; font-size: 13px;">${scoreVal}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${statusStr}</td>
+                    <td style="border: 1px solid black; padding: 6px; font-size: 11px;">${escapeHtml(f.catatan_guru || f.ai_feedback || '-')}</td>
+                </tr>
+            `;
+        });
+
+        const printWin = window.open('', '_blank');
+        printWin.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Rekap Nilai Siswa - SMP Negeri 58 Palembang</title>
+                <style>
+                    body { font-family: 'Times New Roman', Times, serif; padding: 25px; color: #000; }
+                    .kop { text-align: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 16px; }
+                    .kop h2 { margin: 0; font-size: 17px; text-transform: uppercase; font-weight: bold; }
+                    .kop h1 { margin: 3px 0; font-size: 21px; text-transform: uppercase; font-weight: 900; }
+                    .kop p { margin: 1px 0; font-size: 12px; }
+                    .title { text-align: center; font-size: 15px; font-weight: bold; text-transform: uppercase; margin-bottom: 12px; }
+                    .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 10px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                    th { border: 1px solid black; padding: 6px; background-color: #f2f2f2; text-transform: uppercase; }
+                    .stats { margin-top: 12px; font-size: 12px; font-weight: bold; }
+                    .footer-sig { margin-top: 35px; display: flex; justify-content: flex-end; text-align: center; font-size: 12px; }
+                    .sig-box { width: 220px; }
+                    @media print {
+                        @page { size: landscape; margin: 12mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="kop">
+                    <h2>Pemerintah Kota Palembang &bull; Dinas Pendidikan</h2>
+                    <h1>SMP NEGERI 58 PALEMBANG</h1>
+                    <p>Jl. Macan Lindungan, Kec. Ilir Barat I, Kota Palembang, Sumatera Selatan</p>
+                    <p>Portal Belajar & Sistem Asesmen Digital Siswa</p>
+                </div>
+                <div class="title">LEMBAR REKAPITULASI BUKU NILAI TUGAS SISWA</div>
+                <div class="meta">
+                    <div>
+                        <strong>Mata Pelajaran:</strong> ${escapeHtml(mapel)}<br>
+                        <strong>Tahun Ajaran:</strong> 2026/2027
+                    </div>
+                    <div style="text-align: right;">
+                        <strong>Tanggal Cetak:</strong> ${dateStr}<br>
+                        <strong>Total Tugas Masuk:</strong> ${pendingFiles.length} Siswa
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 25px;">No</th>
+                            <th style="width: 50px;">Kelas</th>
+                            <th>Nama Lengkap Siswa</th>
+                            <th>Judul Tugas / Materi</th>
+                            <th style="width: 80px;">Metode</th>
+                            <th style="width: 45px;">Nilai</th>
+                            <th style="width: 70px;">Status</th>
+                            <th>Catatan Guru / Evaluasi AI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+                <div class="stats">
+                    Rata-Rata Nilai Tugas: ${avg} / 100 (${graded.length} tugas telah dinilai dari ${pendingFiles.length} pengumpulan)
+                </div>
+                <div class="footer-sig">
+                    <div class="sig-box">
+                        <p>Palembang, ${dateStr}<br>Guru Mata Pelajaran,</p>
+                        <br><br><br>
+                        <p style="font-weight: bold; text-decoration: underline;">${escapeHtml(teacherName)}</p>
+                        <p style="margin-top: -6px; font-size: 10px;">Guru Pengampu / NIP. -</p>
+                    </div>
+                </div>
+                <script>
+                    window.onload = function() { window.print(); };
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWin.document.close();
     };
 
     // ==========================================
@@ -1238,21 +1448,141 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let csv = "data:text/csv;charset=utf-8,";
-        csv += "Nama Siswa,Kelas,Skor Pilihan Ganda,Skor Esai,Total Nilai,Waktu Selesai\n";
+        let csv = "\uFEFF";
+        csv += "No,Nama Siswa,Kelas,Skor Pilihan Ganda,Skor Esai,Total Nilai,Status Ketuntasan,Waktu Selesai\n";
 
-        activeQuizSubmissions.forEach(s => {
+        activeQuizSubmissions.forEach((s, idx) => {
             const dateStr = s.created_at ? new Date(s.created_at).toLocaleString('id-ID') : '';
-            csv += `"${s.nama_siswa}","${s.kelas}",${s.skor_pg},${s.skor_esai},${s.total_nilai},"${dateStr}"\n`;
+            const statusStr = (s.total_nilai || 0) >= 75 ? 'Tuntas' : 'Remedial';
+            csv += `${idx + 1},"${s.nama_siswa}","${s.kelas}",${s.skor_pg || 0},${s.skor_esai || 0},${s.total_nilai || 0},"${statusStr}","${dateStr}"\n`;
         });
 
-        const encodedUri = encodeURI(csv);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `Rekap_Hasil_Ujian_${activeQuizForResults?.judul_kuis || 'Kuis'}.csv`);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Rekap_Hasil_Ujian_${(activeQuizForResults?.judul_kuis || 'Kuis').replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    window.printQuizResults = () => {
+        if (!activeQuizSubmissions || activeQuizSubmissions.length === 0 || !activeQuizForResults) {
+            showCustomModal("Tidak ada data hasil ujian untuk dicetak.");
+            return;
+        }
+
+        const quiz = activeQuizForResults;
+        const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const teacherName = currentTeacher?.name || currentSession?.user?.email || 'Guru Pengampu';
+
+        let rowsHtml = '';
+        let totalAll = 0;
+        let highest = 0;
+        let lowest = 100;
+
+        activeQuizSubmissions.forEach((s, idx) => {
+            const score = s.total_nilai || 0;
+            totalAll += score;
+            if (score > highest) highest = score;
+            if (score < lowest) lowest = score;
+
+            rowsHtml += `
+                <tr>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${idx + 1}</td>
+                    <td style="border: 1px solid black; padding: 6px; font-weight: bold;">${escapeHtml(s.nama_siswa)}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold;">${escapeHtml(s.kelas)}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${s.skor_pg || 0}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${s.skor_esai || 0}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold; font-size: 13px;">${score}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${score >= 75 ? 'Tuntas' : 'Remedial'}</td>
+                </tr>
+            `;
+        });
+
+        const avg = (totalAll / activeQuizSubmissions.length).toFixed(1);
+
+        const printWin = window.open('', '_blank');
+        printWin.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Hasil Ujian Siswa - ${escapeHtml(quiz.judul_kuis)}</title>
+                <style>
+                    body { font-family: 'Times New Roman', Times, serif; padding: 25px; color: #000; }
+                    .kop { text-align: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 16px; }
+                    .kop h2 { margin: 0; font-size: 17px; text-transform: uppercase; font-weight: bold; }
+                    .kop h1 { margin: 3px 0; font-size: 21px; text-transform: uppercase; font-weight: 900; }
+                    .kop p { margin: 1px 0; font-size: 12px; }
+                    .title { text-align: center; font-size: 15px; font-weight: bold; text-transform: uppercase; margin-bottom: 12px; }
+                    .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 10px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                    th { border: 1px solid black; padding: 6px; background-color: #f2f2f2; text-transform: uppercase; }
+                    .stats { margin-top: 12px; font-size: 12px; line-height: 1.6; }
+                    .footer-sig { margin-top: 35px; display: flex; justify-content: flex-end; text-align: center; font-size: 12px; }
+                    .sig-box { width: 220px; }
+                    @media print {
+                        @page { size: portrait; margin: 12mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="kop">
+                    <h2>Pemerintah Kota Palembang &bull; Dinas Pendidikan</h2>
+                    <h1>SMP NEGERI 58 PALEMBANG</h1>
+                    <p>Jl. Macan Lindungan, Kec. Ilir Barat I, Kota Palembang, Sumatera Selatan</p>
+                    <p>Portal Belajar & Ujian Online Berstandar AKM</p>
+                </div>
+                <div class="title">LEMBAR REKAPITULASI HASIL UJIAN SISWA</div>
+                <div class="meta">
+                    <div>
+                        <strong>Judul Ujian:</strong> ${escapeHtml(quiz.judul_kuis)}<br>
+                        <strong>Mata Pelajaran:</strong> ${escapeHtml(quiz.mapel)} &bull; <strong>Kelas:</strong> ${escapeHtml(quiz.kelas)}
+                    </div>
+                    <div style="text-align: right;">
+                        <strong>Tanggal Cetak:</strong> ${dateStr}<br>
+                        <strong>Jumlah Peserta:</strong> ${activeQuizSubmissions.length} Siswa
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">No</th>
+                            <th>Nama Lengkap Siswa</th>
+                            <th style="width: 60px;">Kelas</th>
+                            <th style="width: 70px;">Skor PG</th>
+                            <th style="width: 70px;">Skor Esai</th>
+                            <th style="width: 70px;">Nilai Akhir</th>
+                            <th style="width: 80px;">Ketuntasan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+                <div class="stats">
+                    <strong>Statistik Hasil Ujian:</strong><br>
+                    &bull; Rata-Rata Nilai: <strong>${avg}</strong> / 100<br>
+                    &bull; Nilai Tertinggi: <strong>${highest}</strong> &bull; Nilai Terendah: <strong>${lowest}</strong>
+                </div>
+                <div class="footer-sig">
+                    <div class="sig-box">
+                        <p>Palembang, ${dateStr}<br>Guru Pengampu,</p>
+                        <br><br><br>
+                        <p style="font-weight: bold; text-decoration: underline;">${escapeHtml(teacherName)}</p>
+                        <p style="margin-top: -6px; font-size: 10px;">Guru Mata Pelajaran</p>
+                    </div>
+                </div>
+                <script>
+                    window.onload = function() { window.print(); };
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWin.document.close();
     };
 
     // Periksa Lembar Jawaban Siswa & Koreksi Esai

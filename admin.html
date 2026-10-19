@@ -175,10 +175,15 @@
                             </div>
                             <p class="text-slate-500 font-bold text-xs mt-1">Periksa berkas & tautan tugas siswa, beri nilai 0-100 atau gunakan koreksi AI.</p>
                         </div>
-                        <button onclick="exportCSV()" class="bg-emerald-400 hover:bg-emerald-500 text-black border-[3px] border-black font-black h-11 px-5 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 w-full sm:w-auto">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                            <span>Unduh Rekap Nilai CSV</span>
-                        </button>
+                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <button onclick="exportCSV()" class="bg-emerald-400 hover:bg-emerald-500 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                <span>Unduh Rekap CSV</span>
+                            </button>
+                            <button onclick="printOfficialGradebook()" class="bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0">
+                                <span>🖨️ Cetak Buku Nilai</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Filter Bar -->
@@ -628,10 +633,15 @@
                 </table>
             </div>
 
-            <div class="flex justify-between items-center pt-2">
-                <button onclick="exportQuizCSV()" class="px-4 py-2 bg-emerald-400 hover:bg-emerald-500 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                    Unduh Rekap Nilai Ujian CSV
-                </button>
+            <div class="flex flex-wrap justify-between items-center gap-2 pt-2">
+                <div class="flex items-center gap-2">
+                    <button onclick="exportQuizCSV()" class="px-4 py-2 bg-emerald-400 hover:bg-emerald-500 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        Unduh Rekap CSV
+                    </button>
+                    <button onclick="printQuizResults()" class="px-4 py-2 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        🖨️ Cetak Lembar Skor
+                    </button>
+                </div>
                 <button onclick="closeQuizResultsModal()" class="px-4 py-2 bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase">
                     Tutup
                 </button>

@@ -357,21 +357,37 @@
                         <input type="text" id="sub-materi" required placeholder="Misal: Laporan Praktikum Jaringan Komputer" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none focus:bg-white">
                     </div>
 
-                    <!-- Mode Switcher Berkas vs Link -->
+                    <!-- Mode Switcher: Form Web vs Berkas vs Tautan -->
                     <div class="space-y-1 pt-0.5">
-                        <label class="text-xs font-black uppercase text-black ml-1">Metode Pengumpulan</label>
-                        <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 border-2 border-black rounded-xl">
-                            <button type="button" id="tabModeFile" onclick="setSubmissionMode('file')" class="py-1.5 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                                Unggah Berkas
+                        <label class="text-xs font-black uppercase text-black ml-1">Metode Pengerjaan / Pengumpulan</label>
+                        <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 border-2 border-black rounded-xl">
+                            <button type="button" id="tabModeText" onclick="setSubmissionMode('text')" class="py-1.5 px-1.5 rounded-lg font-black text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                📝 Form Web
                             </button>
-                            <button type="button" id="tabModeLink" onclick="setSubmissionMode('link')" class="py-1.5 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-slate-500 hover:text-black">
-                                Tautan / Link
+                            <button type="button" id="tabModeFile" onclick="setSubmissionMode('file')" class="py-1.5 px-1.5 rounded-lg font-black text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 text-slate-500 hover:text-black">
+                                📁 Berkas
+                            </button>
+                            <button type="button" id="tabModeLink" onclick="setSubmissionMode('link')" class="py-1.5 px-1.5 rounded-lg font-black text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 text-slate-500 hover:text-black">
+                                🔗 Link
                             </button>
                         </div>
                     </div>
 
-                    <!-- 1. Form File -->
-                    <div id="sectionFile" class="space-y-1">
+                    <!-- 1. Form Jawab Langsung di Web (Google Form Style) -->
+                    <div id="sectionText" class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label for="sub-text-answer" class="text-xs font-black uppercase text-black ml-1">Lembar Jawaban Online (Seperti Google Form)</label>
+                            <span id="sub-text-count" class="text-[10px] font-bold text-slate-500">0 kata | 0 karakter</span>
+                        </div>
+                        <textarea id="sub-text-answer" rows="5" placeholder="Tuliskan jawaban tugas Anda di sini secara lengkap. Anda dapat mengetik ringkasan, analisis, atau jawaban pertanyaan tugas..." class="w-full p-3 rounded-xl border-2 border-black bg-slate-50 font-medium text-xs outline-none focus:bg-white resize-y"></textarea>
+                        <div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex items-start gap-2 text-[11px] font-bold text-amber-900">
+                            <span class="text-base leading-none">⚡</span>
+                            <span>Jawaban yang Anda ketik langsung tersimpan ke Meja Koreksi Guru dan dapat langsung dievaluasi otomatis oleh AI Asesmen SMPN 58.</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Form File -->
+                    <div id="sectionFile" class="hidden space-y-1">
                         <label for="sub-file" class="text-xs font-black uppercase text-black ml-1">Berkas Tugas (PDF, Word, JPG, PNG Maks 10MB)</label>
                         <div id="dropzone" class="relative flex flex-col items-center justify-center border-2 border-dashed border-black bg-slate-50 hover:bg-indigo-50 rounded-xl transition-all cursor-pointer p-3.5">
                             <input type="file" id="sub-file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
@@ -386,7 +402,7 @@
                         </div>
                     </div>
 
-                    <!-- 2. Form Link -->
+                    <!-- 3. Form Link -->
                     <div id="sectionLink" class="hidden space-y-2">
                         <div class="space-y-1">
                             <div class="flex justify-between items-center">
