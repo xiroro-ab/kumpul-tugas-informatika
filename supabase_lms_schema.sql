@@ -111,30 +111,43 @@ alter table public.quiz_questions enable row level security;
 alter table public.quiz_submissions enable row level security;
 
 -- Kebijakan Guru
+drop policy if exists "Allow public read teachers" on public.teachers;
 create policy "Allow public read teachers" on public.teachers for select to anon, authenticated using (true);
 drop policy if exists "Allow teachers manage self" on public.teachers;
+drop policy if exists "Allow authenticated manage teachers" on public.teachers;
 create policy "Allow authenticated manage teachers" on public.teachers for all to authenticated using (true) with check (true);
 
 -- Kebijakan Materi
+drop policy if exists "Allow public read materials" on public.materials;
 create policy "Allow public read materials" on public.materials for select to anon, authenticated using (true);
+drop policy if exists "Allow authenticated manage materials" on public.materials;
 create policy "Allow authenticated manage materials" on public.materials for all to authenticated using (true) with check (true);
 
 -- Kebijakan Tugas
+drop policy if exists "Allow public read assignments" on public.assignments;
 create policy "Allow public read assignments" on public.assignments for select to anon, authenticated using (true);
+drop policy if exists "Allow authenticated manage assignments" on public.assignments;
 create policy "Allow authenticated manage assignments" on public.assignments for all to authenticated using (true) with check (true);
 
 -- Kebijakan Kuis & Soal
+drop policy if exists "Allow public read quizzes" on public.quizzes;
 create policy "Allow public read quizzes" on public.quizzes for select to anon, authenticated using (true);
+drop policy if exists "Allow authenticated manage quizzes" on public.quizzes;
 create policy "Allow authenticated manage quizzes" on public.quizzes for all to authenticated using (true) with check (true);
 
+drop policy if exists "Allow public read quiz_questions" on public.quiz_questions;
 create policy "Allow public read quiz_questions" on public.quiz_questions for select to anon, authenticated using (true);
+drop policy if exists "Allow authenticated manage quiz_questions" on public.quiz_questions;
 create policy "Allow authenticated manage quiz_questions" on public.quiz_questions for all to authenticated using (true) with check (true);
 
 -- Kebijakan Jawaban Ujian Siswa
+drop policy if exists "Allow public submit quizzes" on public.quiz_submissions;
 create policy "Allow public submit quizzes" on public.quiz_submissions for insert to anon, authenticated with check (true);
+drop policy if exists "Allow public read quiz results" on public.quiz_submissions;
 create policy "Allow public read quiz results" on public.quiz_submissions for select to anon, authenticated using (true);
 drop policy if exists "Allow public update quiz submissions" on public.quiz_submissions;
 create policy "Allow public update quiz submissions" on public.quiz_submissions for update to anon, authenticated using (true) with check (true);
+drop policy if exists "Allow authenticated manage quiz submissions" on public.quiz_submissions;
 create policy "Allow authenticated manage quiz submissions" on public.quiz_submissions for all to authenticated using (true) with check (true);
 
 -- Tambahan Kolom Token Ujian pada Tabel Quizzes
