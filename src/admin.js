@@ -42,7 +42,7 @@ let editingAssignmentId = null;
 export function getDynamicClassOptions(classes = stateKelas) {
     const list = Array.isArray(classes) ? classes.filter(Boolean) : [];
     const options = [
-        { value: 'Semua Kelas', label: '🌐 Semua Kelas (Seluruh Siswa)' }
+        { value: 'Semua Kelas', label: 'Semua Kelas (Seluruh Siswa)' }
     ];
 
     if (list.length === 0) {
@@ -55,13 +55,13 @@ export function getDynamicClassOptions(classes = stateKelas) {
     const hasGrade9 = list.some(k => /\b9\b|ix/i.test(k));
 
     if (hasGrade7) {
-        options.push({ value: 'Semua Kelas 7 (VII)', label: '📚 Khusus Semua Kelas 7 (VII)' });
+        options.push({ value: 'Semua Kelas 7 (VII)', label: 'Khusus Semua Kelas 7 (VII)' });
     }
     if (hasGrade8) {
-        options.push({ value: 'Semua Kelas 8 (VIII)', label: '📚 Khusus Semua Kelas 8 (VIII)' });
+        options.push({ value: 'Semua Kelas 8 (VIII)', label: 'Khusus Semua Kelas 8 (VIII)' });
     }
     if (hasGrade9) {
-        options.push({ value: 'Semua Kelas 9 (IX)', label: '📚 Khusus Semua Kelas 9 (IX)' });
+        options.push({ value: 'Semua Kelas 9 (IX)', label: 'Khusus Semua Kelas 9 (IX)' });
     }
 
     // Tambahkan HANYA kelas yang terdaftar di Pengaturan
@@ -239,7 +239,7 @@ export function parseAssignmentQuestions(assignment) {
 document.addEventListener('DOMContentLoaded', () => {
 
     // Helper Modal Alert/Confirm Neobrutalisme
-    window.showCustomModal = (message, type = 'alert', title = 'Pemberitahuan', icon = '📢') => {
+    window.showCustomModal = (message, type = 'alert', title = 'Pemberitahuan', icon = '') => {
         return new Promise((resolve) => {
             const modal = document.getElementById('custom-modal');
             const titleEl = document.getElementById('custom-modal-title');
@@ -724,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="flex flex-col gap-1 py-0.5 w-full pr-2">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span class="inline-flex items-center shrink-0 bg-amber-100 text-amber-900 text-[10px] font-black px-1.5 py-0.5 rounded border border-amber-300 uppercase">
-                                📝 FORM WEB
+                                FORM WEB
                             </span>
                             <span class="font-bold text-xs text-slate-800 break-all">${escapeHtml(f.filename || 'Jawaban Form Web')}</span>
                         </div>
@@ -737,7 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="flex flex-col gap-1 py-0.5 w-full pr-2">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span class="inline-flex items-center shrink-0 bg-purple-100 text-purple-900 text-[10px] font-black px-1.5 py-0.5 rounded border border-purple-300 uppercase">
-                                🔗 LINK
+                                LINK
                             </span>
                             <span class="font-bold text-xs text-slate-800 break-all">${escapeHtml(f.filename || 'Tautan Tugas')}</span>
                         </div>
@@ -752,7 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailCell = `
                     <div class="flex items-start gap-1.5 py-0.5 w-full pr-2">
                         <span class="inline-flex items-center shrink-0 bg-blue-100 text-blue-900 text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-300 uppercase mt-0.5">
-                            📁 FILE
+                            FILE
                         </span>
                         <a href="${targetUrl}" target="_blank" class="font-bold text-xs text-indigo-700 hover:underline break-all leading-relaxed" title="${f.filename}">
                             ${f.filename} ↗
@@ -761,7 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 downloadBtnHtml = `
                     <button onclick="downloadSubmissionFile('${targetUrl}', '${f.filename.replace(/'/g, "\\'")}')" title="Unduh Berkas Siswa ke Komputer" class="inline-flex items-center bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-slate-300">
-                        ⬇️ Unduh
+                        Unduh
                     </button>
                 `;
             }
@@ -855,15 +855,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         typeBadgeClass = 'text-blue-700';
                         const isCorrect = String(q.jawaban_siswa).trim().toUpperCase() === String(q.kunci).trim().toUpperCase();
                         keyBadge = isCorrect
-                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">✅ Benar (Kunci: ${escapeHtml(q.kunci)})</span>`
-                            : `<span class="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">❌ Jawaban: ${escapeHtml(q.jawaban_siswa || 'Kosong')} (Kunci: ${escapeHtml(q.kunci)})</span>`;
+                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Benar (Kunci: ${escapeHtml(q.kunci)})</span>`
+                            : `<span class="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Jawaban: ${escapeHtml(q.jawaban_siswa || 'Kosong')} (Kunci: ${escapeHtml(q.kunci)})</span>`;
                     } else if (isBs) {
                         typeLabel = 'Benar / Salah';
                         typeBadgeClass = 'text-teal-700';
                         const isCorrect = String(q.jawaban_siswa).trim().toUpperCase() === String(q.kunci).trim().toUpperCase();
                         keyBadge = isCorrect
-                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">✅ Benar (Kunci: ${escapeHtml(q.kunci)})</span>`
-                            : `<span class="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">❌ Jawaban: ${escapeHtml(q.jawaban_siswa || 'Kosong')} (Kunci: ${escapeHtml(q.kunci)})</span>`;
+                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Benar (Kunci: ${escapeHtml(q.kunci)})</span>`
+                            : `<span class="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Jawaban: ${escapeHtml(q.jawaban_siswa || 'Kosong')} (Kunci: ${escapeHtml(q.kunci)})</span>`;
                     } else if (isFoto) {
                         typeLabel = 'Upload Foto / Bukti';
                         typeBadgeClass = 'text-orange-700';
@@ -883,7 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="space-y-2">
                                     <img src="${escapeHtml(fileUrl)}" alt="Unggahan Siswa" class="max-h-64 rounded-xl border-2 border-black object-contain bg-white" />
                                     <a href="${escapeHtml(fileUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-lg text-xs font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                                        🔍 Buka Berkas / Foto Asli
+                                        Buka Berkas / Foto Asli
                                     </a>
                                 </div>
                             `;
@@ -913,7 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                     <td class="p-2 font-bold border border-slate-300">${escapeHtml(p.kiri)}</td>
                                                     <td class="p-2 font-semibold border border-slate-300">${escapeHtml(stAns)}</td>
                                                     <td class="p-2 font-semibold border border-slate-300 text-purple-900">${escapeHtml(p.kanan)}</td>
-                                                    <td class="p-2 border border-slate-300 text-center font-black">${matchCorrect ? '✅ Cocok' : '❌ Salah'}</td>
+                                                    <td class="p-2 border border-slate-300 text-center font-black">${matchCorrect ? 'Cocok' : 'Salah'}</td>
                                                 </tr>
                                             `;
                                         }).join('')}
@@ -951,7 +951,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <a href="${escapeHtml(imgUrl)}" target="_blank" title="Buka gambar stimulus">
                                         <img src="${escapeHtml(imgUrl)}" alt="Gambar Soal" class="max-h-48 rounded-lg border border-slate-300 object-contain mx-auto" />
                                     </a>
-                                    <div class="text-[10px] text-slate-500 font-bold text-center mt-1">📷 Stimulus Gambar Soal (Klik untuk perbesar)</div>
+                                    <div class="text-[10px] text-slate-500 font-bold text-center mt-1">Stimulus Gambar Soal (Klik untuk perbesar)</div>
                                 </div>
                             ` : ''}
 
@@ -962,7 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             ${q.kunci && !isMatch ? `
                                 <div class="bg-purple-50 border border-purple-200 rounded-xl p-2.5 text-[11px] font-bold text-purple-900">
-                                    🎯 <strong>Kunci / Panduan Guru:</strong> ${escapeHtml(q.kunci)}
+                                    <strong>Kunci / Panduan Guru:</strong> ${escapeHtml(q.kunci)}
                                 </div>
                             ` : ''}
 
@@ -1004,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="font-bold text-slate-800 truncate">${escapeHtml(item.filename)}</span>
                             <div class="flex items-center gap-1.5 shrink-0">
                                 <a href="${publicUrlData.publicUrl}" target="_blank" class="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-lg border border-indigo-300">Buka Berkas ↗</a>
-                                <button type="button" onclick="downloadSubmissionFile('${publicUrlData.publicUrl}', '${item.filename.replace(/'/g, "\\'")}')" class="bg-slate-100 text-slate-800 font-bold px-3 py-1 rounded-lg border border-slate-300">⬇️ Unduh</button>
+                                <button type="button" onclick="downloadSubmissionFile('${publicUrlData.publicUrl}', '${item.filename.replace(/'/g, "\\'")}')" class="bg-slate-100 text-slate-800 font-bold px-3 py-1 rounded-lg border border-slate-300">Unduh</button>
                             </div>
                         </div>
                     `;
@@ -1113,7 +1113,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showCustomModal("Gagal menjalankan AI Koreksi: " + e.message);
         } finally {
             btn.disabled = false;
-            btn.innerText = "✨ Koreksi Otomatis AI";
+            btn.innerText = "Koreksi Otomatis AI";
         }
     };
 
@@ -1403,7 +1403,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     Kelas ${escapeHtml(a.kelas)} &bull; ${escapeHtml(a.mapel)}
                                 </span>
                                 <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                    📝 ${qCount} Butir Soal
+                                    ${qCount} Butir Soal
                                 </span>
                             </div>
                             <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
@@ -1412,21 +1412,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <h4 class="font-black text-lg text-black mb-1">${escapeHtml(a.judul_tugas)}</h4>
                         <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line line-clamp-3">${escapeHtml(descText)}</p>
-                        ${a.rubrik_ai ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3">🎯 <strong>Rubrik AI:</strong> ${escapeHtml(a.rubrik_ai)}</div>` : ''}
+                        ${a.rubrik_ai ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3"><strong>Rubrik AI:</strong> ${escapeHtml(a.rubrik_ai)}</div>` : ''}
                     </div>
                     <div class="pt-3 border-t-2 border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                         <span class="text-xs font-black text-slate-800 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-xl">
-                            👥 ${matchingSubs.length} Siswa (${gradedCount} Dinilai)
+                            ${matchingSubs.length} Siswa (${gradedCount} Dinilai)
                         </span>
                         <div class="flex items-center gap-2 flex-wrap">
                             <button onclick="editAssignment('${a.id}')" class="px-3 py-2 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
-                                ✏️ Edit Soal
+                                Edit Soal
                             </button>
                             <button onclick="addQuestionToExistingAssignment('${a.id}')" class="px-3 py-2 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
-                                ➕ Tambah Soal
+                                Tambah Soal
                             </button>
                             <button onclick="openAssignmentSubmissionsModal('${a.id}')" class="px-3.5 py-2 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
-                                📋 Periksa & Koreksi (${matchingSubs.length})
+                                Periksa & Koreksi (${matchingSubs.length})
                             </button>
                             <button onclick="deleteAssignment('${a.id}')" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-300 rounded-xl font-black text-xs uppercase transition">
                                 Hapus
@@ -1463,8 +1463,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (descEl) descEl.textContent = a.deskripsi || 'Tidak ada petunjuk khusus.';
         if (rubrikEl) {
             rubrikEl.innerHTML = a.rubrik_ai 
-                ? `🎯 <strong>Rubrik Penilaian AI:</strong> ${escapeHtml(a.rubrik_ai)}` 
-                : '🎯 <strong>Rubrik Penilaian:</strong> Kesesuaian tugas, kelengkapan pengerjaan, dan kerapian penyajian.';
+                ? `<strong>Rubrik Penilaian AI:</strong> ${escapeHtml(a.rubrik_ai)}` 
+                : '<strong>Rubrik Penilaian:</strong> Kesesuaian tugas, kelengkapan pengerjaan, dan kerapian penyajian.';
         }
 
         renderAssignmentSubmissionsTable(a);
@@ -1513,7 +1513,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailHtml = `
                     <div class="space-y-1 py-1 max-w-xs md:max-w-sm">
                         <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded border border-amber-300 uppercase">
-                            📝 Form Web
+                            Form Web
                         </span>
                         <p class="text-xs text-slate-700 italic bg-amber-50/70 p-2 rounded-lg border border-amber-200 line-clamp-3">
                             ${escapeHtml(textSnippet)}
@@ -1525,7 +1525,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailHtml = `
                     <div class="space-y-1 py-1 max-w-xs">
                         <span class="inline-flex items-center gap-1 bg-purple-100 text-purple-900 text-[10px] font-black px-2 py-0.5 rounded border border-purple-300 uppercase">
-                            🔗 Link Online
+                            Link Online
                         </span>
                         <a href="${url}" target="_blank" class="text-indigo-600 font-bold text-xs underline block truncate" title="${url}">
                             ${url} ↗
@@ -1538,7 +1538,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detailHtml = `
                     <div class="flex items-center gap-2 py-1">
                         <span class="inline-flex items-center gap-1 bg-blue-100 text-blue-900 text-[10px] font-black px-2 py-0.5 rounded border border-blue-300 uppercase">
-                            📁 Berkas
+                            Berkas
                         </span>
                         <a href="${fileUrl}" target="_blank" class="text-indigo-700 font-bold text-xs underline truncate max-w-[180px]" title="${escapeHtml(f.filename)}">
                             ${escapeHtml(f.filename)} ↗
@@ -1561,7 +1561,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusHtml = `
                     <div class="text-center">
                         <span class="inline-block bg-amber-100 text-amber-900 font-bold text-[11px] px-2.5 py-1 rounded-lg border border-amber-300 uppercase">
-                            ⏳ Belum Dinilai
+                            Belum Dinilai
                         </span>
                     </div>
                 `;
@@ -1579,8 +1579,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-4 py-3 border-b-2 border-black border-r-2 text-center">${statusHtml}</td>
                 <td class="px-4 py-3 border-b-2 border-black text-center whitespace-nowrap">
                     <button onclick="openGradeModal('${f.id}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                        Koreksi & Nilai ✏️
-                    </button>
+                        Koreksi & Nilai </button>
                 </td>
             `;
 
@@ -1730,7 +1729,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const titleEl = document.getElementById('assignment-modal-title');
         if (titleEl) {
-            titleEl.innerText = assignment ? "✏️ Edit Formulir Tugas Interaktif" : "📝 Buat Formulir Tugas Baru (Google Form Style)";
+            titleEl.innerText = assignment ? "Edit Formulir Tugas Interaktif" : "Buat Formulir Tugas Baru (Google Form Style)";
         }
         const saveBtnText = document.getElementById('btn-save-assignment-text');
         if (saveBtnText) {
@@ -1870,11 +1869,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="p-2.5 rounded-xl border border-dashed border-slate-400 bg-slate-50/80 space-y-2">
                         <div class="flex items-center justify-between flex-wrap gap-2">
                             <span class="text-[11px] font-black uppercase text-slate-700 flex items-center gap-1.5">
-                                <span>📷</span> Lampiran Gambar Soal (Stimulus / Ilustrasi / Diagram)
+                                <span></span> Lampiran Gambar Soal (Stimulus / Ilustrasi / Diagram)
                             </span>
                             ${q.gambar_url ? `
                                 <button type="button" onclick="window.removeQuestionImage(${idx}, 'form')" class="text-[10px] font-black uppercase text-red-600 bg-red-100 hover:bg-red-200 px-2 py-0.5 rounded border border-red-300 transition">
-                                    ❌ Hapus Gambar
+                                    Hapus Gambar
                                 </button>
                             ` : ''}
                         </div>
@@ -1886,7 +1885,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <a href="${escapeHtml(q.gambar_url)}" target="_blank" class="text-xs font-bold text-indigo-700 hover:underline truncate block">
                                         ${escapeHtml(q.gambar_url)}
                                     </a>
-                                    <span class="text-[10px] text-emerald-700 font-bold">✅ Gambar aktif terpasang pada butir soal ini</span>
+                                    <span class="text-[10px] text-emerald-700 font-bold">Gambar aktif terpasang pada butir soal ini</span>
                                 </div>
                             </div>
                         ` : `
@@ -1894,7 +1893,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div>
                                     <input type="file" id="form_img_file_${idx}" accept="image/*" class="hidden" onchange="window.handleQuestionImageUpload(event, ${idx}, 'form')">
                                     <button type="button" onclick="document.getElementById('form_img_file_${idx}').click()" class="w-full h-8 px-2.5 bg-white hover:bg-slate-100 border border-black rounded-lg text-xs font-black text-slate-800 flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                        📁 Pilih Gambar dari Komputer
+                                        Pilih Gambar dari Komputer
                                     </button>
                                 </div>
                                 <div class="flex items-center gap-1.5">
@@ -1940,19 +1939,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             <label class="block text-[11px] font-black uppercase text-black">Kunci Jawaban Benar / Salah:</label>
                             <div class="flex items-center gap-3">
                                 <select onchange="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="h-9 px-3 border-2 border-black rounded-xl font-black text-xs bg-teal-100 text-teal-950 cursor-pointer">
-                                    <option value="BENAR" ${String(q.kunci).toUpperCase() === 'BENAR' ? 'selected' : ''}>✅ BENAR (Pernyataan Sesuai)</option>
-                                    <option value="SALAH" ${String(q.kunci).toUpperCase() === 'SALAH' ? 'selected' : ''}>❌ SALAH (Pernyataan Keliru)</option>
+                                    <option value="BENAR" ${String(q.kunci).toUpperCase() === 'BENAR' ? 'selected' : ''}>BENAR (Pernyataan Sesuai)</option>
+                                    <option value="SALAH" ${String(q.kunci).toUpperCase() === 'SALAH' ? 'selected' : ''}>SALAH (Pernyataan Keliru)</option>
                                 </select>
                             </div>
                         </div>
                     ` : isFoto ? `
                         <div class="space-y-2 pt-1">
                             <div class="bg-orange-50 border-2 border-orange-200 rounded-xl p-3 text-xs text-orange-950">
-                                <span class="font-black uppercase text-[10px] block mb-1">📸 Format Soal Pengunggahan Berkas / Foto:</span>
+                                <span class="font-black uppercase text-[10px] block mb-1">Format Soal Pengunggahan Berkas / Foto:</span>
                                 <p class="text-[11px] font-medium leading-relaxed">Siswa akan diberikan area dropzone unggah foto/dokumen hasil pekerjaan langsung di formulir.</p>
                             </div>
                             <div>
-                                <label class="block text-[11px] font-black uppercase text-purple-950 mb-1">🎯 Kriteria Foto yang Diharapkan (Acuan Penilaian AI & Guru)</label>
+                                <label class="block text-[11px] font-black uppercase text-purple-950 mb-1">Kriteria Foto yang Diharapkan (Acuan Penilaian AI & Guru)</label>
                                 <input type="text" placeholder="Contoh: Foto catatan tulisan tangan yang rapi dan terbaca, atau screenshot praktik coding..." value="${escapeHtml(q.kunci || '')}" oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="w-full h-9 px-3 border-2 border-purple-300 rounded-xl font-bold text-xs bg-purple-50 focus:bg-white text-purple-950">
                             </div>
                         </div>
@@ -1961,7 +1960,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="flex items-center justify-between">
                                 <label class="text-[11px] font-black uppercase text-black">Pasangan Premis & Jodoh Jawaban:</label>
                                 <button type="button" onclick="window.addMatchingPair(${idx})" class="px-2.5 py-1 bg-pink-200 hover:bg-pink-300 border-2 border-black rounded-lg font-black text-[10px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                    ➕ Tambah Pasangan
+                                    Tambah Pasangan
                                 </button>
                             </div>
                             <div class="space-y-2">
@@ -1969,7 +1968,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <div class="flex items-center gap-2">
                                         <span class="w-5 text-center font-black text-xs text-slate-700">${pIdx + 1}</span>
                                         <input type="text" placeholder="Istilah / Premis (Kiri)..." value="${escapeHtml(p.kiri || '')}" oninput="window.updateMatchingPair(${idx}, ${pIdx}, 'kiri', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
-                                        <span class="font-black text-xs text-slate-500">➜</span>
+                                        <span class="font-black text-xs text-slate-500">&rarr;</span>
                                         <input type="text" placeholder="Pasangan / Definisi (Kanan)..." value="${escapeHtml(p.kanan || '')}" oninput="window.updateMatchingPair(${idx}, ${pIdx}, 'kanan', this.value)" class="flex-1 h-8 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50">
                                         <button type="button" onclick="window.deleteMatchingPair(${idx}, ${pIdx})" title="Hapus Pasangan" class="w-7 h-7 rounded border border-red-400 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white flex items-center justify-center font-black text-xs transition">
                                             &times;
@@ -1980,7 +1979,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     ` : `
                         <div>
-                            <label class="block text-[11px] font-black uppercase text-purple-950 mb-1">🎯 Kunci Jawaban / Panduan Evaluasi AI (Acuan Penilaian)</label>
+                            <label class="block text-[11px] font-black uppercase text-purple-950 mb-1">Kunci Jawaban / Panduan Evaluasi AI (Acuan Penilaian)</label>
                             <input type="text" placeholder="Tuliskan kata kunci jawaban yang diharapkan siswa..." value="${escapeHtml(q.kunci || '')}" oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="w-full h-9 px-3 border-2 border-purple-300 rounded-xl font-bold text-xs bg-purple-50 focus:bg-white text-purple-950">
                         </div>
                     `}
@@ -2152,7 +2151,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 editingAssignmentId = null;
                 closeAssignmentModal();
                 loadAssignments();
-                showCustomModal(`✅ Formulir tugas "${judul}" berhasil diperbarui!`);
+                showCustomModal(`Formulir tugas "${judul}" berhasil diperbarui!`);
             } else {
                 const { error } = await supabase.from('assignments').insert([{
                     teacher_id: currentSession?.user?.id,
@@ -2171,7 +2170,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeAssignmentModal();
                 loadAssignments();
                 loadOptionsSettings();
-                showCustomModal(`✅ Formulir tugas "${judul}" berisi ${formBuilderQuestions.length} butir soal berhasil dipublikasikan untuk ${kelas}!`);
+                showCustomModal(`Formulir tugas "${judul}" berisi ${formBuilderQuestions.length} butir soal berhasil dipublikasikan untuk ${kelas}!`);
             }
         } catch (e) {
             showCustomModal("Gagal menyimpan formulir tugas: " + e.message);
@@ -2203,19 +2202,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const customBox = document.getElementById('ai-assign-total-custom-box');
         const customInput = document.getElementById('ai-assign-jumlah-custom');
         const select = document.getElementById('ai-assign-jumlah');
-        const toggleBtn = document.getElementById('ai-assign-toggle-custom-btn');
         if (!presetBox || !customBox) return;
 
         const isCustomVisible = !customBox.classList.contains('hidden');
         if (isCustomVisible) {
             customBox.classList.add('hidden');
             presetBox.classList.remove('hidden');
-            if (toggleBtn) toggleBtn.innerHTML = '<span>✏️ Isi Kustom</span>';
             if (select && select.value === 'custom') select.value = '4';
         } else {
             presetBox.classList.add('hidden');
             customBox.classList.remove('hidden');
-            if (toggleBtn) toggleBtn.innerHTML = '<span>↺ Pilihan Preset</span>';
             if (customInput) {
                 if (!customInput.value && select && select.value !== 'custom') {
                     customInput.value = select.value;
@@ -2229,10 +2225,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const presetBox = document.getElementById('ai-assign-total-preset-box');
         const customBox = document.getElementById('ai-assign-total-custom-box');
         const select = document.getElementById('ai-assign-jumlah');
-        const toggleBtn = document.getElementById('ai-assign-toggle-custom-btn');
         if (customBox) customBox.classList.add('hidden');
         if (presetBox) presetBox.classList.remove('hidden');
-        if (toggleBtn) toggleBtn.innerHTML = '<span>✏️ Isi Kustom</span>';
         if (select && select.value === 'custom') select.value = '4';
     };
 
@@ -2324,12 +2318,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             renderFormBuilderQuestions();
 
-            showCustomModal(`✨ AI berhasil menyusun ${formBuilderQuestions.length} butir soal formulir tugas! Silakan periksa, sesuaikan, atau langsung publikasikan ke siswa.`);
+            showCustomModal(`AI berhasil menyusun ${formBuilderQuestions.length} butir soal formulir tugas! Silakan periksa, sesuaikan, atau langsung publikasikan ke siswa.`);
         } catch (e) {
             showCustomModal("Gagal generate soal form AI: " + e.message);
         } finally {
             btn.disabled = false;
-            btn.innerText = "🚀 BUATKAN SOAL KE FORM BUILDER";
+            btn.innerText = "BUATKAN SOAL KE FORM BUILDER";
         }
     };
 
@@ -2398,13 +2392,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!kontenEl) return;
         let snippet = '';
         if (section === 'tujuan') {
-            snippet = `\n\n🎯 Capaian & Tujuan Pembelajaran:\n1. Memahami konsep pokok dan fungsi utama materi ini.\n2. Mampu menerapkan konsep untuk memecahkan persoalan sehari-hari.`;
+            snippet = `\n\nCapaian & Tujuan Pembelajaran:\n1. Memahami konsep pokok dan fungsi utama materi ini.\n2. Mampu menerapkan konsep untuk memecahkan persoalan sehari-hari.`;
         } else if (section === 'kasus') {
-            snippet = `\n\n💡 Contoh Kasus & Penerapan Sehari-Hari:\nBayangkan situasi berikut pada kehidupan remaja sehari-hari:\n[Tuliskan skenario studi kasus konkret di sini].`;
+            snippet = `\n\nContoh Kasus & Penerapan Sehari-Hari:\nBayangkan situasi berikut pada kehidupan remaja sehari-hari:\n[Tuliskan skenario studi kasus konkret di sini].`;
         } else if (section === 'rangkuman') {
-            snippet = `\n\n📌 Rangkuman Intisari Materi:\n- Poin 1: [Prinsip penting yang harus diingat]\n- Poin 2: [Aturan atau langkah kunci]\n- Poin 3: [Hal yang perlu diperhatikan]`;
+            snippet = `\n\nRangkuman Intisari Materi:\n- Poin 1: [Prinsip penting yang harus diingat]\n- Poin 2: [Aturan atau langkah kunci]\n- Poin 3: [Hal yang perlu diperhatikan]`;
         } else if (section === 'glosarium') {
-            snippet = `\n\n📖 Glosarium Istilah Penting:\n- Istilah 1: Penjelasan ringkas istilah 1.\n- Istilah 2: Penjelasan ringkas istilah 2.`;
+            snippet = `\n\nGlosarium Istilah Penting:\n- Istilah 1: Penjelasan ringkas istilah 1.\n- Istilah 2: Penjelasan ringkas istilah 2.`;
         }
         kontenEl.value = (kontenEl.value.trim() + snippet).trim();
         kontenEl.focus();
@@ -2441,13 +2435,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             closeMaterialModal();
             loadMaterials();
-            showCustomModal(`✅ Modul materi "${judul}" berhasil disimpan dan dapat diakses siswa ${kelas}!`);
+            showCustomModal(`Modul materi "${judul}" berhasil disimpan dan dapat diakses siswa ${kelas}!`);
         } catch (e) {
             showCustomModal("Gagal menyimpan materi: " + e.message);
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = "💾 SIMPAN & TERBITKAN MATERI";
+                btn.innerText = "SIMPAN & TERBITKAN MATERI";
             }
         }
     };
@@ -2520,7 +2514,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showCustomModal("Gagal generate materi: " + e.message);
         } finally {
             btn.disabled = false;
-            btn.innerText = "🚀 GENERATE MODUL AJAR SEKARANG";
+            btn.innerText = "GENERATE MODUL AJAR SEKARANG";
         }
     };
 
@@ -2543,9 +2537,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!token) return;
         try {
             await navigator.clipboard.writeText(token);
-            showCustomModal(`Token ujian [${token}] berhasil disalin ke clipboard! Bagikan token ini kepada siswa saat ujian dimulai.`, 'alert', 'Token Disalin', '📋');
+            showCustomModal(`Token ujian [${token}] berhasil disalin ke clipboard! Bagikan token ini kepada siswa saat ujian dimulai.`, 'alert', 'Token Disalin', '');
         } catch (_) {
-            showCustomModal(`Token Ujian: ${token}\nSilakan salin token di atas secara manual.`, 'alert', 'Token Ujian', '🔑');
+            showCustomModal(`Token Ujian: ${token}\nSilakan salin token di atas secara manual.`, 'alert', 'Token Ujian', '');
         }
     };
 
@@ -2575,10 +2569,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (quizToken && qCfg.token_required !== false) {
                     tokenBadgeHtml = `
                         <div class="inline-flex items-center gap-1.5 bg-yellow-200 border-2 border-black px-2.5 py-0.5 rounded-lg text-xs font-black text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                            <span>🔑 Token:</span>
+                            <span>Token:</span>
                             <span class="font-mono tracking-wider">${escapeHtml(quizToken)}</span>
-                            <button type="button" onclick="copyQuizToken('${escapeHtml(quizToken)}')" title="Salin Token" class="ml-1 hover:scale-110 active:scale-95 transition text-black">
-                                📋
+                            <button type="button" onclick="copyQuizToken('${escapeHtml(quizToken)}')" title="Salin Token" class="ml-1 hover:underline text-indigo-700 font-bold text-[11px]">
+                                Salin
                             </button>
                         </div>
                     `;
@@ -2610,13 +2604,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
                         <button onclick="openQuizResultsModal('${q.id}')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
-                            📊 Hasil & Koreksi Ujian
+                            Hasil & Koreksi
                         </button>
                         <button onclick="openEditQuizModal('${q.id}')" class="px-3.5 py-2 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                            ✏️ Edit Kuis & Soal
+                            Edit Kuis
                         </button>
                         <button onclick="addQuestionToExistingQuiz('${q.id}')" class="px-3.5 py-2 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
-                            ➕ Tambah Soal
+                            Tambah Soal
                         </button>
                         <button onclick="deleteQuiz('${q.id}')" class="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 rounded-xl text-xs font-black uppercase">
                             Hapus
@@ -2635,19 +2629,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const customBox = document.getElementById('ai-quiz-total-custom-box');
         const customInput = document.getElementById('ai-quiz-total-soal-custom');
         const select = document.getElementById('ai-quiz-total-soal');
-        const toggleBtn = document.getElementById('ai-quiz-toggle-custom-btn');
         if (!presetBox || !customBox) return;
 
         const isCustomVisible = !customBox.classList.contains('hidden');
         if (isCustomVisible) {
             customBox.classList.add('hidden');
             presetBox.classList.remove('hidden');
-            if (toggleBtn) toggleBtn.innerHTML = '<span>✏️ Isi Kustom</span>';
             if (select && select.value === 'custom') select.value = '5';
         } else {
             presetBox.classList.add('hidden');
             customBox.classList.remove('hidden');
-            if (toggleBtn) toggleBtn.innerHTML = '<span>↺ Pilihan Preset</span>';
             if (customInput) {
                 if (!customInput.value && select && select.value !== 'custom') {
                     customInput.value = select.value;
@@ -2661,10 +2652,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const presetBox = document.getElementById('ai-quiz-total-preset-box');
         const customBox = document.getElementById('ai-quiz-total-custom-box');
         const select = document.getElementById('ai-quiz-total-soal');
-        const toggleBtn = document.getElementById('ai-quiz-toggle-custom-btn');
         if (customBox) customBox.classList.add('hidden');
         if (presetBox) presetBox.classList.remove('hidden');
-        if (toggleBtn) toggleBtn.innerHTML = '<span>✏️ Isi Kustom</span>';
         if (select && select.value === 'custom') select.value = '5';
     };
 
@@ -2819,12 +2808,12 @@ document.addEventListener('DOMContentLoaded', () => {
             closeAiQuizModal();
             loadQuizzes();
             const typesSummary = [...new Set(questions.map(q => q.tipe || 'pg'))].join(', ');
-            showCustomModal(`✅ Berhasil! Kuis "${judul}" berisi ${questions.length} butir soal (${typesSummary}) telah dipublikasikan ke ${kelas}!`);
+            showCustomModal(`Berhasil! Kuis "${judul}" berisi ${questions.length} butir soal (${typesSummary}) telah dipublikasikan ke ${kelas}!`);
         } catch (e) {
             showCustomModal("Gagal generate bank soal AI: " + e.message);
         } finally {
             btn.disabled = false;
-            btn.innerText = "🚀 GENERATE BANK SOAL SEKARANG";
+            btn.innerText = "GENERATE BANK SOAL SEKARANG";
         }
     };
 
@@ -2905,7 +2894,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnSave = document.getElementById('btn-save-manual-quiz');
         if (modalTitle) modalTitle.textContent = "Buat Kuis Baru (Input Manual)";
         if (modalSub) modalSub.textContent = "Susun naskah butir soal secara mandiri untuk siswa";
-        if (btnSave) btnSave.innerText = "💾 SIMPAN & TERBITKAN KUIS";
+        if (btnSave) btnSave.innerText = "SIMPAN & TERBITKAN KUIS";
 
         const kelasSelect = document.getElementById('manual-quiz-kelas');
         populateTargetClassSelect(kelasSelect, 'Semua Kelas');
@@ -2971,7 +2960,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnSave = document.getElementById('btn-save-manual-quiz');
         if (modalTitle) modalTitle.textContent = "Edit Kuis & Butir Soal";
         if (modalSub) modalSub.textContent = "Perbarui naskah butir soal, kunci jawaban, dan stimulus gambar";
-        if (btnSave) btnSave.innerText = "💾 SIMPAN PERUBAHAN KUIS";
+        if (btnSave) btnSave.innerText = "SIMPAN PERUBAHAN KUIS";
 
         const kelasSelect = document.getElementById('manual-quiz-kelas');
         populateTargetClassSelect(kelasSelect, quiz.kelas || 'Semua Kelas');
@@ -3268,11 +3257,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="grid grid-cols-2 gap-3">
                             <label class="flex items-center gap-2.5 p-3 rounded-xl border-2 border-black cursor-pointer ${isBenar ? 'bg-emerald-200 border-black ring-2 ring-emerald-500 font-black' : 'bg-slate-50 font-bold'}">
                                 <input type="radio" name="manual_quiz_bs_${idx}" value="Benar" ${isBenar ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'Benar'); window.renderManualQuizQuestions();" class="accent-emerald-700">
-                                <span class="text-xs text-black">✅ PERNYATAAN BENAR</span>
+                                <span class="text-xs text-black">PERNYATAAN BENAR</span>
                             </label>
                             <label class="flex items-center gap-2.5 p-3 rounded-xl border-2 border-black cursor-pointer ${!isBenar ? 'bg-red-200 border-black ring-2 ring-red-500 font-black' : 'bg-slate-50 font-bold'}">
                                 <input type="radio" name="manual_quiz_bs_${idx}" value="Salah" ${!isBenar ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'Salah'); window.renderManualQuizQuestions();" class="accent-red-700">
-                                <span class="text-xs text-black">❌ PERNYATAAN SALAH</span>
+                                <span class="text-xs text-black">PERNYATAAN SALAH</span>
                             </label>
                         </div>
                     </div>
@@ -3292,7 +3281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="flex justify-between items-center">
                             <label class="block text-[11px] font-black uppercase text-black">Pasangan Soal Menjodohkan</label>
                             <button type="button" onclick="window.addManualQuizPair(${idx})" class="text-[11px] bg-teal-600 hover:bg-black text-white font-black px-2.5 py-1 rounded-lg border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition">
-                                ➕ Tambah Pasangan
+                                Tambah Pasangan
                             </button>
                         </div>
                         <div class="space-y-2">
@@ -3300,7 +3289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="flex items-center gap-2 bg-teal-50/60 p-2 rounded-xl border border-teal-300">
                                     <span class="w-6 h-6 rounded-full bg-teal-700 text-white font-black text-[10px] flex items-center justify-center shrink-0">${pIdx + 1}</span>
                                     <input type="text" placeholder="Pernyataan Kiri (Premis)..." value="${escapeHtml(p.kiri || '')}" oninput="window.updateManualQuizPair(${idx}, ${pIdx}, 'kiri', this.value)" class="flex-1 h-9 px-2.5 border-2 border-black rounded-lg font-medium text-xs bg-white">
-                                    <span class="font-black text-xs text-slate-400">➔</span>
+                                    <span class="font-black text-xs text-slate-400">&rarr;</span>
                                     <input type="text" placeholder="Jawaban Cocok Kanan..." value="${escapeHtml(p.kanan || '')}" oninput="window.updateManualQuizPair(${idx}, ${pIdx}, 'kanan', this.value)" class="flex-1 h-9 px-2.5 border-2 border-black rounded-lg font-medium text-xs bg-white">
                                     <button type="button" onclick="window.removeManualQuizPair(${idx}, ${pIdx})" class="w-8 h-8 rounded-lg border border-red-400 text-red-600 hover:bg-red-500 hover:text-white flex items-center justify-center font-black transition text-sm shrink-0">
                                         &times;
@@ -3314,7 +3303,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 specificContent = `
                     <div class="pt-1 space-y-1.5">
                         <div class="p-2.5 bg-pink-50 border border-pink-300 rounded-xl text-[11px] font-bold text-pink-900 flex items-center gap-2">
-                            <span>📷</span> Siswa akan mengunggah berkas/foto lembar jawaban fisik langsung ke server melalui kamera/galeri.
+                            <span></span> Siswa akan mengunggah berkas/foto lembar jawaban fisik langsung ke server melalui kamera/galeri.
                         </div>
                         <label class="block text-[11px] font-black uppercase text-black">Rubrik Penilaian & Ketentuan Lembar Foto</label>
                         <textarea rows="2" placeholder="Contoh: Foto hitungan rumus step-by-step dengan tulisan tangan rapi dan jelas..." oninput="window.updateManualQuestionField(${idx}, 'rubrik_esai', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.rubrik_esai || '')}</textarea>
@@ -3337,13 +3326,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${idx + 1}
                             </span>
                             <select onchange="window.changeManualQuestionType(${idx}, this.value)" class="h-8 px-2 border-2 border-black rounded-lg font-black text-xs ${typeColors[currentType] || 'bg-slate-100'} cursor-pointer">
-                                <option value="pg" ${currentType === 'pg' ? 'selected' : ''}>🔘 Pilihan Ganda (PG)</option>
-                                <option value="pg_kompleks" ${currentType === 'pg_kompleks' ? 'selected' : ''}>☑️ PG Kompleks (Multi Kunci)</option>
-                                <option value="benar_salah" ${currentType === 'benar_salah' ? 'selected' : ''}>⚖️ Benar / Salah</option>
-                                <option value="singkat" ${currentType === 'singkat' ? 'selected' : ''}>✏️ Isian Singkat</option>
-                                <option value="menjodohkan" ${currentType === 'menjodohkan' ? 'selected' : ''}>🔀 Menjodohkan</option>
-                                <option value="upload_foto" ${currentType === 'upload_foto' ? 'selected' : ''}>📷 Upload Foto / Berkas</option>
-                                <option value="esai" ${currentType === 'esai' ? 'selected' : ''}>📝 Esai / Uraian</option>
+                                <option value="pg" ${currentType === 'pg' ? 'selected' : ''}>Pilihan Ganda (PG)</option>
+                                <option value="pg_kompleks" ${currentType === 'pg_kompleks' ? 'selected' : ''}>PG Kompleks (Multi Kunci)</option>
+                                <option value="benar_salah" ${currentType === 'benar_salah' ? 'selected' : ''}>Benar / Salah</option>
+                                <option value="singkat" ${currentType === 'singkat' ? 'selected' : ''}>Isian Singkat</option>
+                                <option value="menjodohkan" ${currentType === 'menjodohkan' ? 'selected' : ''}>Menjodohkan</option>
+                                <option value="upload_foto" ${currentType === 'upload_foto' ? 'selected' : ''}>Upload Foto / Berkas</option>
+                                <option value="esai" ${currentType === 'esai' ? 'selected' : ''}>Esai / Uraian</option>
                             </select>
                         </div>
                         <div class="flex items-center gap-2">
@@ -3366,11 +3355,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="p-2.5 rounded-xl border border-dashed border-slate-400 bg-slate-50/80 space-y-2">
                         <div class="flex items-center justify-between flex-wrap gap-2">
                             <span class="text-[11px] font-black uppercase text-slate-700 flex items-center gap-1.5">
-                                <span>📷</span> Lampiran Gambar Soal (Stimulus / Ilustrasi / Diagram)
+                                <span></span> Lampiran Gambar Soal (Stimulus / Ilustrasi / Diagram)
                             </span>
                             ${q.gambar_url ? `
                                 <button type="button" onclick="window.removeQuestionImage(${idx}, 'quiz')" class="text-[10px] font-black uppercase text-red-600 bg-red-100 hover:bg-red-200 px-2 py-0.5 rounded border border-red-300 transition">
-                                    ❌ Hapus Gambar
+                                    Hapus Gambar
                                 </button>
                             ` : ''}
                         </div>
@@ -3382,7 +3371,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <a href="${escapeHtml(q.gambar_url)}" target="_blank" class="text-xs font-bold text-indigo-700 hover:underline truncate block">
                                         ${escapeHtml(q.gambar_url)}
                                     </a>
-                                    <span class="text-[10px] text-emerald-700 font-bold">✅ Gambar aktif terpasang pada butir soal ini</span>
+                                    <span class="text-[10px] text-emerald-700 font-bold">Gambar aktif terpasang pada butir soal ini</span>
                                 </div>
                             </div>
                         ` : `
@@ -3390,7 +3379,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div>
                                     <input type="file" id="quiz_img_file_${idx}" accept="image/*" class="hidden" onchange="window.handleQuestionImageUpload(event, ${idx}, 'quiz')">
                                     <button type="button" onclick="document.getElementById('quiz_img_file_${idx}').click()" class="w-full h-8 px-2.5 bg-white hover:bg-slate-100 border border-black rounded-lg text-xs font-black text-slate-800 flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                        📁 Pilih Gambar dari Komputer
+                                        Pilih Gambar dari Komputer
                                     </button>
                                 </div>
                                 <div class="flex items-center gap-1.5">
@@ -3531,7 +3520,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeManualQuizModal();
                 loadQuizzes();
                 const typesSummary = [...new Set(manualQuizQuestions.map(q => q.tipe || 'pg'))].join(', ');
-                showCustomModal(`✅ Berhasil! Perubahan kuis "${judul}" (${manualQuizQuestions.length} butir soal: ${typesSummary}) telah disimpan!`);
+                showCustomModal(`Berhasil! Perubahan kuis "${judul}" (${manualQuizQuestions.length} butir soal: ${typesSummary}) telah disimpan!`);
             } else {
                 let quizData = null;
                 let quizError = null;
@@ -3600,14 +3589,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeManualQuizModal();
                 loadQuizzes();
                 const typesSummary = [...new Set(manualQuizQuestions.map(q => q.tipe || 'pg'))].join(', ');
-                showCustomModal(`✅ Berhasil! Kuis manual "${judul}" (${manualQuizQuestions.length} butir soal: ${typesSummary}) telah berhasil diterbitkan untuk ${kelas}!`);
+                showCustomModal(`Berhasil! Kuis manual "${judul}" (${manualQuizQuestions.length} butir soal: ${typesSummary}) telah berhasil diterbitkan untuk ${kelas}!`);
             }
         } catch (e) {
             showCustomModal("Gagal menyimpan kuis manual: " + e.message);
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = editingQuizId ? "💾 SIMPAN PERUBAHAN KUIS" : "💾 SIMPAN & TERBITKAN KUIS";
+                btn.innerText = editingQuizId ? "SIMPAN PERUBAHAN KUIS" : "SIMPAN & TERBITKAN KUIS";
             }
         }
     };
@@ -3671,30 +3660,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 let antiCheatBadge = '';
                 if (isLocked) {
-                    antiCheatBadge = `<span class="bg-red-100 text-red-900 border border-red-500 font-black px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} pelanggaran - Ujian dibekukan sistem">🔒 Terkunci (${cheatAttempts}x Curang)</span>`;
+                    antiCheatBadge = `<span class="bg-red-100 text-red-900 border border-red-500 font-black px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} pelanggaran - Ujian dibekukan sistem">Terkunci (${cheatAttempts}x Curang)</span>`;
                 } else if (isOngoing) {
-                    antiCheatBadge = `<span class="bg-yellow-200 text-yellow-950 border border-yellow-500 font-black px-2 py-0.5 rounded text-[10px] animate-pulse" title="Siswa sedang aktif membuka jendela CBT">🟡 Sedang Ujian</span>`;
+                    antiCheatBadge = `<span class="bg-yellow-200 text-yellow-950 border border-yellow-500 font-black px-2 py-0.5 rounded text-[10px] animate-pulse" title="Siswa sedang aktif membuka jendela CBT">Sedang Ujian</span>`;
                 } else if (cheatAttempts > 0) {
-                    antiCheatBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-500 font-bold px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} peringatan tercatat">⚠️ ${cheatAttempts}x Peringatan</span>`;
+                    antiCheatBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-500 font-bold px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} peringatan tercatat">${cheatAttempts}x Peringatan</span>`;
                 } else {
-                    antiCheatBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-bold px-2 py-0.5 rounded text-[10px]">🛡️ Tertib (0)</span>`;
+                    antiCheatBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-bold px-2 py-0.5 rounded text-[10px]">Tertib (0)</span>`;
                 }
 
                 let actionButtonsHtml = '';
                 if (isLocked) {
                     actionButtonsHtml = `
                         <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1 mx-auto">
-                            🔓 Buka Kunci Akun
+                            Buka Kunci Akun
                         </button>
                     `;
                 } else if (isOngoing) {
                     actionButtonsHtml = `
                         <div class="flex items-center justify-center gap-1.5 flex-wrap">
                             <button onclick="forceFinishStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-2.5 py-1 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                ⏱️ Paksa Selesai
+                                Paksa Selesai
                             </button>
                             <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg font-black text-[11px] uppercase">
-                                🔄 Reset Sesi
+                                Reset Sesi
                             </button>
                         </div>
                     `;
@@ -3705,7 +3694,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 Periksa
                             </button>
                             <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Reset nilai agar siswa bisa ujian ulang" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-black border border-black rounded-lg font-black text-[11px] uppercase">
-                                🔄 Reset
+                                Reset
                             </button>
                         </div>
                     `;
@@ -3743,14 +3732,14 @@ document.addEventListener('DOMContentLoaded', () => {
             `Buka kunci akun siswa "${studentName}"?\n\nSiswa akan dapat memasukkan token ujian dan mengerjakan kembali lembar soal dari awal.`,
             'confirm',
             'Buka Kunci Akun Siswa',
-            '🔓'
+            ''
         );
         if (!conf) return;
 
         try {
             const { error } = await supabase.from('quiz_submissions').delete().eq('id', subId);
             if (error) throw error;
-            await showCustomModal(`✅ Berhasil! Akun siswa "${studentName}" telah dibuka kembali. Siswa dapat login kembali menggunakan token aktif.`, 'alert', 'Akun Dibuka', '✅');
+            await showCustomModal(`Berhasil! Akun siswa "${studentName}" telah dibuka kembali. Siswa dapat login kembali menggunakan token aktif.`, 'alert', 'Akun Dibuka', '');
             if (activeQuizForResults) {
                 openQuizResultsModal(activeQuizForResults.id);
             }
@@ -3764,7 +3753,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `Paksa selesai sesi ujian untuk siswa "${studentName}"?\n\nSesi ujian siswa akan ditutup dan status pengerjaan disimpan menjadi selesai.`,
             'confirm',
             'Paksa Selesai Ujian',
-            '⏱️'
+            ''
         );
         if (!conf) return;
 
@@ -3773,7 +3762,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 status_koreksi: 'selesai'
             }).eq('id', subId);
             if (error) throw error;
-            await showCustomModal(`✅ Sesi ujian siswa "${studentName}" telah diselesaikan oleh pengawas.`, 'alert', 'Ujian Ditutup', '✅');
+            await showCustomModal(`Sesi ujian siswa "${studentName}" telah diselesaikan oleh pengawas.`, 'alert', 'Ujian Ditutup', '');
             if (activeQuizForResults) {
                 openQuizResultsModal(activeQuizForResults.id);
             }
@@ -3973,7 +3962,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cheatBanner.className = `p-3 rounded-xl border-2 font-bold text-xs mb-3 ${sub.status_koreksi === 'terkunci_curang' ? 'bg-red-100 border-red-500 text-red-950' : 'bg-amber-50 border-amber-400 text-amber-950'}`;
             cheatBanner.innerHTML = `
                 <div class="flex items-center justify-between">
-                    <span>${sub.status_koreksi === 'terkunci_curang' ? '🔒 Ujian Dibekukan Sistem (Batas Pelanggaran Terlampaui)' : '⚠️ Catatan Pengawas Anti-Kecurangan'}</span>
+                    <span>${sub.status_koreksi === 'terkunci_curang' ? 'Ujian Dibekukan Sistem (Batas Pelanggaran Terlampaui)' : 'Catatan Pengawas Anti-Kecurangan'}</span>
                     <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-white/70 border border-current">${cheatAttempts} Kali Pelanggaran</span>
                 </div>
                 ${cheatLogs.length > 0 ? `
@@ -3996,7 +3985,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <a href="${escapeHtml(imgUrl)}" target="_blank" title="Buka gambar stimulus">
                         <img src="${escapeHtml(imgUrl)}" alt="Gambar Soal" class="max-h-36 rounded-lg border border-slate-300 object-contain mx-auto" />
                     </a>
-                    <div class="text-[9px] text-slate-500 font-bold text-center mt-0.5">📷 Stimulus Soal (Klik untuk perbesar)</div>
+                    <div class="text-[9px] text-slate-500 font-bold text-center mt-0.5">Stimulus Soal (Klik untuk perbesar)</div>
                 </div>
             ` : '';
 
@@ -4005,9 +3994,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isCorrect = studentAns.toUpperCase() === (q.kunci_pg || '').toUpperCase();
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-black">No. ${idx + 1} (🔘 Pilihan Ganda)</span>
+                        <span class="font-black text-xs text-black">No. ${idx + 1} (Pilihan Ganda)</span>
                         <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${isCorrect ? `✅ Benar (+${q.bobot || 10})` : '❌ Salah (0)'}
+                            ${isCorrect ? `Benar (+${q.bobot || 10})` : 'Salah (0)'}
                         </span>
                     </div>
                     <p class="font-bold text-xs text-slate-800">${escapeHtml(cleanPertanyaan)}</p>
@@ -4024,9 +4013,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isCorrect = studentKeys.length > 0 && studentKeys.join(',') === correctKeys.join(',');
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-cyan-900 bg-cyan-100 px-2 py-0.5 rounded border border-cyan-300 uppercase">No. ${idx + 1} (☑️ PG Kompleks)</span>
+                        <span class="font-black text-xs text-cyan-900 bg-cyan-100 px-2 py-0.5 rounded border border-cyan-300 uppercase">No. ${idx + 1} (PG Kompleks)</span>
                         <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${isCorrect ? `✅ Benar (+${q.bobot || 10})` : '❌ Kurang Tepat (0)'}
+                            ${isCorrect ? `Benar (+${q.bobot || 10})` : 'Kurang Tepat (0)'}
                         </span>
                     </div>
                     <p class="font-bold text-xs text-slate-800">${escapeHtml(cleanPertanyaan)}</p>
@@ -4041,9 +4030,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isCorrect = String(studentAns).trim().toLowerCase() === String(q.kunci_pg || '').trim().toLowerCase();
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 uppercase">No. ${idx + 1} (⚖️ Benar/Salah)</span>
+                        <span class="font-black text-xs text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 uppercase">No. ${idx + 1} (Benar/Salah)</span>
                         <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${isCorrect ? `✅ Benar (+${q.bobot || 10})` : '❌ Salah (0)'}
+                            ${isCorrect ? `Benar (+${q.bobot || 10})` : 'Salah (0)'}
                         </span>
                     </div>
                     <p class="font-bold text-xs text-slate-800">${escapeHtml(cleanPertanyaan)}</p>
@@ -4060,9 +4049,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const defaultScore = isCorrect ? (q.bobot || 10) : 0;
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-blue-900 bg-blue-100 px-2 py-0.5 rounded border border-blue-300 uppercase">No. ${idx + 1} (✏️ Isian Singkat)</span>
+                        <span class="font-black text-xs text-blue-900 bg-blue-100 px-2 py-0.5 rounded border border-blue-300 uppercase">No. ${idx + 1} (Isian Singkat)</span>
                         <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-amber-100 text-amber-900 border-amber-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${isCorrect ? `✅ Cocok Otomatis (+${q.bobot || 10})` : 'Perlu Evaluasi Guru/AI'}
+                            ${isCorrect ? `Cocok Otomatis (+${q.bobot || 10})` : 'Perlu Evaluasi Guru/AI'}
                         </span>
                     </div>
                     <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
@@ -4098,7 +4087,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td class="p-2 font-bold text-xs text-black">${escapeHtml(p.kiri)}</td>
                             <td class="p-2 font-bold text-xs ${isMatch ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(stAns)}</td>
                             <td class="p-2 font-bold text-xs text-slate-600">${escapeHtml(p.kanan)}</td>
-                            <td class="p-2 text-center text-xs">${isMatch ? '✅' : '❌'}</td>
+                            <td class="p-2 text-center text-xs">${isMatch ? '' : ''}</td>
                         </tr>
                     `;
                 }).join('');
@@ -4107,7 +4096,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-teal-900 bg-teal-100 px-2 py-0.5 rounded border border-teal-300 uppercase">No. ${idx + 1} (🔀 Menjodohkan)</span>
+                        <span class="font-black text-xs text-teal-900 bg-teal-100 px-2 py-0.5 rounded border border-teal-300 uppercase">No. ${idx + 1} (Menjodohkan)</span>
                         <span class="text-xs font-bold text-slate-500">Kesesuaian: ${correctMatches}/${pairs.length} Pasangan</span>
                     </div>
                     <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
@@ -4143,7 +4132,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-pink-900 bg-pink-100 px-2 py-0.5 rounded border border-pink-300 uppercase">No. ${idx + 1} (📷 Upload Foto / Berkas)</span>
+                        <span class="font-black text-xs text-pink-900 bg-pink-100 px-2 py-0.5 rounded border border-pink-300 uppercase">No. ${idx + 1} (Upload Foto / Berkas)</span>
                         <span class="text-xs font-bold text-slate-500">Bobot Maks: ${q.bobot || 20}</span>
                     </div>
                     <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
@@ -4156,7 +4145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${isImage ? `<a href="${fileUrl}" target="_blank" title="Klik untuk memperbesar foto"><img src="${fileUrl}" class="w-24 h-24 object-cover rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:scale-105 transition-transform cursor-pointer"></a>` : ''}
                                 <div>
                                     <a href="${fileUrl}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-black text-white rounded-lg font-black text-xs transition">
-                                        <span>🔍</span> Buka Berkas Penuh ↗
+                                        <span></span> Buka Berkas Penuh ↗
                                     </a>
                                 </div>
                             </div>
@@ -4178,7 +4167,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentFeedback = aiFeedback[q.id] || {};
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 uppercase">No. ${idx + 1} (📝 Soal Esai)</span>
+                        <span class="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 uppercase">No. ${idx + 1} (Soal Esai)</span>
                         <span class="text-xs font-bold text-slate-500">Bobot Maks: ${q.bobot || 20}</span>
                     </div>
                     <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
@@ -4237,7 +4226,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showCustomModal("Gagal koreksi AI: " + e.message);
         }
         btn.disabled = false;
-        btn.innerText = "✨ Koreksi Semua Jawaban dengan AI";
+        btn.innerText = "Koreksi Semua Jawaban dengan AI";
     };
 
     window.saveExamReviewGrades = async () => {
@@ -4304,9 +4293,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (statusEl) {
             if (apiKey) {
-                statusEl.textContent = `✅ Model Aktif: ${currentModel} (Siap digunakan)`;
+                statusEl.textContent = `Model Aktif: ${currentModel} (Siap digunakan)`;
             } else {
-                statusEl.textContent = `⚠️ Kunci AI belum terpasang. Dapatkan gratis di aistudio.google.com.`;
+                statusEl.textContent = `Kunci AI belum terpasang. Dapatkan gratis di aistudio.google.com.`;
             }
         }
     }
@@ -4352,12 +4341,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await testGeminiConnection(key, modelToTest);
             const extraNote = res.note ? `\n(${res.note})` : '';
-            showCustomModal(`✅ SUKSES! Model "${modelToTest}" berhasil merespons dalam ${res.duration} detik.${extraNote}`);
+            showCustomModal(`SUKSES! Model "${modelToTest}" berhasil merespons dalam ${res.duration} detik.${extraNote}`);
         } catch (e) {
-            showCustomModal(`❌ Gagal terhubung ke model "${modelToTest}": ${e.message}`);
+            showCustomModal(`Gagal terhubung ke model "${modelToTest}": ${e.message}`);
         } finally {
             btn.disabled = false;
-            btn.innerText = "⚡ UJI KONEKSI";
+            btn.innerText = "UJI KONEKSI";
         }
     };
 
@@ -4486,11 +4475,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isSuper = t.role === 'superadmin';
                 let statusBadge = '';
                 if (t.status === 'approved') {
-                    statusBadge = '<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">✅ Disetujui</span>';
+                    statusBadge = '<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Disetujui</span>';
                 } else if (t.status === 'rejected') {
-                    statusBadge = '<span class="bg-red-100 text-red-900 border border-red-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">❌ Ditolak</span>';
+                    statusBadge = '<span class="bg-red-100 text-red-900 border border-red-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Ditolak</span>';
                 } else {
-                    statusBadge = '<span class="bg-amber-100 text-amber-900 border border-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase animate-pulse">⏳ Menunggu</span>';
+                    statusBadge = '<span class="bg-amber-100 text-amber-900 border border-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase animate-pulse">Menunggu</span>';
                 }
 
                 let actionButtons = '';
@@ -4618,11 +4607,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-3 py-3 text-center border-r-2 border-black font-black text-xs text-purple-900 bg-purple-50/50">${escapeHtml(s.kelas)}</td>
                     <td class="px-3 py-3 text-center">
                         <div class="flex items-center justify-center gap-1.5">
-                            <button onclick="openEditStudentModal('${escapeHtml(s.id)}')" title="Ubah Data Siswa" class="px-2.5 py-1 bg-yellow-300 hover:bg-yellow-400 text-black border border-black rounded-lg text-xs font-black uppercase active:translate-y-0.5 transition cursor-pointer">
-                                ✏️
+                            <button onclick="openEditStudentModal('${escapeHtml(s.id)}')" title="Ubah Data Siswa" class="px-2.5 py-1 bg-yellow-300 hover:bg-yellow-400 text-black border border-black rounded-lg text-[11px] font-black uppercase active:translate-y-0.5 transition cursor-pointer">
+                                Edit
                             </button>
-                            <button onclick="deleteStudentAction('${escapeHtml(s.id)}', '${escapeHtml(s.nama)}')" title="Hapus Siswa" class="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg text-xs font-black uppercase active:translate-y-0.5 transition cursor-pointer">
-                                🗑️
+                            <button onclick="deleteStudentAction('${escapeHtml(s.id)}', '${escapeHtml(s.nama)}')" title="Hapus Siswa" class="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg text-[11px] font-black uppercase active:translate-y-0.5 transition cursor-pointer">
+                                Hapus
                             </button>
                         </div>
                     </td>
@@ -4710,7 +4699,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `Apakah Anda yakin ingin menghapus siswa "${studentName}" dari master data sekolah?\n\nPerhatian: Siswa yang dihapus tidak akan dapat login ke ujian CBT.`,
             'confirm',
             'Konfirmasi Hapus Siswa',
-            '🗑️'
+            ''
         );
         if (!confirmed) return;
 
@@ -4738,7 +4727,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = "🔄 Sinkronkan Roster CSV";
+                btn.textContent = "Sinkronkan Roster CSV";
             }
         }
     };
@@ -4838,7 +4827,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnImport = document.getElementById('btn-execute-import');
         if (btnImport) {
             btnImport.disabled = true;
-            btnImport.innerHTML = '<span>💾 Mulai Impor Siswa</span>';
+            btnImport.innerHTML = '<span>Mulai Impor Siswa</span>';
         }
 
         const modal = document.getElementById('import-student-modal');
@@ -4858,7 +4847,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameDisplay = document.getElementById('import-file-name-display');
         if (nameDisplay) {
             const kbSize = (file.size / 1024).toFixed(1);
-            nameDisplay.textContent = `📄 ${file.name} (${kbSize} KB)`;
+            nameDisplay.textContent = `${file.name} (${kbSize} KB)`;
             nameDisplay.classList.remove('hidden');
         }
 
@@ -4908,7 +4897,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (previewSection) previewSection.classList.remove('hidden');
             if (btnImport) {
                 btnImport.disabled = false;
-                btnImport.innerHTML = `<span>💾 Impor ${parsed.length} Siswa ke Database</span>`;
+                btnImport.innerHTML = `<span>Impor ${parsed.length} Siswa ke Database</span>`;
             }
         };
         reader.readAsText(file);
@@ -4923,7 +4912,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnImport = document.getElementById('btn-execute-import');
         if (btnImport) {
             btnImport.disabled = true;
-            btnImport.innerHTML = '<span>⏳ Menyimpan ke Database...</span>';
+            btnImport.innerHTML = '<span>Menyimpan ke Database...</span>';
         }
 
         try {
@@ -4936,7 +4925,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             if (btnImport) {
                 btnImport.disabled = false;
-                btnImport.innerHTML = '<span>💾 Mulai Impor Siswa</span>';
+                btnImport.innerHTML = '<span>Mulai Impor Siswa</span>';
             }
         }
     };

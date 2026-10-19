@@ -152,7 +152,7 @@ window.handleStudentFilePreview = (qNum, inputEl) => {
     const prevEl = document.getElementById(`student_preview_q_${qNum}`);
 
     if (nameEl) {
-        nameEl.innerText = `📎 Berkas terpilih: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+        nameEl.innerText = `Berkas terpilih: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
         nameEl.classList.remove('hidden');
     }
 
@@ -175,7 +175,7 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
         const lockedBanner = document.createElement('div');
         lockedBanner.className = "p-3.5 bg-amber-100 border-2 border-black rounded-2xl text-xs font-black text-amber-950 flex items-center gap-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
         lockedBanner.innerHTML = `
-            <span class="text-2xl">🔒</span>
+            <span class="text-2xl"></span>
             <div>
                 <div class="font-black uppercase tracking-wider">Formulir Terkunci &bull; 1x Pengisian Selesai</div>
                 <div class="text-[11px] font-bold text-amber-900 mt-0.5">Anda sudah mengumpulkan formulir tugas ini. Sesuai ketentuan, setiap siswa hanya berhak mengirimkan 1 kali jawaban.</div>
@@ -257,11 +257,11 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                     <label class="flex items-center gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 ${isReadOnly ? '' : 'hover:bg-teal-50'} ${cursorStyle} transition select-none has-[:checked]:bg-teal-100 has-[:checked]:border-teal-700">
                         <input type="radio" name="student_q_${qNum}" value="BENAR" ${isBenar ? 'checked' : ''} ${disabledAttr} required class="w-4 h-4 accent-teal-600 shrink-0">
-                        <span class="text-xs font-black text-teal-950">✅ BENAR (Sesuai)</span>
+                        <span class="text-xs font-black text-teal-950">BENAR (Sesuai)</span>
                     </label>
                     <label class="flex items-center gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 ${isReadOnly ? '' : 'hover:bg-red-50'} ${cursorStyle} transition select-none has-[:checked]:bg-red-100 has-[:checked]:border-red-700">
                         <input type="radio" name="student_q_${qNum}" value="SALAH" ${isSalah ? 'checked' : ''} ${disabledAttr} required class="w-4 h-4 accent-red-600 shrink-0">
-                        <span class="text-xs font-black text-red-950">❌ SALAH (Tidak Sesuai)</span>
+                        <span class="text-xs font-black text-red-950">SALAH (Tidak Sesuai)</span>
                     </label>
                 </div>
             `;
@@ -272,7 +272,7 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
                     <div class="p-3.5 bg-slate-50 border-2 border-black rounded-xl space-y-2">
                         ${hasPrev ? `
                             <div class="text-xs font-black text-emerald-800">
-                                ✅ Berkas tersimpan: <a href="${escapeHtml(prevAnswer)}" target="_blank" class="underline text-indigo-700">Lihat Berkas Foto</a>
+                                Berkas tersimpan: <a href="${escapeHtml(prevAnswer)}" target="_blank" class="underline text-indigo-700">Lihat Berkas Foto</a>
                             </div>
                             <img src="${escapeHtml(prevAnswer)}" class="max-h-48 rounded-xl border border-black object-contain bg-white" />
                         ` : '<p class="text-xs font-bold text-slate-500 italic">Tidak ada berkas foto yang diunggah.</p>'}
@@ -284,13 +284,13 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
                         <div class="border-2 border-dashed border-black rounded-xl p-4 bg-orange-50/50 hover:bg-orange-50 transition text-center cursor-pointer" onclick="document.getElementById('student_file_q_${qNum}').click()">
                             <input type="file" id="student_file_q_${qNum}" accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="window.handleStudentFilePreview(${qNum}, this)">
                             <div class="flex flex-col items-center gap-1.5">
-                                <span class="text-2xl">📸</span>
+                                <span class="text-2xl"></span>
                                 <span class="text-xs font-black uppercase text-black">Pilih / Unggah Berkas Foto Pekerjaan</span>
                                 <span class="text-[10px] text-slate-600 font-bold">Maksimal 10MB (Foto, Tangkapan Layar, atau PDF)</span>
                             </div>
                         </div>
                         <div id="student_file_name_q_${qNum}" class="text-xs font-black text-emerald-800 ${hasPrev ? '' : 'hidden'}">
-                            ${hasPrev ? `✅ Berkas tersimpan sebelumnya: <a href="${escapeHtml(prevAnswer)}" target="_blank" class="underline text-indigo-700">Buka Berkas Anda</a>` : ''}
+                            ${hasPrev ? `Berkas tersimpan sebelumnya: <a href="${escapeHtml(prevAnswer)}" target="_blank" class="underline text-indigo-700">Buka Berkas Anda</a>` : ''}
                         </div>
                         <div id="student_preview_q_${qNum}" class="${hasPrev ? '' : 'hidden'} mt-1.5">
                             ${hasPrev ? `<img src="${escapeHtml(prevAnswer)}" class="max-h-48 rounded-xl border-2 border-black object-contain bg-white" />` : ''}
@@ -369,8 +369,8 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
                         <img src="${escapeHtml(imgUrl)}" alt="Gambar Soal ${qNum}" class="max-h-72 w-auto object-contain rounded-lg border border-slate-300 mx-auto hover:opacity-95 transition" />
                     </a>
                     <div class="mt-1 px-1 text-center text-[10px] font-bold text-slate-500 flex justify-between items-center">
-                        <span>📷 Stimulus / Ilustrasi Soal</span>
-                        <span class="text-indigo-600 underline">🔍 Buka Ukuran Penuh</span>
+                        <span>Stimulus / Ilustrasi Soal</span>
+                        <span class="text-indigo-600 underline">Buka Ukuran Penuh</span>
                     </div>
                 </div>
             ` : ''}
@@ -384,7 +384,7 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
 document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper Modal Alert/Confirm Neobrutalisme (Standard LMS SMPN 58)
-    window.showCustomModal = (message, type = 'alert', title = 'Pemberitahuan', icon = '📢') => {
+    window.showCustomModal = (message, type = 'alert', title = 'Pemberitahuan', icon = '') => {
         return new Promise((resolve) => {
             const modal = document.getElementById('custom-modal');
             const titleEl = document.getElementById('custom-modal-title');
@@ -717,7 +717,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (filtered.length === 0) {
             let emptyMsg = `Saat ini belum ada tugas untuk kelas ${studentKelas || 'ini'} pada mata pelajaran yang dipilih.`;
             if (currentAssignmentStatusFilter === 'todo') {
-                emptyMsg = `Hore! Tidak ada tugas yang tertunda. Seluruh tugas telah Anda kumpulkan! 🎉`;
+                emptyMsg = `Hore! Tidak ada tugas yang tertunda. Seluruh tugas telah Anda kumpulkan! `;
             } else if (currentAssignmentStatusFilter === 'submitted') {
                 emptyMsg = `Belum ada tugas yang sedang menunggu koreksi guru/AI.`;
             } else if (currentAssignmentStatusFilter === 'graded') {
@@ -726,7 +726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             container.innerHTML = `
                 <div class="col-span-2 bg-white border-[3px] border-black rounded-[28px] p-8 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <span class="text-4xl block mb-2">🎉</span>
+                    <span class="text-4xl block mb-2"></span>
                     <h4 class="font-black text-lg text-black uppercase">Daftar Tugas Kosong</h4>
                     <p class="text-xs font-bold text-slate-500 mt-1">${emptyMsg}</p>
                 </div>
@@ -750,9 +750,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const formattedDate = dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
                 
                 if (isPast) {
-                    deadlineBadge = `<span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">⚠️ Lewat Tenggat (${formattedDate})</span>`;
+                    deadlineBadge = `<span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Lewat Tenggat (${formattedDate})</span>`;
                 } else {
-                    deadlineBadge = `<span class="bg-yellow-100 text-yellow-900 border border-yellow-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">⏳ Batas: ${formattedDate} WIB</span>`;
+                    deadlineBadge = `<span class="bg-yellow-100 text-yellow-900 border border-yellow-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Batas: ${formattedDate} WIB</span>`;
                 }
             } else {
                 deadlineBadge = `<span class="bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Tanpa Batas Waktu</span>`;
@@ -763,19 +763,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Status submission badge
             let submissionBadge = '';
-            let actionBtnText = hasQuestions ? 'Kerjakan Soal Online 🚀' : 'Kumpul Tugas Ini 🚀';
+            let actionBtnText = hasQuestions ? 'Kerjakan Soal Online ' : 'Kumpul Tugas Ini ';
             let actionBtnClass = 'bg-indigo-600 hover:bg-black text-white';
 
             if (mySubmission) {
                 if (mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '') {
-                    submissionBadge = `<span class="bg-emerald-400 text-black border-2 border-black font-black text-xs px-2.5 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">✅ Nilai: ${mySubmission.nilai}/100 &bull; 🔒 Terkunci 1x</span>`;
+                    submissionBadge = `<span class="bg-emerald-400 text-black border-2 border-black font-black text-xs px-2.5 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Nilai: ${mySubmission.nilai}/100 &bull; Terkunci 1x</span>`;
                 } else {
-                    submissionBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs px-2 py-0.5 rounded-lg">✅ Sudah Dikumpulkan &bull; 🔒 Terkunci 1x</span>`;
+                    submissionBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs px-2 py-0.5 rounded-lg">Sudah Dikumpulkan &bull; Terkunci 1x</span>`;
                 }
-                actionBtnText = hasQuestions ? '👁️ Lembar Jawaban (Terkunci)' : '👁️ Lihat Pengumpulan (Terkunci)';
+                actionBtnText = hasQuestions ? 'Lembar Jawaban (Terkunci)' : 'Lihat Pengumpulan (Terkunci)';
                 actionBtnClass = 'bg-white hover:bg-slate-100 text-black border-2 border-black';
             } else {
-                submissionBadge = `<span class="bg-red-100 text-red-800 border border-red-300 font-bold text-xs px-2 py-0.5 rounded-lg">🔴 Belum Dikerjakan</span>`;
+                submissionBadge = `<span class="bg-red-100 text-red-800 border border-red-300 font-bold text-xs px-2 py-0.5 rounded-lg">Belum Dikerjakan</span>`;
             }
 
             const card = document.createElement('div');
@@ -792,7 +792,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </span>
                             ${hasQuestions ? `
                                 <span class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase border border-black">
-                                    📋 Form Online (${parsed.questions.length} Soal)
+                                    Form Online (${parsed.questions.length} Soal)
                                 </span>
                             ` : ''}
                         </div>
@@ -804,7 +804,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     ${a.rubrik_ai ? `
                         <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 text-[11px] font-bold text-purple-900 mb-3">
-                            🎯 <strong>Rubrik Penilaian AI:</strong> ${a.rubrik_ai}
+                            <strong>Rubrik Penilaian AI:</strong> ${a.rubrik_ai}
                         </div>
                     ` : ''}
 
@@ -894,7 +894,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rubrikEl = document.getElementById('modal-banner-rubrik');
         if (rubrikEl) {
             if (assignment.rubrik_ai) {
-                rubrikEl.innerHTML = `🎯 <strong>Rubrik Penilaian AI:</strong> ${assignment.rubrik_ai}`;
+                rubrikEl.innerHTML = `<strong>Rubrik Penilaian AI:</strong> ${assignment.rubrik_ai}`;
                 rubrikEl.classList.remove('hidden');
             } else {
                 rubrikEl.classList.add('hidden');
@@ -929,7 +929,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '') {
                     statusEl.innerHTML = `
                         <div class="flex items-center justify-between">
-                            <span class="font-black text-emerald-950">✅ Nilai Anda: ${mySubmission.nilai} / 100</span>
+                            <span class="font-black text-emerald-950">Nilai Anda: ${mySubmission.nilai} / 100</span>
                             <span class="text-[10px] bg-emerald-200 text-emerald-950 font-black px-2 py-0.5 rounded border border-emerald-400">Telah Dikoreksi &bull; Terkunci 1x</span>
                         </div>
                         ${mySubmission.catatan_guru ? `<p class="text-[11px] font-medium text-emerald-950 mt-1"><strong>Catatan Guru:</strong> ${escapeHtml(mySubmission.catatan_guru)}</p>` : ''}
@@ -937,7 +937,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     statusEl.innerHTML = `
                         <div class="flex items-center justify-between">
-                            <span class="font-black text-emerald-900">🔒 Tanggapan Terkirim &amp; Terkunci</span>
+                            <span class="font-black text-emerald-900">Tanggapan Terkirim &amp; Terkunci</span>
                             <span class="text-[10px] bg-slate-200 text-slate-800 font-black px-2 py-0.5 rounded border border-slate-400">1x Pengisian Selesai</span>
                         </div>
                         <p class="text-[11px] text-slate-700 font-bold mt-1">Anda sudah mengirimkan formulir tugas ini (${subDate}). Pengisian formulir tugas ini dibatasi 1 kali dan tidak dapat diubah kembali.</p>
@@ -952,11 +952,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (isLocked) {
                 subSubmitBtn.disabled = true;
                 subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                subSubmitBtn.innerText = '🔒 TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+                subSubmitBtn.innerText = 'TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
             } else {
                 subSubmitBtn.disabled = false;
                 subSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                subSubmitBtn.innerText = 'KIRIM JAWABAN TUGAS 🚀';
+                subSubmitBtn.innerText = 'KIRIM JAWABAN TUGAS ';
             }
         }
 
@@ -1072,7 +1072,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (subSubmitBtn) {
             subSubmitBtn.disabled = false;
             subSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            subSubmitBtn.innerText = 'KIRIM TUGAS BEBAS 🚀';
+            subSubmitBtn.innerText = 'KIRIM TUGAS BEBAS ';
         }
         setSubmissionMode('text');
 
@@ -1152,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             for (let i = 0; i < fileInput.files.length; i++) {
                 const file = fileInput.files[i];
                 if (file.size > 10 * 1024 * 1024) {
-                    showCustomModal('Ukuran berkas melebihi batas 10MB.', 'alert', 'Peringatan', '⚠️');
+                    showCustomModal('Ukuran berkas melebihi batas 10MB.', 'alert', 'Peringatan', '');
                     resetFileInput();
                     return;
                 }
@@ -1187,7 +1187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const assignmentId = subAssignIdInput.value ? Number(subAssignIdInput.value) : null;
 
         if (!nama || !kelas || !materi) {
-            await showCustomModal('Lengkapi Nama Siswa, Kelas, dan Judul Tugas!', 'alert', 'Data Belum Lengkap', '⚠️');
+            await showCustomModal('Lengkapi Nama Siswa, Kelas, dan Judul Tugas!', 'alert', 'Data Belum Lengkap', '');
             return;
         }
 
@@ -1213,12 +1213,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     `Akses Dibatasi: Anda (${nama}) sudah tercatat mengumpulkan tugas ini sebelumnya pada ${subDate}.\n\nSesuai ketentuan, setiap siswa hanya berhak mengirimkan 1 kali tanggapan. Jawaban tidak dapat dikirim ulang.`,
                     'alert',
                     'Tanggapan Terkunci (1x Saja)',
-                    '🔒'
+                    ''
                 );
                 if (subSubmitBtn) {
                     subSubmitBtn.disabled = true;
                     subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    subSubmitBtn.innerText = '🔒 TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+                    subSubmitBtn.innerText = 'TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
                 }
                 return;
             }
@@ -1235,12 +1235,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     `Akses Dibatasi: Anda (${nama}) sudah pernah mengumpulkan tugas "${materi}".\n\nSistem membatasi pengumpulan hanya 1 kali dan tidak dapat dikirim ulang.`,
                     'alert',
                     'Tanggapan Terkunci (1x Saja)',
-                    '🔒'
+                    ''
                 );
                 if (subSubmitBtn) {
                     subSubmitBtn.disabled = true;
                     subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    subSubmitBtn.innerText = '🔒 TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+                    subSubmitBtn.innerText = 'TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
                 }
                 return;
             }
@@ -1252,19 +1252,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 const textAnswer = subTextAnswerInput.value.trim();
                 if (!textAnswer) {
-                    await showCustomModal('Silakan tuliskan lembar jawaban tugas Anda terlebih dahulu.', 'alert', 'Jawaban Kosong', '⚠️');
+                    await showCustomModal('Silakan tuliskan lembar jawaban tugas Anda terlebih dahulu.', 'alert', 'Jawaban Kosong', '');
                     return;
                 }
             }
         } else if (currentSubmissionMode === 'file') {
             if (!fileInput.files || fileInput.files.length === 0) {
-                await showCustomModal('Silakan pilih setidaknya 1 berkas tugas.', 'alert', 'Berkas Diperlukan', '⚠️');
+                await showCustomModal('Silakan pilih setidaknya 1 berkas tugas.', 'alert', 'Berkas Diperlukan', '');
                 return;
             }
         } else {
             const linkUrl = linkUrlInput.value.trim();
             if (!linkUrl || (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://'))) {
-                await showCustomModal('Tautan tidak valid! Mohon awali dengan http:// atau https://', 'alert', 'Tautan Tidak Valid', '⚠️');
+                await showCustomModal('Tautan tidak valid! Mohon awali dengan http:// atau https://', 'alert', 'Tautan Tidak Valid', '');
                 return;
             }
         }
@@ -1344,7 +1344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 loadingPopup.classList.add('hidden');
                                 loadingPopup.classList.remove('flex');
                             }
-                            await showCustomModal(`Soal Nomor ${qNum} belum dijawab atau belum lengkap! Mohon lengkapi semua butir soal terlebih dahulu.`, 'alert', 'Lengkapi Jawaban', '⚠️');
+                            await showCustomModal(`Soal Nomor ${qNum} belum dijawab atau belum lengkap! Mohon lengkapi semua butir soal terlebih dahulu.`, 'alert', 'Lengkapi Jawaban', '');
                             return;
                         }
 
@@ -1482,9 +1482,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loadingPopup.classList.add('hidden');
                 loadingPopup.classList.remove('flex');
             }
-            await showCustomModal('Gagal mengirim tugas: ' + e.message, 'alert', 'Gagal', '❌');
+            await showCustomModal('Gagal mengirim tugas: ' + e.message, 'alert', 'Gagal', '');
         } finally {
-            subSubmitBtn.innerText = 'KIRIM TUGAS SEKARANG 🚀';
+            subSubmitBtn.innerText = 'KIRIM TUGAS SEKARANG ';
             subSubmitBtn.disabled = false;
         }
     });
@@ -1635,7 +1635,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.showMyQuizResult = (sub, judul, mapel) => {
         let statusText = 'Menunggu Koreksi Guru';
         if (sub.status_koreksi === 'selesai') statusText = 'Sudah Dinilai Lengkap';
-        else if (sub.status_koreksi === 'terkunci_curang') statusText = '🔒 UJIAN DIBEKUKAN (Pelanggaran Anti-Kecurangan)';
+        else if (sub.status_koreksi === 'terkunci_curang') statusText = 'UJIAN DIBEKUKAN (Pelanggaran Anti-Kecurangan)';
 
         showCustomModal(
             `Mata Pelajaran: ${mapel}\n` +
@@ -1647,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `Status: ${statusText}`,
             'alert',
             'Hasil Ujian Siswa',
-            '📊'
+            ''
         );
     };
 
@@ -1684,47 +1684,43 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (isLocked) {
                     examStatusBadge = `
                         <span class="bg-red-100 text-red-900 border border-red-500 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            🔒 Dibekukan &bull; Pelanggaran Anti-Cheat
+                            Dibekukan &bull; Pelanggaran Anti-Cheat
                         </span>
                     `;
                     actionBtnHtml = `
                         <button type="button" onclick="showMyQuizResult(${JSON.stringify(mySub).replace(/"/g, '&quot;')}, '${q.judul_kuis.replace(/'/g, "\\'")}', '${q.mapel}')" class="px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
-                            Status Pelanggaran 🔒
-                        </button>
+                            Status Pelanggaran </button>
                     `;
                 } else if (isOngoing) {
                     examStatusBadge = `
                         <span class="bg-yellow-200 text-yellow-950 border border-yellow-500 text-[10px] font-black px-2 py-0.5 rounded uppercase animate-pulse">
-                            🟡 Sedang Dikerjakan (Live)
+                            Sedang Dikerjakan (Live)
                         </span>
                     `;
                     actionBtnHtml = `
                         <button type="button" onclick="openExamTokenModal('${q.id}')" class="px-5 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
-                            Lanjutkan Ujian ✍️
-                        </button>
+                            Lanjutkan Ujian </button>
                     `;
                 } else {
                     examStatusBadge = `
                         <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ✅ Selesai &bull; Skor: ${mySub.total_nilai}/100 &bull; 🔒 Terkunci 1x
+                            Selesai &bull; Skor: ${mySub.total_nilai}/100 &bull; Terkunci 1x
                         </span>
                     `;
                     actionBtnHtml = `
                         <button type="button" onclick="showMyQuizResult(${JSON.stringify(mySub).replace(/"/g, '&quot;')}, '${q.judul_kuis.replace(/'/g, "\\'")}', '${q.mapel}')" class="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
-                            Lihat Skor Nilai 🎯
-                        </button>
+                            Lihat Skor Nilai </button>
                     `;
                 }
             } else {
                 examStatusBadge = `
                     <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                        🔴 Belum Dikerjakan
+                        Belum Dikerjakan
                     </span>
                 `;
                 actionBtnHtml = `
                     <button type="button" onclick="openExamTokenModal('${q.id}')" class="px-5 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
-                        Mulai Ujian ✍️
-                    </button>
+                        Mulai Ujian </button>
                 `;
             }
 
@@ -2088,13 +2084,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (bobotBadge) bobotBadge.textContent = `Bobot: ${q.bobot || 10} Poin`;
 
         const typeLabels = {
-            pg: '🔘 Pilihan Ganda',
-            pg_kompleks: '☑️ PG Kompleks',
-            benar_salah: '⚖️ Benar / Salah',
-            singkat: '✏️ Isian Singkat',
-            menjodohkan: '🔀 Menjodohkan',
-            upload_foto: '📷 Upload Foto',
-            esai: '📝 Soal Esai'
+            pg: 'Pilihan Ganda',
+            pg_kompleks: 'PG Kompleks',
+            benar_salah: 'Benar / Salah',
+            singkat: 'Isian Singkat',
+            menjodohkan: 'Menjodohkan',
+            upload_foto: 'Upload Foto',
+            esai: 'Soal Esai'
         };
         if (typeBadge) typeBadge.textContent = typeLabels[q.tipe] || 'Soal Ujian';
 
@@ -2107,8 +2103,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <img src="${escapeHtml(displayImg)}" alt="Stimulus Gambar Soal ${index + 1}" class="w-full max-h-72 object-contain bg-white hover:opacity-95 transition" />
                 </a>
                 <div class="px-3 py-1.5 bg-slate-100 border-t border-slate-300 text-[10px] font-bold text-slate-600 flex justify-between items-center">
-                    <span>📷 Stimulus / Ilustrasi Soal</span>
-                    <span class="text-indigo-600 font-black">🔍 Klik untuk perbesar</span>
+                    <span>Stimulus / Ilustrasi Soal</span>
+                    <span class="text-indigo-600 font-black">Klik untuk perbesar</span>
                 </div>
             </div>
         ` : '';
@@ -2142,7 +2138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputHtml = `
                 <div class="space-y-2 pt-2">
                     <div class="p-2.5 bg-cyan-50 border border-cyan-300 rounded-xl text-xs font-bold text-cyan-950 flex items-center gap-2">
-                        <span>💡</span> <strong>Pilihan Ganda Kompleks:</strong> Anda dapat mencentang lebih dari satu pilihan jawaban yang benar.
+                        <span></span> <strong>Pilihan Ganda Kompleks:</strong> Anda dapat mencentang lebih dari satu pilihan jawaban yang benar.
                     </div>
                     <div class="space-y-2.5 pt-1">
                         ${['A', 'B', 'C', 'D'].map(opt => {
@@ -2168,11 +2164,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
                     <label class="flex items-center gap-3 p-4 rounded-2xl border-2 border-black cursor-pointer transition ${isBenar ? 'bg-emerald-200 border-black ring-2 ring-emerald-500 font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' : 'bg-slate-50 hover:bg-slate-100 font-bold'}">
                         <input type="radio" name="cbt_answer_${q.id}" value="Benar" ${isBenar ? 'checked' : ''} onchange="window.saveCbtAnswer('${q.id}', 'Benar')" class="w-5 h-5 accent-emerald-700 cursor-pointer">
-                        <span class="text-sm md:text-base text-black">✅ PERNYATAAN BENAR</span>
+                        <span class="text-sm md:text-base text-black">PERNYATAAN BENAR</span>
                     </label>
                     <label class="flex items-center gap-3 p-4 rounded-2xl border-2 border-black cursor-pointer transition ${isSalah ? 'bg-red-200 border-black ring-2 ring-red-500 font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' : 'bg-slate-50 hover:bg-slate-100 font-bold'}">
                         <input type="radio" name="cbt_answer_${q.id}" value="Salah" ${isSalah ? 'checked' : ''} onchange="window.saveCbtAnswer('${q.id}', 'Salah')" class="w-5 h-5 accent-red-700 cursor-pointer">
-                        <span class="text-sm md:text-base text-black">❌ PERNYATAAN SALAH</span>
+                        <span class="text-sm md:text-base text-black">PERNYATAAN SALAH</span>
                     </label>
                 </div>
             `;
@@ -2194,7 +2190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputHtml = `
                 <div class="space-y-3 pt-2">
                     <div class="p-2.5 bg-teal-50 border border-teal-300 rounded-xl text-xs font-bold text-teal-950 flex items-center gap-2">
-                        <span>💡</span> Pasangkan setiap premis di sebelah kiri dengan pilihan yang tepat di sebelah kanan.
+                        <span></span> Pasangkan setiap premis di sebelah kiri dengan pilihan yang tepat di sebelah kanan.
                     </div>
                     <div class="space-y-2.5">
                         ${(Array.isArray(pairs) ? pairs : []).map((p, pIdx) => {
@@ -2224,10 +2220,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="flex items-center gap-3 flex-wrap">
                             <input type="file" id="cbt_file_upload_${q.id}" accept="image/*,.pdf" class="hidden" onchange="window.handleCbtExamFileUpload(event, '${q.id}')">
                             <button type="button" onclick="document.getElementById('cbt_file_upload_${q.id}').click()" class="px-4 py-2.5 bg-pink-500 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
-                                <span>📷</span> Ambil Foto / Pilih Berkas
+                                <span></span> Ambil Foto / Pilih Berkas
                             </button>
                             <span id="cbt_file_status_${q.id}" class="text-xs font-bold text-slate-600">
-                                ${fileUrl ? '✅ Berkas telah diunggah' : 'Belum ada berkas terlampir'}
+                                ${fileUrl ? 'Berkas telah diunggah' : 'Belum ada berkas terlampir'}
                             </span>
                         </div>
                         ${fileUrl ? `
@@ -2388,7 +2384,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.saveCbtAnswer(qId, publicUrl);
             window.renderCbtQuestion(activeCbtExam.currentIndex);
         } catch (err) {
-            if (statusEl) statusEl.innerHTML = `<span class="text-red-600 font-bold">❌ Gagal unggah: ${escapeHtml(err.message)}</span>`;
+            if (statusEl) statusEl.innerHTML = `<span class="text-red-600 font-bold">Gagal unggah: ${escapeHtml(err.message)}</span>`;
         }
     };
 
@@ -2404,7 +2400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             ? `Perhatian: Anda baru menjawab ${answeredCount} dari total ${totalQ} butir soal.\n\nApakah Anda yakin ingin menyelesaikan dan mengumpulkan lembar ujian sekarang?`
             : `Semua ${totalQ} butir soal telah terjawab!\n\nApakah Anda yakin ingin menyelesaikan dan mengirim ujian ini?`;
 
-        const conf = await showCustomModal(msg, 'confirm', 'Kumpulkan Ujian', '📝');
+        const conf = await showCustomModal(msg, 'confirm', 'Kumpulkan Ujian', '');
         if (!conf) return;
 
         const exam = activeCbtExam;
@@ -2453,7 +2449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const successMsg = hasSubjective
                 ? `Ujian berhasil dikumpulkan! Nilai instrumen otomatis: ${autoScoreTotal} poin. Butir soal uraian/lembar foto Anda akan diperiksa dan dinilai oleh guru.`
                 : `Ujian berhasil dikumpulkan! Nilai akhir Anda: ${autoScoreTotal} poin.`;
-            await showCustomModal(successMsg, 'alert', 'Ujian Selesai', '🎉');
+            await showCustomModal(successMsg, 'alert', 'Ujian Selesai', '');
 
             activeCbtExam = null;
             document.getElementById('quiz-room-container').classList.add('hidden');
@@ -2461,12 +2457,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadStudentQuizzes();
 
         } catch (e) {
-            await showCustomModal("Gagal mengirim jawaban: " + e.message, 'alert', 'Gagal', '❌');
+            await showCustomModal("Gagal mengirim jawaban: " + e.message, 'alert', 'Gagal', '');
         }
     };
 
     window.cancelExam = async () => {
-        const confExit = await showCustomModal("Apakah Anda yakin ingin membatalkan dan keluar dari ujian? Lembar pengerjaan sesi Anda akan ditutup.", 'confirm', 'Keluar Ujian', '⚠️');
+        const confExit = await showCustomModal("Apakah Anda yakin ingin membatalkan dan keluar dari ujian? Lembar pengerjaan sesi Anda akan ditutup.", 'confirm', 'Keluar Ujian', '');
         if (confExit && activeCbtExam) {
             removeAntiCheatListeners();
             exitFullscreenLock();
@@ -2556,7 +2552,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (fErr) throw fErr;
                 quiz = freshQ;
             } catch (err) {
-                await showCustomModal("Gagal memuat informasi ujian: " + err.message, 'alert', 'Gagal', '❌');
+                await showCustomModal("Gagal memuat informasi ujian: " + err.message, 'alert', 'Gagal', '');
                 return;
             }
         }
@@ -2565,7 +2561,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         pendingExamQuiz = { ...quiz, parsedConfig: config };
 
         document.getElementById('exam-token-mapel-badge').textContent = `${quiz.mapel} • Kelas ${quiz.kelas}`;
-        document.getElementById('exam-token-duration-badge').textContent = `⏱️ ${quiz.durasi_menit || 45} Menit`;
+        document.getElementById('exam-token-duration-badge').textContent = `${quiz.durasi_menit || 45} Menit`;
         document.getElementById('exam-token-quiz-title').textContent = quiz.judul_kuis;
         document.getElementById('exam-token-quiz-petunjuk').textContent = cleanPetunjuk || 'Kerjakan dengan teliti, jujur, dan mandiri.';
 
@@ -2622,7 +2618,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const studentKelas = document.getElementById('exam-token-student-kelas')?.value;
 
         if (!studentId || !studentName) {
-            await showCustomModal("Silakan pilih kelas dan nama lengkap Anda dari daftar resmi peserta didik!", 'alert', 'Pilih Nama Siswa', '⚠️');
+            await showCustomModal("Silakan pilih kelas dan nama lengkap Anda dari daftar resmi peserta didik!", 'alert', 'Pilih Nama Siswa', '');
             return;
         }
 
@@ -2633,11 +2629,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isTokenRequired) {
             const enteredToken = (document.getElementById('exam-token-input')?.value || '').trim().toUpperCase();
             if (!enteredToken) {
-                await showCustomModal("Silakan masukkan Token Ujian yang diberikan oleh Guru Pengawas kelas Anda!", 'alert', 'Token Wajib Diisi', '🔑');
+                await showCustomModal("Silakan masukkan Token Ujian yang diberikan oleh Guru Pengawas kelas Anda!", 'alert', 'Token Wajib Diisi', '');
                 return;
             }
             if (enteredToken !== expectedToken) {
-                await showCustomModal(`Token Ujian "${enteredToken}" salah atau tidak valid!\n\nSilakan periksa kembali huruf/angka token atau minta token aktif kepada Guru Pengawas.`, 'alert', 'Token Tidak Cocok', '❌');
+                await showCustomModal(`Token Ujian "${enteredToken}" salah atau tidak valid!\n\nSilakan periksa kembali huruf/angka token atau minta token aktif kepada Guru Pengawas.`, 'alert', 'Token Tidak Cocok', '');
                 return;
             }
         }
@@ -2671,25 +2667,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (existingSub) {
                 if (existingSub.status_koreksi === 'terkunci_curang') {
-                    if (btn) { btn.disabled = false; btn.innerText = "Mulai Kerjakan Ujian ✍️"; }
+                    if (btn) { btn.disabled = false; btn.innerText = "Mulai Kerjakan Ujian "; }
                     closeExamTokenModal();
                     await showCustomModal(
                         `Akses Dibatasi: Akun ujian Anda (${studentName}) telah DIBEKUKAN oleh sistem karena terdeteksi pelanggaran anti-kecurangan.\n\nSilakan temui Guru Pengawas untuk membuka kembali akun Anda.`,
                         'alert',
                         'Ujian Terkunci (Pelanggaran)',
-                        '🔒'
+                        ''
                     );
                     return;
                 }
 
                 if (existingSub.status_koreksi === 'selesai' || existingSub.status_koreksi === 'perlu_dinilai') {
-                    if (btn) { btn.disabled = false; btn.innerText = "Mulai Kerjakan Ujian ✍️"; }
+                    if (btn) { btn.disabled = false; btn.innerText = "Mulai Kerjakan Ujian "; }
                     closeExamTokenModal();
                     await showCustomModal(
                         `Akses Dibatasi: Anda (${studentName}) sudah pernah menyelesaikan ujian ini dengan skor: ${existingSub.total_nilai}/100.\n\nSesuai ketentuan CBT, setiap siswa hanya berhak mengakses dan mengerjakan ujian ini 1 kali. Nilai Anda telah tercatat permanen di database sekolah.`,
                         'alert',
                         'Ujian Selesai (1x Pengerjaan)',
-                        '🔒'
+                        ''
                     );
                     return;
                 }
@@ -2727,11 +2723,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             await launchCbtExam(quiz, studentName, submissionId, studentId);
 
         } catch (e) {
-            await showCustomModal("Gagal memulai ujian: " + e.message, 'alert', 'Gagal', '❌');
+            await showCustomModal("Gagal memulai ujian: " + e.message, 'alert', 'Gagal', '');
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = "Mulai Kerjakan Ujian ✍️";
+                btn.innerText = "Mulai Kerjakan Ujian ";
             }
         }
     };
@@ -2742,7 +2738,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         questions.sort((a, b) => (a.nomor || 0) - (b.nomor || 0));
 
         if (questions.length === 0) {
-            await showCustomModal("Ujian ini belum memiliki butir soal yang aktif.", 'alert', 'Pemberitahuan', '⚠️');
+            await showCustomModal("Ujian ini belum memiliki butir soal yang aktif.", 'alert', 'Pemberitahuan', '');
             return;
         }
 
@@ -2812,7 +2808,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (activeCbtExam.timerSeconds <= 0) {
                 clearInterval(activeCbtExam.timerInterval);
-                showCustomModal("Waktu ujian telah habis! Lembar ujian Anda dikumpulkan secara otomatis.", 'alert', 'Waktu Habis', '⏰');
+                showCustomModal("Waktu ujian telah habis! Lembar ujian Anda dikumpulkan secara otomatis.", 'alert', 'Waktu Habis', '');
                 window.confirmSubmitCbtExam();
             }
         }, 1000);
@@ -2838,7 +2834,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const summaryBox = document.getElementById('grade-summary-cards');
 
         if (!nameVal) {
-            await showCustomModal("Silakan masukkan nama lengkap siswa untuk mencari nilai!", 'alert', 'Pemberitahuan', '⚠️');
+            await showCustomModal("Silakan masukkan nama lengkap siswa untuk mencari nilai!", 'alert', 'Pemberitahuan', '');
             return;
         }
 
@@ -2897,7 +2893,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (hasFiles) {
                 const tugasHeader = document.createElement('h4');
                 tugasHeader.className = "font-black text-sm uppercase tracking-wider text-black mt-4 mb-2 flex items-center gap-1.5";
-                tugasHeader.innerHTML = "<span>📌</span> Riwayat Pengumpulan Tugas";
+                tugasHeader.innerHTML = "<span></span> Riwayat Pengumpulan Tugas";
                 resultContainer.appendChild(tugasHeader);
 
                 fileGrades.forEach(g => {
@@ -2921,8 +2917,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                             <h4 class="font-black text-base text-black">${g.materi}</h4>
                             <p class="text-xs text-slate-600 font-bold mt-0.5">${g.filename || 'Tautan Tugas'}</p>
-                            ${g.catatan_guru ? `<div class="mt-2 text-xs bg-white p-2.5 rounded-xl border border-slate-300 font-medium text-slate-800">💬 <strong>Catatan Guru:</strong> ${g.catatan_guru}</div>` : ''}
-                            ${g.ai_feedback ? `<div class="mt-1.5 text-xs bg-purple-50 p-2.5 rounded-xl border border-purple-200 font-medium text-purple-900">🤖 <strong>Evaluasi AI:</strong> ${g.ai_feedback}</div>` : ''}
+                            ${g.catatan_guru ? `<div class="mt-2 text-xs bg-white p-2.5 rounded-xl border border-slate-300 font-medium text-slate-800"><strong>Catatan Guru:</strong> ${g.catatan_guru}</div>` : ''}
+                            ${g.ai_feedback ? `<div class="mt-1.5 text-xs bg-purple-50 p-2.5 rounded-xl border border-purple-200 font-medium text-purple-900"><strong>Evaluasi AI:</strong> ${g.ai_feedback}</div>` : ''}
                         </div>
                         <div class="flex items-center gap-2 self-end md:self-center shrink-0">
                             ${gradeBadge}
@@ -2936,7 +2932,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (hasQuizzes) {
                 const ujianHeader = document.createElement('h4');
                 ujianHeader.className = "font-black text-sm uppercase tracking-wider text-black mt-6 mb-2 flex items-center gap-1.5";
-                ujianHeader.innerHTML = "<span>📝</span> Riwayat Ujian Online";
+                ujianHeader.innerHTML = "<span></span> Riwayat Ujian Online";
                 resultContainer.appendChild(ujianHeader);
 
                 quizGrades.forEach(q => {
@@ -2958,7 +2954,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <span>Skor Pilihan Ganda: <strong>${q.skor_pg}</strong></span>
                                 <span>Skor Esai: <strong>${q.skor_esai}</strong></span>
                             </div>
-                            ${q.catatan_guru ? `<div class="mt-2 text-xs bg-white p-2.5 rounded-xl border border-slate-300 font-medium text-slate-800">💬 <strong>Catatan Guru:</strong> ${q.catatan_guru}</div>` : ''}
+                            ${q.catatan_guru ? `<div class="mt-2 text-xs bg-white p-2.5 rounded-xl border border-slate-300 font-medium text-slate-800"><strong>Catatan Guru:</strong> ${q.catatan_guru}</div>` : ''}
                         </div>
                         <div class="text-right shrink-0">
                             <span class="bg-yellow-300 text-black font-black text-xl px-3 py-1.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] inline-block">
