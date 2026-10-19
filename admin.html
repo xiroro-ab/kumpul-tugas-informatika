@@ -688,6 +688,34 @@
                     <div id="form-builder-questions-list" class="space-y-3.5">
                         <!-- Rendered by JS -->
                     </div>
+
+                    <!-- Bottom Add Question Bar -->
+                    <div class="mt-4 p-3 bg-white border-2 border-black rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <span class="text-xs font-black uppercase text-slate-700">➕ Tambah Butir Soal Baru:</span>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <button type="button" onclick="addFormQuestionItem('esai')" class="px-2.5 py-1.5 bg-yellow-200 hover:bg-yellow-300 border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ Esai
+                            </button>
+                            <button type="button" onclick="addFormQuestionItem('pilihan_ganda')" class="px-2.5 py-1.5 bg-blue-200 hover:bg-blue-300 border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ PG
+                            </button>
+                            <button type="button" onclick="addFormQuestionItem('isian_singkat')" class="px-2.5 py-1.5 bg-emerald-200 hover:bg-emerald-300 border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ Singkat
+                            </button>
+                            <button type="button" onclick="addFormQuestionItem('benar_salah')" class="px-2.5 py-1.5 bg-rose-200 hover:bg-rose-300 border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ B/S
+                            </button>
+                            <button type="button" onclick="addFormQuestionItem('upload_foto')" class="px-2.5 py-1.5 bg-orange-200 hover:bg-orange-300 border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ Upload Foto
+                            </button>
+                            <button type="button" onclick="addFormQuestionItem('menjodohkan')" class="px-2.5 py-1.5 bg-pink-200 hover:bg-pink-300 border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                ➕ Jodohkan
+                            </button>
+                            <button type="button" onclick="openAiAssignmentModal()" class="px-2.5 py-1.5 bg-purple-400 hover:bg-purple-500 text-black border-2 border-black rounded-xl text-[10px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                ✨ Minta Soal AI
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -1318,6 +1346,31 @@
                     <!-- Container Butir Soal Dinamis -->
                     <div id="manual-quiz-questions-list" class="space-y-4">
                         <!-- Populated via JS -->
+                    </div>
+
+                    <!-- Bottom Add Question Bar -->
+                    <div class="mt-4 p-3 bg-white border-2 border-black rounded-xl flex flex-wrap items-center justify-between gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <span class="text-xs font-black uppercase text-slate-700">➕ Tambah Butir Soal Baru:</span>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <button type="button" onclick="addManualQuestionItem('pg')" class="px-2.5 py-1.5 bg-yellow-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>🔘</span> PG
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('benar_salah')" class="px-2.5 py-1.5 bg-rose-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>⚖️</span> B/S
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('singkat')" class="px-2.5 py-1.5 bg-sky-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>✏️</span> Singkat
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('menjodohkan')" class="px-2.5 py-1.5 bg-teal-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>🔀</span> Jodohkan
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('upload_foto')" class="px-2.5 py-1.5 bg-pink-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>📷</span> Foto
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('esai')" class="px-2.5 py-1.5 bg-purple-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>📝</span> Esai
+                            </button>
+                        </div>
                     </div>
                 </div>
 

@@ -1370,6 +1370,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button onclick="editAssignment('${a.id}')" class="px-3 py-2 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
                                 ✏️ Edit Soal
                             </button>
+                            <button onclick="addQuestionToExistingAssignment('${a.id}')" class="px-3 py-2 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                ➕ Tambah Soal
+                            </button>
                             <button onclick="openAssignmentSubmissionsModal('${a.id}')" class="px-3.5 py-2 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
                                 📋 Periksa & Koreksi (${matchingSubs.length})
                             </button>
@@ -1719,6 +1722,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         openAssignmentModal(a);
+    };
+
+    window.addQuestionToExistingAssignment = (id) => {
+        const a = assignmentsList.find(item => String(item.id) === String(id));
+        if (!a) {
+            showCustomModal("Penugasan tidak ditemukan!");
+            return;
+        }
+        openAssignmentModal(a);
+        window.addFormQuestionItem('esai');
+        setTimeout(() => {
+            const list = document.getElementById('form-builder-questions-list');
+            if (list && list.lastElementChild) {
+                list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const input = list.lastElementChild.querySelector('textarea, input');
+                if (input) input.focus();
+            }
+        }, 200);
     };
 
     window.closeAssignmentModal = () => {
@@ -2427,6 +2448,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button onclick="openEditQuizModal('${q.id}')" class="px-3.5 py-2 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
                             ✏️ Edit Kuis & Soal
                         </button>
+                        <button onclick="addQuestionToExistingQuiz('${q.id}')" class="px-3.5 py-2 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                            ➕ Tambah Soal
+                        </button>
                         <button onclick="deleteQuiz('${q.id}')" class="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 rounded-xl text-xs font-black uppercase">
                             Hapus
                         </button>
@@ -2651,12 +2675,23 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('manual-quiz-modal').classList.remove('hidden');
     };
 
-    window.openEditQuizModal = (quizId) => {
-        const quiz = quizzesList.find(q => String(q.id) === String(quizId));
+    window.openEditQuizModal = async (quizId) => {
+        let quiz = quizzesList.find(q => String(q.id) === String(quizId));
         if (!quiz) {
             showCustomModal("Data kuis tidak ditemukan!");
             return;
         }
+
+        try {
+            const { data: freshQuestions } = await supabase
+                .from('quiz_questions')
+                .select('*')
+                .eq('quiz_id', quiz.id)
+                .order('nomor', { ascending: true });
+            if (freshQuestions && freshQuestions.length > 0) {
+                quiz = { ...quiz, quiz_questions: freshQuestions };
+            }
+        } catch (_) {}
 
         editingQuizId = quiz.id;
 
@@ -2728,6 +2763,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderManualQuizQuestions();
         document.getElementById('manual-quiz-modal').classList.remove('hidden');
+    };
+
+    window.addQuestionToExistingQuiz = async (quizId) => {
+        await window.openEditQuizModal(quizId);
+        window.addManualQuestionItem('pg');
+        setTimeout(() => {
+            const list = document.getElementById('manual-quiz-questions-list');
+            if (list && list.lastElementChild) {
+                list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const input = list.lastElementChild.querySelector('textarea, input');
+                if (input) input.focus();
+            }
+        }, 200);
     };
 
     window.closeManualQuizModal = () => {

@@ -123,10 +123,23 @@ window.handleStudentFilePreview = (qNum, inputEl) => {
     }
 };
 
-function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
+function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOnly = false) {
     const container = document.getElementById('student-form-questions-list');
     if (!container) return;
     container.innerHTML = '';
+
+    if (isReadOnly) {
+        const lockedBanner = document.createElement('div');
+        lockedBanner.className = "p-3.5 bg-amber-100 border-2 border-black rounded-2xl text-xs font-black text-amber-950 flex items-center gap-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+        lockedBanner.innerHTML = `
+            <span class="text-2xl">🔒</span>
+            <div>
+                <div class="font-black uppercase tracking-wider">Formulir Terkunci &bull; 1x Pengisian Selesai</div>
+                <div class="text-[11px] font-bold text-amber-900 mt-0.5">Anda sudah mengumpulkan formulir tugas ini. Sesuai ketentuan, setiap siswa hanya berhak mengirimkan 1 kali jawaban.</div>
+            </div>
+        `;
+        container.appendChild(lockedBanner);
+    }
 
     questions.forEach((q, idx) => {
         const qNum = q.nomor || (idx + 1);
@@ -173,13 +186,16 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
                 { key: 'D', text: optD }
             ].filter(o => o.text || o.key === 'A' || o.key === 'B');
 
+            const disabledAttr = isReadOnly ? 'disabled' : '';
+            const cursorStyle = isReadOnly ? 'cursor-not-allowed opacity-90' : 'cursor-pointer';
+
             inputHtml = `
                 <div class="space-y-2 pt-1">
                     ${options.map(opt => {
                         const isChecked = prevAnswer === opt.key ? 'checked' : '';
                         return `
-                            <label class="flex items-start gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 hover:bg-indigo-50 cursor-pointer transition select-none has-[:checked]:bg-indigo-100 has-[:checked]:border-indigo-600">
-                                <input type="radio" name="student_q_${qNum}" value="${opt.key}" ${isChecked} required class="w-4 h-4 mt-0.5 accent-indigo-600 shrink-0">
+                            <label class="flex items-start gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 ${isReadOnly ? '' : 'hover:bg-indigo-50'} ${cursorStyle} transition select-none has-[:checked]:bg-indigo-100 has-[:checked]:border-indigo-600">
+                                <input type="radio" name="student_q_${qNum}" value="${opt.key}" ${isChecked} ${disabledAttr} required class="w-4 h-4 mt-0.5 accent-indigo-600 shrink-0">
                                 <div class="text-xs font-bold text-slate-800 leading-snug">
                                     <span class="font-black text-indigo-700 mr-1">${opt.key}.</span> ${escapeHtml(opt.text)}
                                 </div>
@@ -191,42 +207,59 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
         } else if (isBs) {
             const isBenar = String(prevAnswer).toUpperCase() === 'BENAR';
             const isSalah = String(prevAnswer).toUpperCase() === 'SALAH';
+            const disabledAttr = isReadOnly ? 'disabled' : '';
+            const cursorStyle = isReadOnly ? 'cursor-not-allowed opacity-90' : 'cursor-pointer';
+
             inputHtml = `
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 hover:bg-teal-50 cursor-pointer transition select-none has-[:checked]:bg-teal-100 has-[:checked]:border-teal-700">
-                        <input type="radio" name="student_q_${qNum}" value="BENAR" ${isBenar ? 'checked' : ''} required class="w-4 h-4 accent-teal-600 shrink-0">
+                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 ${isReadOnly ? '' : 'hover:bg-teal-50'} ${cursorStyle} transition select-none has-[:checked]:bg-teal-100 has-[:checked]:border-teal-700">
+                        <input type="radio" name="student_q_${qNum}" value="BENAR" ${isBenar ? 'checked' : ''} ${disabledAttr} required class="w-4 h-4 accent-teal-600 shrink-0">
                         <span class="text-xs font-black text-teal-950">✅ BENAR (Sesuai)</span>
                     </label>
-                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 hover:bg-red-50 cursor-pointer transition select-none has-[:checked]:bg-red-100 has-[:checked]:border-red-700">
-                        <input type="radio" name="student_q_${qNum}" value="SALAH" ${isSalah ? 'checked' : ''} required class="w-4 h-4 accent-red-600 shrink-0">
+                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 ${isReadOnly ? '' : 'hover:bg-red-50'} ${cursorStyle} transition select-none has-[:checked]:bg-red-100 has-[:checked]:border-red-700">
+                        <input type="radio" name="student_q_${qNum}" value="SALAH" ${isSalah ? 'checked' : ''} ${disabledAttr} required class="w-4 h-4 accent-red-600 shrink-0">
                         <span class="text-xs font-black text-red-950">❌ SALAH (Tidak Sesuai)</span>
                     </label>
                 </div>
             `;
         } else if (isFoto) {
             const hasPrev = prevAnswer && String(prevAnswer).startsWith('http');
-            inputHtml = `
-                <div class="space-y-2 pt-1">
-                    <div class="border-2 border-dashed border-black rounded-xl p-4 bg-orange-50/50 hover:bg-orange-50 transition text-center cursor-pointer" onclick="document.getElementById('student_file_q_${qNum}').click()">
-                        <input type="file" id="student_file_q_${qNum}" accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="window.handleStudentFilePreview(${qNum}, this)">
-                        <div class="flex flex-col items-center gap-1.5">
-                            <span class="text-2xl">📸</span>
-                            <span class="text-xs font-black uppercase text-black">Pilih / Unggah Berkas Foto Pekerjaan</span>
-                            <span class="text-[10px] text-slate-600 font-bold">Maksimal 10MB (Foto, Tangkapan Layar, atau PDF)</span>
+            if (isReadOnly) {
+                inputHtml = `
+                    <div class="p-3.5 bg-slate-50 border-2 border-black rounded-xl space-y-2">
+                        ${hasPrev ? `
+                            <div class="text-xs font-black text-emerald-800">
+                                ✅ Berkas tersimpan: <a href="${escapeHtml(prevAnswer)}" target="_blank" class="underline text-indigo-700">Lihat Berkas Foto</a>
+                            </div>
+                            <img src="${escapeHtml(prevAnswer)}" class="max-h-48 rounded-xl border border-black object-contain bg-white" />
+                        ` : '<p class="text-xs font-bold text-slate-500 italic">Tidak ada berkas foto yang diunggah.</p>'}
+                    </div>
+                `;
+            } else {
+                inputHtml = `
+                    <div class="space-y-2 pt-1">
+                        <div class="border-2 border-dashed border-black rounded-xl p-4 bg-orange-50/50 hover:bg-orange-50 transition text-center cursor-pointer" onclick="document.getElementById('student_file_q_${qNum}').click()">
+                            <input type="file" id="student_file_q_${qNum}" accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="window.handleStudentFilePreview(${qNum}, this)">
+                            <div class="flex flex-col items-center gap-1.5">
+                                <span class="text-2xl">📸</span>
+                                <span class="text-xs font-black uppercase text-black">Pilih / Unggah Berkas Foto Pekerjaan</span>
+                                <span class="text-[10px] text-slate-600 font-bold">Maksimal 10MB (Foto, Tangkapan Layar, atau PDF)</span>
+                            </div>
+                        </div>
+                        <div id="student_file_name_q_${qNum}" class="text-xs font-black text-emerald-800 ${hasPrev ? '' : 'hidden'}">
+                            ${hasPrev ? `✅ Berkas tersimpan sebelumnya: <a href="${escapeHtml(prevAnswer)}" target="_blank" class="underline text-indigo-700">Buka Berkas Anda</a>` : ''}
+                        </div>
+                        <div id="student_preview_q_${qNum}" class="${hasPrev ? '' : 'hidden'} mt-1.5">
+                            ${hasPrev ? `<img src="${escapeHtml(prevAnswer)}" class="max-h-48 rounded-xl border-2 border-black object-contain bg-white" />` : ''}
                         </div>
                     </div>
-                    <div id="student_file_name_q_${qNum}" class="text-xs font-black text-emerald-800 ${hasPrev ? '' : 'hidden'}">
-                        ${hasPrev ? `✅ Berkas tersimpan sebelumnya: <a href="${escapeHtml(prevAnswer)}" target="_blank" class="underline text-indigo-700">Buka Berkas Anda</a>` : ''}
-                    </div>
-                    <div id="student_preview_q_${qNum}" class="${hasPrev ? '' : 'hidden'} mt-1.5">
-                        ${hasPrev ? `<img src="${escapeHtml(prevAnswer)}" class="max-h-48 rounded-xl border-2 border-black object-contain bg-white" />` : ''}
-                    </div>
-                </div>
-            `;
+                `;
+            }
         } else if (isMatch) {
             const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
             const rightChoices = pairs.map(p => p.kanan).filter(Boolean);
             const prevMatches = (typeof prevAnswer === 'object' && prevAnswer !== null) ? prevAnswer : {};
+            const disabledAttr = isReadOnly ? 'disabled' : '';
 
             inputHtml = `
                 <div class="space-y-2.5 pt-1">
@@ -239,7 +272,7 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
                                     <span class="font-black text-pink-700 mr-1.5">${pIdx + 1}.</span> ${escapeHtml(p.kiri)}
                                 </div>
                                 <div class="sm:w-1/2">
-                                    <select name="student_match_${qNum}_${pIdx}" data-premise="${escapeHtml(p.kiri)}" required class="w-full h-9 px-2.5 rounded-lg border-2 border-black bg-white font-bold text-xs cursor-pointer">
+                                    <select name="student_match_${qNum}_${pIdx}" data-premise="${escapeHtml(p.kiri)}" ${disabledAttr} required class="w-full h-9 px-2.5 rounded-lg border-2 border-black ${isReadOnly ? 'bg-slate-100 cursor-not-allowed' : 'bg-white cursor-pointer'} font-bold text-xs">
                                         <option value="">-- Pilih Pasangan --</option>
                                         ${rightChoices.map(opt => `
                                             <option value="${escapeHtml(opt)}" ${chosenVal === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>
@@ -254,15 +287,15 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
         } else if (isSingkat) {
             inputHtml = `
                 <div class="pt-1">
-                    <input type="text" name="student_q_${qNum}" value="${escapeHtml(prevAnswer)}" required placeholder="Ketikkan jawaban singkat Anda di sini..." class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none focus:bg-white">
+                    <input type="text" name="student_q_${qNum}" value="${escapeHtml(prevAnswer)}" ${isReadOnly ? 'readonly disabled' : ''} required placeholder="Ketikkan jawaban singkat Anda di sini..." class="w-full h-10 px-3 rounded-xl border-2 border-black ${isReadOnly ? 'bg-slate-100 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} font-bold text-xs outline-none">
                 </div>
             `;
         } else {
             // esai
             inputHtml = `
                 <div class="pt-1 space-y-1">
-                    <textarea name="student_q_${qNum}" rows="4" required placeholder="Tuliskan jawaban uraian/penjelasan Anda secara lengkap di sini..." class="w-full p-3 rounded-xl border-2 border-black bg-slate-50 font-medium text-xs outline-none focus:bg-white resize-y">${escapeHtml(prevAnswer)}</textarea>
-                    <p class="text-[10px] text-slate-500 font-bold ml-1">Ketikkan penjelasan selengkap mungkin agar evaluasi AI dan guru lebih akurat.</p>
+                    <textarea name="student_q_${qNum}" rows="4" ${isReadOnly ? 'readonly disabled' : ''} required placeholder="Tuliskan jawaban uraian/penjelasan Anda secara lengkap di sini..." class="w-full p-3 rounded-xl border-2 border-black ${isReadOnly ? 'bg-slate-100 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} font-medium text-xs outline-none resize-y">${escapeHtml(prevAnswer)}</textarea>
+                    ${isReadOnly ? '' : '<p class="text-[10px] text-slate-500 font-bold ml-1">Ketikkan penjelasan selengkap mungkin agar evaluasi AI dan guru lebih akurat.</p>'}
                 </div>
             `;
         }
@@ -692,11 +725,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (mySubmission) {
                 if (mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '') {
-                    submissionBadge = `<span class="bg-emerald-400 text-black border-2 border-black font-black text-xs px-2.5 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">✅ Nilai: ${mySubmission.nilai}/100</span>`;
+                    submissionBadge = `<span class="bg-emerald-400 text-black border-2 border-black font-black text-xs px-2.5 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">✅ Nilai: ${mySubmission.nilai}/100 &bull; 🔒 Terkunci 1x</span>`;
                 } else {
-                    submissionBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs px-2 py-0.5 rounded-lg">✅ Sudah Dikumpulkan (Menunggu Koreksi)</span>`;
+                    submissionBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs px-2 py-0.5 rounded-lg">✅ Sudah Dikumpulkan &bull; 🔒 Terkunci 1x</span>`;
                 }
-                actionBtnText = hasQuestions ? 'Perbarui Jawaban Form ✏️' : 'Kirim Ulang / Perbarui ✏️';
+                actionBtnText = hasQuestions ? '👁️ Lembar Jawaban (Terkunci)' : '👁️ Lihat Pengumpulan (Terkunci)';
                 actionBtnClass = 'bg-white hover:bg-slate-100 text-black border-2 border-black';
             } else {
                 submissionBadge = `<span class="bg-red-100 text-red-800 border border-red-300 font-bold text-xs px-2 py-0.5 rounded-lg">🔴 Belum Dikerjakan</span>`;
@@ -843,29 +876,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             (f.materi && f.materi.toLowerCase().trim() === (assignment.judul_tugas || '').toLowerCase().trim())
         );
 
+        const isLocked = Boolean(mySubmission);
+
         const statusEl = document.getElementById('modal-banner-status');
         if (statusEl) {
             if (mySubmission) {
                 statusEl.classList.remove('hidden');
+                const subDate = mySubmission.created_at ? new Date(mySubmission.created_at).toLocaleString('id-ID') : 'sebelumnya';
                 if (mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '') {
                     statusEl.innerHTML = `
                         <div class="flex items-center justify-between">
                             <span class="font-black text-emerald-950">✅ Nilai Anda: ${mySubmission.nilai} / 100</span>
-                            <span class="text-[10px] bg-emerald-200 text-emerald-950 font-black px-2 py-0.5 rounded">Telah Dikoreksi</span>
+                            <span class="text-[10px] bg-emerald-200 text-emerald-950 font-black px-2 py-0.5 rounded border border-emerald-400">Telah Dikoreksi &bull; Terkunci 1x</span>
                         </div>
-                        ${mySubmission.catatan_guru ? `<p class="text-[11px] font-medium text-emerald-950 mt-1"><strong>Catatan Guru:</strong> ${mySubmission.catatan_guru}</p>` : ''}
+                        ${mySubmission.catatan_guru ? `<p class="text-[11px] font-medium text-emerald-950 mt-1"><strong>Catatan Guru:</strong> ${escapeHtml(mySubmission.catatan_guru)}</p>` : ''}
                     `;
                 } else {
                     statusEl.innerHTML = `
                         <div class="flex items-center justify-between">
-                            <span class="font-black text-emerald-900">✅ Tugas Sudah Dikumpulkan</span>
-                            <span class="text-[10px] bg-amber-200 text-amber-950 font-black px-2 py-0.5 rounded">Menunggu Koreksi Guru</span>
+                            <span class="font-black text-emerald-900">🔒 Tanggapan Terkirim &amp; Terkunci</span>
+                            <span class="text-[10px] bg-slate-200 text-slate-800 font-black px-2 py-0.5 rounded border border-slate-400">1x Pengisian Selesai</span>
                         </div>
-                        <p class="text-[10px] text-slate-700 font-medium">Anda dapat memperbarui jawaban Anda di bawah ini jika diperlukan.</p>
+                        <p class="text-[11px] text-slate-700 font-bold mt-1">Anda sudah mengirimkan formulir tugas ini (${subDate}). Pengisian formulir tugas ini dibatasi 1 kali dan tidak dapat diubah kembali.</p>
                     `;
                 }
             } else {
                 statusEl.classList.add('hidden');
+            }
+        }
+
+        if (subSubmitBtn) {
+            if (isLocked) {
+                subSubmitBtn.disabled = true;
+                subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                subSubmitBtn.innerText = '🔒 TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+            } else {
+                subSubmitBtn.disabled = false;
+                subSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                subSubmitBtn.innerText = 'KIRIM JAWABAN TUGAS 🚀';
             }
         }
 
@@ -895,13 +943,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            renderStudentFormQuestions(currentFormQuestions, prevAnswersMap);
+            renderStudentFormQuestions(currentFormQuestions, prevAnswersMap, isLocked);
             setSubmissionMode('text');
         } else {
             // Tampilkan Legacy Text Sheet
             if (formSheet) formSheet.classList.add('hidden');
             if (legacySheet) legacySheet.classList.remove('hidden');
             if (modeSwitcher) modeSwitcher.classList.remove('hidden');
+
+            if (subTextAnswerInput) subTextAnswerInput.readOnly = isLocked;
+            if (linkUrlInput) linkUrlInput.readOnly = isLocked;
+            if (linkNoteInput) linkNoteInput.readOnly = isLocked;
+            if (fileInput) fileInput.disabled = isLocked;
+            if (dropzone) {
+                if (isLocked) {
+                    dropzone.classList.add('pointer-events-none', 'opacity-60');
+                } else {
+                    dropzone.classList.remove('pointer-events-none', 'opacity-60');
+                }
+            }
 
             if (mySubmission) {
                 if (mySubmission.storage_path && mySubmission.storage_path.startsWith('TEXT:')) {
@@ -950,11 +1010,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         subMateriInput.value = '';
         subMateriInput.readOnly = false;
 
-        if (subTextAnswerInput) subTextAnswerInput.value = '';
+        if (subTextAnswerInput) {
+            subTextAnswerInput.value = '';
+            subTextAnswerInput.readOnly = false;
+        }
         if (subTextCount) subTextCount.textContent = '0 kata | 0 karakter';
         resetFileInput();
-        if (linkUrlInput) linkUrlInput.value = '';
-        if (linkNoteInput) linkNoteInput.value = '';
+        if (fileInput) fileInput.disabled = false;
+        if (dropzone) dropzone.classList.remove('pointer-events-none', 'opacity-60');
+        if (linkUrlInput) {
+            linkUrlInput.value = '';
+            linkUrlInput.readOnly = false;
+        }
+        if (linkNoteInput) {
+            linkNoteInput.value = '';
+            linkNoteInput.readOnly = false;
+        }
+        if (subSubmitBtn) {
+            subSubmitBtn.disabled = false;
+            subSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            subSubmitBtn.innerText = 'KIRIM TUGAS BEBAS 🚀';
+        }
         setSubmissionMode('text');
 
         subModal.classList.remove('hidden');
@@ -1078,6 +1154,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         globalNameInput.value = nama;
         globalKelasSelect.value = kelas;
         updateStudentProfileUI(nama, kelas);
+
+        // Database level check: Cegah siswa mengirimkan jawaban lebih dari 1 kali
+        if (assignmentId) {
+            const { data: existingSub } = await supabase
+                .from('files')
+                .select('id, created_at')
+                .eq('assignment_id', assignmentId)
+                .ilike('nama', nama.trim())
+                .maybeSingle();
+
+            if (existingSub) {
+                const subDate = existingSub.created_at ? new Date(existingSub.created_at).toLocaleString('id-ID') : '';
+                await showCustomModal(
+                    `Akses Dibatasi: Anda (${nama}) sudah tercatat mengumpulkan tugas ini sebelumnya pada ${subDate}.\n\nSesuai ketentuan, setiap siswa hanya berhak mengirimkan 1 kali tanggapan. Jawaban tidak dapat dikirim ulang.`,
+                    'alert',
+                    'Tanggapan Terkunci (1x Saja)',
+                    '🔒'
+                );
+                if (subSubmitBtn) {
+                    subSubmitBtn.disabled = true;
+                    subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    subSubmitBtn.innerText = '🔒 TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+                }
+                return;
+            }
+        } else if (materi) {
+            const { data: existingSub } = await supabase
+                .from('files')
+                .select('id, created_at')
+                .ilike('materi', materi.trim())
+                .ilike('nama', nama.trim())
+                .maybeSingle();
+
+            if (existingSub) {
+                await showCustomModal(
+                    `Akses Dibatasi: Anda (${nama}) sudah pernah mengumpulkan tugas "${materi}".\n\nSistem membatasi pengumpulan hanya 1 kali dan tidak dapat dikirim ulang.`,
+                    'alert',
+                    'Tanggapan Terkunci (1x Saja)',
+                    '🔒'
+                );
+                if (subSubmitBtn) {
+                    subSubmitBtn.disabled = true;
+                    subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    subSubmitBtn.innerText = '🔒 TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+                }
+                return;
+            }
+        }
 
         if (currentSubmissionMode === 'text') {
             if (currentFormQuestions && currentFormQuestions.length > 0) {
@@ -1509,7 +1633,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (mySub) {
                 examStatusBadge = `
                     <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                        ✅ Sudah Dikerjakan &bull; Total Skor: ${mySub.total_nilai}/100
+                        ✅ Selesai &bull; Skor: ${mySub.total_nilai}/100 &bull; 🔒 Terkunci 1x
                     </span>
                 `;
                 actionBtnHtml = `
@@ -1566,10 +1690,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        const mySub = studentQuizSubmissions.find(s => String(s.quiz_id) === String(quizId));
-        if (mySub) {
-            const retake = await showCustomModal(`Anda sudah mengerjakan ujian ini dengan skor: ${mySub.total_nilai}/100.\n\nApakah Anda yakin ingin mengulang pengerjaan ujian ini?`, 'confirm', 'Ujian Ulang', '❓');
-            if (!retake) return;
+        // Database level check: Cegah ujian ulang atau akses berkali-kali
+        let existingSub = studentQuizSubmissions.find(s => String(s.quiz_id) === String(quizId));
+        if (!existingSub) {
+            try {
+                const { data: dbSub } = await supabase
+                    .from('quiz_submissions')
+                    .select('id, total_nilai, created_at')
+                    .eq('quiz_id', quizId)
+                    .ilike('nama_siswa', studentName.trim())
+                    .maybeSingle();
+                if (dbSub) existingSub = dbSub;
+            } catch (_) {}
+        }
+
+        if (existingSub) {
+            const skor = (existingSub.total_nilai !== null && existingSub.total_nilai !== undefined) ? `${existingSub.total_nilai}/100` : 'Selesai';
+            await showCustomModal(
+                `Akses Dibatasi: Anda (${studentName}) sudah menyelesaikan ujian ini dengan skor: ${skor}.\n\nSesuai ketentuan, setiap siswa hanya berhak mengakses dan mengerjakan ujian ini 1 kali. Anda tidak diizinkan masuk kembali atau mengulang ujian.`,
+                'alert',
+                'Ujian Terkunci (1x Pengerjaan)',
+                '🔒'
+            );
+            return;
         }
 
         try {
@@ -1871,6 +2014,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                     hasSubjective = true;
                 }
             });
+
+            // Database-level check cegah duplikasi submission
+            const { data: existingSubCheck } = await supabase
+                .from('quiz_submissions')
+                .select('id, total_nilai')
+                .eq('quiz_id', activeQuizData.id)
+                .ilike('nama_siswa', activeQuizData.studentName.trim())
+                .maybeSingle();
+
+            if (existingSubCheck) {
+                await showCustomModal(
+                    `Akses Dibatasi: Anda (${activeQuizData.studentName}) sudah pernah menyelesaikan ujian ini sebelumnya.\n\nSesuai sistem pembatasan 1x pengerjaan, lembar jawaban Anda tidak dapat dikirim ulang.`,
+                    'alert',
+                    'Ujian Terkunci (1x Saja)',
+                    '🔒'
+                );
+                activeQuizData = null;
+                document.getElementById('quiz-room-container').classList.add('hidden');
+                document.getElementById('quiz-portal-landing').classList.remove('hidden');
+                loadStudentQuizzes();
+                return;
+            }
 
             // Simpan ke Supabase quiz_submissions
             const { error } = await supabase.from('quiz_submissions').insert([{
