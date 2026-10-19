@@ -2663,7 +2663,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        const filtered = rosterStudents.filter(s => String(s.kelas).trim() === String(selectedKelas).trim());
+        const filtered = rosterStudents
+            .filter(s => String(s.kelas).trim() === String(selectedKelas).trim())
+            .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
+
         if (filtered.length === 0) {
             studentSelect.disabled = true;
             studentSelect.innerHTML = '<option value="">Belum ada siswa terdaftar di kelas ini</option>';
@@ -2736,16 +2739,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const kelasSelect = document.getElementById('exam-token-kelas-select');
         if (kelasSelect) {
-            const uniqueClasses = [...new Set(rosterStudents.map(s => String(s.kelas).trim()))].sort();
-            kelasSelect.innerHTML = '<option value="">-- Pilih Kelas --</option>' +
-                uniqueClasses.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+            const allRosterClasses = [...new Set(rosterStudents.map(s => String(s.kelas).trim()))].sort();
+            
+            // Auto-deteksi kelas yang berhak mengikuti ujian ini sesuai jenjang soal
+            const targetK = String(quiz.kelas || '').trim();
+            let applicableClasses = allRosterClasses;
 
-            const targetKelas = (quiz.kelas && quiz.kelas !== 'Semua Kelas') ? quiz.kelas : (globalKelasSelect?.value || '');
-            if (targetKelas && uniqueClasses.includes(targetKelas)) {
-                kelasSelect.value = targetKelas;
-            } else if (uniqueClasses.length > 0) {
-                kelasSelect.value = uniqueClasses[0];
+            if (targetK && targetK !== 'Semua Kelas') {
+                if (targetK.includes('9') || targetK.toUpperCase().includes('IX')) {
+                    applicableClasses = allRosterClasses.filter(c => c.startsWith('9.') || c.startsWith('9') || c.toUpperCase().includes('IX'));
+                } else if (targetK.includes('8') || targetK.toUpperCase().includes('VIII')) {
+                    applicableClasses = allRosterClasses.filter(c => c.startsWith('8.') || c.startsWith('8') || c.toUpperCase().includes('VIII'));
+                } else if (targetK.includes('7') || targetK.toUpperCase().includes('VII')) {
+                    applicableClasses = allRosterClasses.filter(c => c.startsWith('7.') || c.startsWith('7') || c.toUpperCase().includes('VII'));
+                } else if (allRosterClasses.includes(targetK)) {
+                    applicableClasses = [targetK];
+                }
             }
+
+            if (applicableClasses.length === 0) {
+                applicableClasses = allRosterClasses;
+            }
+
+            kelasSelect.innerHTML = '<option value="">-- Pilih Kelas --</option>' +
+                applicableClasses.map(k => `<option value="${escapeHtml(k)}">Kelas ${escapeHtml(k)}</option>`).join('');
+
+            // Pilih otomatis kelas siswa jika sebelumnya sudah dipilih atau gunakan kelas pertama yang berhak
+            const preferredClass = (globalKelasSelect?.value || '').trim();
+            if (preferredClass && applicableClasses.includes(preferredClass)) {
+                kelasSelect.value = preferredClass;
+            } else if (applicableClasses.length > 0) {
+                kelasSelect.value = applicableClasses[0];
+            }
+
+            // Langsung panggil onExamTokenKelasChange untuk memfilter HANYA siswa di kelas yang terpilih
             window.onExamTokenKelasChange(kelasSelect.value);
         }
 

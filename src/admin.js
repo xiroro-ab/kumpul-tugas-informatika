@@ -3785,16 +3785,39 @@ document.addEventListener('DOMContentLoaded', () => {
             if (kelasSelect) {
                 const currentVal = kelasSelect.value || 'all';
                 const submissionClasses = activeQuizSubmissions.map(s => String(s.kelas || '').trim()).filter(Boolean);
-                const quizTargetKelas = activeQuizForResults?.kelas && activeQuizForResults.kelas !== 'Semua Kelas' ? [activeQuizForResults.kelas] : [];
-                const rosterClasses = (stateStudents || []).map(r => String(r.kelas || '').trim()).filter(Boolean);
-                const allClasses = [...new Set([...submissionClasses, ...quizTargetKelas, ...rosterClasses])].sort();
-
-                kelasSelect.innerHTML = '<option value="all">Semua Kelas</option>' +
-                    allClasses.map(k => `<option value="${escapeHtml(k)}" ${k === currentVal ? 'selected' : ''}>Kelas ${escapeHtml(k)}</option>`).join('');
                 
-                // If this quiz is dedicated to 1 class, auto-select it if still 'all'
-                if (currentVal === 'all' && activeQuizForResults?.kelas && activeQuizForResults.kelas !== 'Semua Kelas') {
-                    kelasSelect.value = activeQuizForResults.kelas;
+                // Ambil daftar kelas nyata dari roster siswa
+                const rosterClasses = (stateStudents || []).map(r => String(r.kelas || '').trim()).filter(Boolean);
+                const allRealClasses = [...new Set([...submissionClasses, ...rosterClasses])].sort();
+
+                // Deteksi kelas nyata yang relevan dengan tingkat ujian ini
+                const targetK = String(activeQuizForResults?.kelas || '').trim();
+                let applicableClasses = allRealClasses;
+                if (targetK && targetK !== 'Semua Kelas') {
+                    if (targetK.includes('9') || targetK.toUpperCase().includes('IX')) {
+                        applicableClasses = allRealClasses.filter(c => c.startsWith('9.') || c.startsWith('9') || c.toUpperCase().includes('IX'));
+                    } else if (targetK.includes('8') || targetK.toUpperCase().includes('VIII')) {
+                        applicableClasses = allRealClasses.filter(c => c.startsWith('8.') || c.startsWith('8') || c.toUpperCase().includes('VIII'));
+                    } else if (targetK.includes('7') || targetK.toUpperCase().includes('VII')) {
+                        applicableClasses = allRealClasses.filter(c => c.startsWith('7.') || c.startsWith('7') || c.toUpperCase().includes('VII'));
+                    } else if (allRealClasses.includes(targetK)) {
+                        applicableClasses = [targetK];
+                    }
+                }
+
+                // Masukkan juga kelas nyata yang sudah ada submission-nya dan bersihkan label non-kelas
+                const distinctClasses = [...new Set([...applicableClasses, ...submissionClasses])].filter(c => {
+                    return c && !c.toLowerCase().includes('semua kelas');
+                }).sort();
+
+                kelasSelect.innerHTML = '<option value="all">Semua Kelas Peserta Ujian</option>' +
+                    distinctClasses.map(k => `<option value="${escapeHtml(k)}" ${k === currentVal ? 'selected' : ''}>Kelas ${escapeHtml(k)}</option>`).join('');
+                
+                // Pertahankan pilihan filter guru jika valid, atau default 'all' agar semua siswa langsung tampil
+                if (currentVal !== 'all' && distinctClasses.includes(currentVal)) {
+                    kelasSelect.value = currentVal;
+                } else {
+                    kelasSelect.value = 'all';
                 }
             }
 
@@ -3896,7 +3919,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Calculate statistics for the selected class
         const classFiltered = selectedKelas === 'all'
             ? enriched
-            : enriched.filter(s => String(s.kelas || '').trim() === selectedKelas);
+            : enriched.filter(s => {
+                const sk = String(s.kelas || '').trim();
+                return sk === selectedKelas || (selectedKelas.length === 1 && sk.startsWith(selectedKelas));
+            });
 
         const statTotal = classFiltered.length;
         const statFocus = classFiltered.filter(s => s.liveState === 'focus').length;
