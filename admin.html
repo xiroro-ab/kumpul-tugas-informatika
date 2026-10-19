@@ -302,75 +302,104 @@
             </div>
 
             <!-- ======================================================= -->
+            <!-- ======================================================= -->
             <!-- TAB 5: PENGATURAN KELAS, MAPEL, KUNCI & MODEL AI        -->
             <!-- ======================================================= -->
             <div id="tab-content-setting" class="space-y-6 hidden">
                 
-                <!-- Card AI API Key & Model Selector -->
-                <div class="bg-purple-300 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-2xl">🤖</span>
-                        <h3 class="text-2xl font-black text-black uppercase tracking-tight">Koneksi & Pilihan Model AI</h3>
-                    </div>
-                    <p class="text-black font-bold text-xs md:text-sm mb-4">
-                        Guru dapat memilih model Gemini sesuai kebutuhan (kecepatan atau kedalaman analisis), atau mengetikkan model kustom dari Google AI Studio.
-                    </p>
+                <!-- 2 Column Responsive Grid: Model AI (Kiri) & Daftar Kelas (Kanan) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                     
-                    <div class="space-y-4 max-w-2xl bg-white border-2 border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <!-- KOLOM 1: KONEKSI & MODEL AI -->
+                    <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] p-5 md:p-7 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between">
                         <div>
-                            <label class="block text-xs font-black uppercase text-black mb-1">Google Gemini API Key</label>
-                            <input type="password" id="gemini-api-key-input" placeholder="Masukkan Google Gemini API Key Anda..." class="w-full h-11 px-4 rounded-xl border-2 border-black font-bold focus:outline-none text-xs bg-slate-50">
+                            <div class="flex items-center justify-between border-b-2 border-black pb-3 mb-4">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-9 h-9 bg-purple-200 border-2 border-black rounded-xl flex items-center justify-center text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">🤖</span>
+                                    <div>
+                                        <h4 class="font-black text-base text-black uppercase">Model & Kunci AI</h4>
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase">Google Gemini AI Engine</span>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-black bg-purple-100 text-purple-900 px-2.5 py-0.5 rounded-full border border-purple-300 uppercase">Pilihan Guru</span>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-black uppercase text-black mb-1">Google Gemini API Key</label>
+                                    <input type="password" id="gemini-api-key-input" placeholder="Masukkan Google Gemini API Key Anda..." class="w-full h-11 px-3.5 rounded-xl border-2 border-black font-bold focus:outline-none text-xs bg-slate-50 focus:bg-white">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-black uppercase text-black mb-1">Pilihan Model Gemini</label>
+                                    <select id="gemini-model-preset" onchange="onModelPresetChange()" class="w-full h-11 px-3.5 rounded-xl border-2 border-black font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                                        <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
+                                        <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash-Lite</option>
+                                        <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+                                        <option value="gemini-3-flash-preview">Gemini 3 Flash (Preview) (Bawaan GuruPro)</option>
+                                        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                                        <option value="custom">Ketik ID Model Bebas (Manual)</option>
+                                    </select>
+                                </div>
+
+                                <div id="custom-model-wrapper" class="hidden">
+                                    <label class="block text-xs font-black uppercase text-black mb-1">Ketik ID Model Bebas (Manual)</label>
+                                    <input type="text" id="gemini-custom-model-input" placeholder="Contoh: gemini-2.0-flash atau gemini-1.5-pro" class="w-full h-11 px-3.5 rounded-xl border-2 border-black font-bold focus:outline-none text-xs bg-yellow-50">
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row gap-2 pt-1">
+                                    <button onclick="saveGeminiSettings()" class="flex-1 bg-black hover:bg-slate-800 text-white font-black h-11 rounded-xl text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                                        SIMPAN KUNCI & MODEL AI
+                                    </button>
+                                    <button onclick="testAiConnection()" id="btn-test-ai" class="bg-purple-600 hover:bg-purple-700 text-white font-black px-4 h-11 rounded-xl text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 shrink-0 flex items-center justify-center gap-1.5">
+                                        ⚡ UJI KONEKSI
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
+                        <div class="mt-4 pt-3 border-t-2 border-slate-100">
+                            <p id="gemini-status-text" class="text-xs font-black text-purple-900"></p>
+                        </div>
+                    </div>
+
+                    <!-- KOLOM 2: DAFTAR KELAS SMPN 58 -->
+                    <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] p-5 md:p-7 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between">
                         <div>
-                            <label class="block text-xs font-black uppercase text-black mb-1">Pilihan Model Gemini</label>
-                            <select id="gemini-model-preset" onchange="onModelPresetChange()" class="w-full h-11 px-4 rounded-xl border-2 border-black font-bold text-xs bg-slate-50 cursor-pointer">
-                                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Paling Cepat & Hemat Kuota - Standar)</option>
-                                <option value="gemini-2.0-flash">Gemini 2.0 Flash (Generasi Baru - Cerdas & Cepat)</option>
-                                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite (Versi Paling Ringan)</option>
-                                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Kecerdasan Maksimal untuk Esai Panjang)</option>
-                                <option value="custom">Input Model Kustom Manual (Ketik Sendiri)...</option>
-                            </select>
+                            <div class="flex items-center justify-between border-b-2 border-black pb-3 mb-4">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-9 h-9 bg-yellow-200 border-2 border-black rounded-xl flex items-center justify-center text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">🏫</span>
+                                    <div>
+                                        <h4 class="font-black text-base text-black uppercase">Daftar Kelas SMPN 58</h4>
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase">Pilihan Kelas Form Siswa & Guru</span>
+                                    </div>
+                                </div>
+                                <span id="kelas-count-badge" class="text-[10px] font-black bg-yellow-100 text-yellow-900 px-2.5 py-0.5 rounded-full border border-yellow-300 uppercase">0 Kelas</span>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div class="flex gap-2">
+                                    <input type="text" id="input-kelas" placeholder="Ketik nama kelas baru (misal: VII.1 atau 7.1)..." class="w-full h-11 px-3.5 rounded-xl border-2 border-black font-bold focus:outline-none text-xs bg-slate-50 focus:bg-white">
+                                    <button onclick="addKelas()" class="bg-black hover:bg-slate-800 text-white px-5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 shrink-0">
+                                        + TAMBAH
+                                    </button>
+                                </div>
+
+                                <!-- Grid Pills Kelas (Rapi 3 Kolom) -->
+                                <div id="kelas-list" class="max-h-56 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 gap-2 p-1">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
                         </div>
 
-                        <div id="custom-model-wrapper" class="hidden">
-                            <label class="block text-xs font-black uppercase text-black mb-1">Nama Model Kustom (Manual)</label>
-                            <input type="text" id="gemini-custom-model-input" placeholder="Contoh: gemini-1.5-flash-8b atau gemini-3.0-flash" class="w-full h-11 px-4 rounded-xl border-2 border-black font-bold focus:outline-none text-xs bg-yellow-50">
-                        </div>
-
-                        <div class="flex flex-col sm:flex-row gap-2 pt-2">
-                            <button onclick="saveGeminiSettings()" class="bg-black hover:bg-slate-800 text-white font-black px-6 h-12 rounded-xl text-xs uppercase tracking-wider flex-1">
-                                SIMPAN KUNCI & MODEL AI
+                        <div class="mt-4 pt-3 border-t-2 border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                            <button id="save-options-btn" onclick="saveOptionsSettings()" class="bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black h-11 px-5 rounded-xl text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                                💾 SIMPAN PILIHAN KELAS
                             </button>
-                            <button onclick="testAiConnection()" id="btn-test-ai" class="bg-purple-600 hover:bg-purple-700 text-white font-black px-5 h-12 rounded-xl text-xs uppercase tracking-wider">
-                                ⚡ UJI KONEKSI
-                            </button>
+                            <span id="options-status" class="text-xs font-black bg-emerald-100 text-emerald-900 px-3 py-1.5 rounded-lg border border-emerald-400 empty:hidden text-center"></span>
                         </div>
-
-                        <p id="gemini-status-text" class="text-xs font-black text-purple-900 mt-1"></p>
-                    </div>
-                </div>
-
-                <!-- Card Opsi Kelas & Judul Tugas -->
-                <div class="bg-white border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                    <h3 class="text-2xl font-black text-black mb-2 uppercase tracking-tight">Daftar Kelas SMPN 58</h3>
-                    <p class="text-slate-600 font-bold mb-6 text-xs md:text-sm">Kelola daftar pilihan Kelas yang muncul di form pengumpulan siswa dan pilihan kelas tugas.</p>
-                    
-                    <div class="bg-slate-50 border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] max-w-xl">
-                        <h4 class="font-black text-base mb-3 uppercase">Daftar Kelas</h4>
-                        <div class="flex gap-2 mb-3">
-                            <input type="text" id="input-kelas" placeholder="Misal: VII.1" class="w-full h-10 px-3 rounded-lg border-2 border-black font-bold focus:outline-none text-xs bg-white">
-                            <button onclick="addKelas()" class="bg-black text-white px-4 rounded-lg font-black text-xs hover:bg-slate-800 transition">TAMBAH</button>
-                        </div>
-                        <div id="kelas-list" class="max-h-52 overflow-y-auto space-y-1.5 pr-1"></div>
                     </div>
 
-                    <div class="mt-6 flex flex-col md:flex-row items-center gap-3">
-                        <button id="save-options-btn" onclick="saveOptionsSettings()" class="bg-black hover:bg-slate-800 text-white font-black py-3 px-6 rounded-xl transition text-xs uppercase tracking-widest">
-                            SIMPAN PILIHAN KELAS
-                        </button>
-                        <span id="options-status" class="text-xs font-black bg-emerald-100 text-emerald-900 px-3 py-1.5 rounded-lg border border-emerald-400 empty:hidden"></span>
-                    </div>
                 </div>
 
             </div>

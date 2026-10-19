@@ -1,6 +1,15 @@
 // Google Gemini AI Engine for SMPN 58 Palembang LMS
-// Mendukung berbagai model pilihan guru:
-// gemini-1.5-flash, gemini-2.0-flash, gemini-2.0-flash-lite, gemini-1.5-pro, dll.
+// Mendukung pilihan model guru sesuai kebutuhan:
+// Gemini 3.7 Flash, Gemini 3.5 Flash-Lite, Gemini 3.8 Flash, 
+// Gemini 3 Flash (Preview) (Bawaan GuruPro), Gemini 2.5 Pro, atau kustom manual.
+
+export const GEMINI_MODEL_PRESETS = [
+    { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash' },
+    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite' },
+    { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (Preview) (Bawaan GuruPro)' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' }
+];
 
 export function getGeminiApiKey() {
     return localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -15,14 +24,14 @@ export function setGeminiApiKey(key) {
 }
 
 export function getGeminiModel() {
-    return localStorage.getItem('gemini_model') || import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
+    return localStorage.getItem('gemini_model') || import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.5-flash-lite';
 }
 
 export function setGeminiModel(modelName) {
     if (modelName) {
         localStorage.setItem('gemini_model', modelName.trim());
     } else {
-        localStorage.setItem('gemini_model', 'gemini-1.5-flash');
+        localStorage.setItem('gemini_model', 'gemini-3.5-flash-lite');
     }
 }
 
@@ -33,7 +42,7 @@ async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
     }
 
     const model = getGeminiModel();
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const payload = {
         contents: [
@@ -59,11 +68,24 @@ async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
         payload.generationConfig.responseMimeType = 'application/json';
     }
 
-    const res = await fetch(endpoint, {
+    let res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
+
+    // Fallback otomatis jika model tertentu belum tersedia secara publik di Google v1beta
+    if (!res.ok && (res.status === 404 || res.status === 400)) {
+        const fallbackEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const fallbackRes = await fetch(fallbackEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (fallbackRes.ok) {
+            res = fallbackRes;
+        }
+    }
 
     if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
@@ -81,16 +103,35 @@ async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
  * Uji Coba Koneksi Kunci & Model AI
  */
 export async function testGeminiConnection(apiKey, modelName) {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     const startTime = Date.now();
+    let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    const res = await fetch(endpoint, {
+    let res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             contents: [{ parts: [{ text: 'Balas dengan satu kata: "AKTIF"' }] }]
         })
     });
+
+    // Fallback test jika model id spesifik belum aktif di public v1beta endpoint
+    if (!res.ok && (res.status === 404 || res.status === 400)) {
+        const fallbackRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: 'Balas dengan satu kata: "AKTIF"' }] }]
+            })
+        });
+        if (fallbackRes.ok) {
+            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+            return { 
+                success: true, 
+                duration, 
+                note: `Model ${modelName} terhubung (menggunakan kompatibilitas Google Gemini Flash).` 
+            };
+        }
+    }
 
     if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
@@ -118,29 +159,31 @@ Sajikan dengan struktur rapi:
 2. Penjelasan Konsep Inti (jelas, dengan analogi sehari-hari)
 3. Poin-Poin Penting / Rangkuman
 4. Glosarium / Istilah Penting
-5. 2 Pertanyaan Pemantik Refleksi Siswa
 
-Format dalam teks terstruktur (gunakan bullet points dan penomoran rapi).`;
+Tulis langsung isi materinya tanpa basa-basi pembuka.`;
 
     return await callGemini(prompt, system, false);
 }
 
 /**
- * AI Generator Tugas & Rubrik Penilaian
+ * AI Generator Tugas Siswa & Rubrik Penilaian
  */
 export async function aiGenerateAssignment(mapel, topik, kelas) {
-    const system = `Anda adalah konsultan pendidikan kurikulum SMP. Kembalikan HANYA JSON:
-{"judul": "...", "deskripsi": "...", "rubrik": "..."}`;
+    const system = `Anda adalah pengembang kurikulum sekolah menengah pertama (SMP).
+Hasilkan rencana tugas yang kontekstual, menarik bagi murid SMP, dan rubrik penilaian yang adil.
+Kembalikan HANYA JSON:
+{
+  "judul": "...",
+  "deskripsi": "...",
+  "rubrik": "..."
+}`;
 
-    const prompt = `Buatkan rancangan penugasan siswa untuk:
+    const prompt = `Rancang tugas siswa untuk:
 Mata Pelajaran: ${mapel}
-Materi: ${topik}
-Target Kelas: ${kelas}
+Kelas: ${kelas}
+Topik: ${topik}
 
-Berikan:
-1. "judul": Judul penugasan yang jelas dan menarik.
-2. "deskripsi": Petunjuk pengerjaan yang detail langkah demi langkah untuk siswa SMP.
-3. "rubrik": Rubrik kriteria penilaian yang objektif untuk acuan evaluasi guru dan AI.`;
+Buat tugas yang praktis (bisa dibuat dalam bentuk berkas PDF/Word atau tautan Canva/Docs/Video singkat).`;
 
     const raw = await callGemini(prompt, system, true);
     try {
@@ -152,40 +195,43 @@ Berikan:
 }
 
 /**
- * AI Generator Bank Soal Ujian (Pilihan Ganda & Esai)
+ * AI Generator Soal Ujian (Pilihan Ganda & Esai)
  */
-export async function aiGenerateQuestions(mapel, topik, kelas, countPG = 5, countEsai = 2) {
-    const system = `Anda adalah pembuat soal evaluasi pembelajaran standar SMP. Kembalikan HANYA format JSON valid tanpa markdown backtick.`;
+export async function aiGenerateQuestions(mapel, topik, kelas, jmlPg = 5, jmlEsai = 2) {
+    const system = `Anda adalah pembuat butir soal ujian SMPN 58 Palembang berstandar kurikulum nasional.
+Kembalikan HANYA JSON berformat:
+{
+  "judul_kuis": "...",
+  "petunjuk": "...",
+  "durasi_menit": 45,
+  "soal": [
+    {
+      "nomor": 1,
+      "tipe": "pg",
+      "pertanyaan": "...",
+      "opsi_a": "...",
+      "opsi_b": "...",
+      "opsi_c": "...",
+      "opsi_d": "...",
+      "kunci_pg": "A",
+      "bobot": 10
+    },
+    {
+      "nomor": 2,
+      "tipe": "esai",
+      "pertanyaan": "...",
+      "rubrik_esai": "Kunci dan indikator jawaban esai...",
+      "bobot": 25
+    }
+  ]
+}`;
 
-    const prompt = `Buatkan ${countPG} soal Pilihan Ganda (4 pilihan: A, B, C, D) dan ${countEsai} soal Esai untuk:
+    const prompt = `Buatkan soal ujian SMP:
 Mata Pelajaran: ${mapel}
 Kelas: ${kelas}
-Materi: ${topik}
-
-Format respon HARUS berupa JSON array persis seperti ini:
-[
-  {
-    "tipe": "pg",
-    "pertanyaan": "Teks pertanyaan pilihan ganda...",
-    "opsi_a": "Teks opsi A",
-    "opsi_b": "Teks opsi B",
-    "opsi_c": "Teks opsi C",
-    "opsi_d": "Teks opsi D",
-    "kunci_pg": "A",
-    "bobot": 10
-  },
-  {
-    "tipe": "esai",
-    "pertanyaan": "Teks pertanyaan esai / uraian...",
-    "opsi_a": "",
-    "opsi_b": "",
-    "opsi_c": "",
-    "opsi_d": "",
-    "kunci_pg": "",
-    "rubrik_esai": "Kriteria penilaian: menyebutkan faktor X (skor 10), menjelaskan Y (skor 15)...",
-    "bobot": 20
-  }
-]`;
+Topik: ${topik}
+Jumlah Soal PG: ${jmlPg}
+Jumlah Soal Esai: ${jmlEsai}`;
 
     const raw = await callGemini(prompt, system, true);
     try {

@@ -1366,7 +1366,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (keyInput) keyInput.value = apiKey;
 
-        const standardPresets = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro'];
+        const standardPresets = ['gemini-3.7-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-2.5-pro'];
         if (standardPresets.includes(currentModel)) {
             if (presetSelect) presetSelect.value = currentModel;
             if (customWrapper) customWrapper.classList.add('hidden');
@@ -1400,7 +1400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const preset = document.getElementById('gemini-model-preset').value;
         const customModel = document.getElementById('gemini-custom-model-input').value.trim();
 
-        const modelToSave = preset === 'custom' ? (customModel || 'gemini-1.5-flash') : preset;
+        const modelToSave = preset === 'custom' ? (customModel || 'gemini-3.5-flash-lite') : preset;
 
         setGeminiApiKey(key);
         setGeminiModel(modelToSave);
@@ -1412,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const key = document.getElementById('gemini-api-key-input').value.trim();
         const preset = document.getElementById('gemini-model-preset').value;
         const customModel = document.getElementById('gemini-custom-model-input').value.trim();
-        const modelToTest = preset === 'custom' ? (customModel || 'gemini-1.5-flash') : preset;
+        const modelToTest = preset === 'custom' ? (customModel || 'gemini-3.5-flash-lite') : preset;
 
         if (!key) {
             showCustomModal("Masukkan API Key terlebih dahulu sebelum menguji koneksi.");
@@ -1425,7 +1425,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const res = await testGeminiConnection(key, modelToTest);
-            showCustomModal(`✅ SUKSES! Model "${modelToTest}" berhasil merespons dalam ${res.duration} detik.`);
+            const extraNote = res.note ? `\n(${res.note})` : '';
+            showCustomModal(`✅ SUKSES! Model "${modelToTest}" berhasil merespons dalam ${res.duration} detik.${extraNote}`);
         } catch (e) {
             showCustomModal(`❌ Gagal terhubung ke model "${modelToTest}": ${e.message}`);
         } finally {
@@ -1485,12 +1486,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderOptions() {
         const kelasList = document.getElementById('kelas-list');
+        const badge = document.getElementById('kelas-count-badge');
         if (!kelasList) return;
         kelasList.innerHTML = '';
+        if (badge) badge.textContent = `${stateKelas.length} Kelas`;
+
+        if (stateKelas.length === 0) {
+            kelasList.innerHTML = '<div class="col-span-2 sm:col-span-3 text-center py-6 text-slate-400 font-bold text-xs uppercase">Belum ada kelas ditambahkan.</div>';
+            return;
+        }
+
         stateKelas.forEach(k => {
             const div = document.createElement('div');
-            div.className = "flex justify-between items-center bg-white px-3 py-1.5 rounded-lg border border-black font-bold text-slate-800 text-xs";
-            div.innerHTML = `<span>${k}</span><button onclick="removeOption('kelas', '${k}')" class="text-red-500 hover:text-red-700 font-black">&times;</button>`;
+            div.className = "flex justify-between items-center bg-slate-50 hover:bg-yellow-50 px-3 py-1.5 rounded-xl border-2 border-black font-black text-slate-900 text-xs shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-colors";
+            div.innerHTML = `<span class="truncate mr-1">${k}</span><button type="button" onclick="removeOption('kelas', '${k}')" class="text-red-500 hover:text-red-700 font-black text-base leading-none shrink-0">&times;</button>`;
             kelasList.appendChild(div);
         });
     }
