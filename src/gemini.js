@@ -1,10 +1,6 @@
-// Google Gemini Flash AI Engine for SMPN 58 Palembang LMS
-// Provides serverless AI features for 30 teachers:
-// 1. Material generation
-// 2. Quiz & Exam question generation (PG & Esai)
-// 3. Auto-grading with rubric matching & feedback
-
-const GEMINI_MODEL = 'gemini-1.5-flash';
+// Google Gemini AI Engine for SMPN 58 Palembang LMS
+// Mendukung berbagai model pilihan guru:
+// gemini-1.5-flash, gemini-2.0-flash, gemini-2.0-flash-lite, gemini-1.5-pro, dll.
 
 export function getGeminiApiKey() {
     return localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -18,13 +14,26 @@ export function setGeminiApiKey(key) {
     }
 }
 
+export function getGeminiModel() {
+    return localStorage.getItem('gemini_model') || import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
+}
+
+export function setGeminiModel(modelName) {
+    if (modelName) {
+        localStorage.setItem('gemini_model', modelName.trim());
+    } else {
+        localStorage.setItem('gemini_model', 'gemini-1.5-flash');
+    }
+}
+
 async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
         throw new Error('API Key Google Gemini belum diatur. Silakan atur di menu Pengaturan AI.');
     }
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+    const model = getGeminiModel();
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const payload = {
         contents: [
@@ -58,7 +67,7 @@ async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
 
     if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        const msg = errJson?.error?.message || `HTTP ${res.status} - Gagal memanggil Gemini AI`;
+        const msg = errJson?.error?.message || `HTTP ${res.status} - Gagal memanggil model ${model}`;
         throw new Error(msg);
     }
 
@@ -66,6 +75,30 @@ async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
     const candidate = data.candidates?.[0];
     const text = candidate?.content?.parts?.[0]?.text || '';
     return text.trim();
+}
+
+/**
+ * Uji Coba Koneksi Kunci & Model AI
+ */
+export async function testGeminiConnection(apiKey, modelName) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const startTime = Date.now();
+
+    const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Balas dengan satu kata: "AKTIF"' }] }]
+        })
+    });
+
+    if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson?.error?.message || `Status HTTP ${res.status}`);
+    }
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    return { success: true, duration };
 }
 
 /**
@@ -90,6 +123,32 @@ Sajikan dengan struktur rapi:
 Format dalam teks terstruktur (gunakan bullet points dan penomoran rapi).`;
 
     return await callGemini(prompt, system, false);
+}
+
+/**
+ * AI Generator Tugas & Rubrik Penilaian
+ */
+export async function aiGenerateAssignment(mapel, topik, kelas) {
+    const system = `Anda adalah konsultan pendidikan kurikulum SMP. Kembalikan HANYA JSON:
+{"judul": "...", "deskripsi": "...", "rubrik": "..."}`;
+
+    const prompt = `Buatkan rancangan penugasan siswa untuk:
+Mata Pelajaran: ${mapel}
+Materi: ${topik}
+Target Kelas: ${kelas}
+
+Berikan:
+1. "judul": Judul penugasan yang jelas dan menarik.
+2. "deskripsi": Petunjuk pengerjaan yang detail langkah demi langkah untuk siswa SMP.
+3. "rubrik": Rubrik kriteria penilaian yang objektif untuk acuan evaluasi guru dan AI.`;
+
+    const raw = await callGemini(prompt, system, true);
+    try {
+        return JSON.parse(raw);
+    } catch {
+        const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(clean);
+    }
 }
 
 /**
@@ -132,7 +191,6 @@ Format respon HARUS berupa JSON array persis seperti ini:
     try {
         return JSON.parse(raw);
     } catch {
-        // Fallback jika ada formatting tak terduga
         const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
         return JSON.parse(clean);
     }

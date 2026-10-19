@@ -2,19 +2,27 @@ import { supabase } from './supabase.js';
 import { 
     getGeminiApiKey, 
     setGeminiApiKey, 
+    getGeminiModel,
+    setGeminiModel,
+    testGeminiConnection,
     aiGenerateMaterial, 
+    aiGenerateAssignment,
     aiGenerateQuestions, 
-    aiEvaluateSubmission 
+    aiEvaluateSubmission,
+    aiGradeQuizEssay
 } from './gemini.js';
 
 let currentSession = null;
 let currentTeacher = null;
 let stateKelas = [];
-let stateMateri = [];
 let pendingFiles = [];
+let assignmentsList = [];
 let materialsList = [];
 let quizzesList = [];
 let activeGradeItem = null;
+let activeQuizForResults = null;
+let activeQuizSubmissions = [];
+let activeReviewSubmission = null;
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -64,28 +72,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tab Navigation
     window.switchTab = (tabName) => {
-        const tabs = ['tugas', 'materi', 'kuis', 'setting', 'approval'];
+        const tabs = ['tugas', 'penugasan', 'materi', 'kuis', 'setting', 'approval'];
         tabs.forEach(t => {
             const btn = document.getElementById(`tab-btn-${t}`);
             const content = document.getElementById(`tab-content-${t}`);
             if (t === tabName) {
-                if (btn) btn.className = "lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
+                if (btn) btn.className = "lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
                 if (content) content.classList.remove('hidden');
             } else {
                 if (btn) {
                     if (t === 'approval') {
-                        btn.className = "lms-tab-btn col-span-2 sm:col-span-4 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300";
+                        btn.className = "lms-tab-btn col-span-2 sm:col-span-5 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300";
                     } else {
-                        btn.className = "lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100";
+                        btn.className = "lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100";
                     }
                 }
                 if (content) content.classList.add('hidden');
             }
         });
 
+        if (tabName === 'tugas') loadFilesTable();
+        if (tabName === 'penugasan') loadAssignments();
         if (tabName === 'materi') loadMaterials();
         if (tabName === 'kuis') loadQuizzes();
-        if (tabName === 'tugas') loadFilesTable();
         if (tabName === 'approval') loadAllTeachers();
     };
 
@@ -127,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerText = "MEMERIKSA...";
 
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { error } = await supabase.auth.signInWithPassword({
                 email,
                 password
             });
@@ -174,7 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
 
             if (data.session) {
-                // Cek apakah guru pertama (otomatis superadmin & approved)
                 const { count } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
                 const isFirstTeacher = !count || count === 0;
 
@@ -190,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isFirstTeacher) {
                     showCustomModal("Pendaftaran berhasil! Anda terdaftar sebagai Superadmin sekolah.");
                 } else {
-                    showCustomModal("Pendaftaran berhasil! Akun Anda telah dicatat dan saat ini sedang MENUNGGU PERSETUJUAN dari Admin Sekolah sebelum dapat digunakan.");
+                    showCustomModal("Pendaftaran berhasil! Akun Anda sedang MENUNGGU PERSETUJUAN dari Admin Sekolah sebelum dapat digunakan.");
                 }
             } else {
                 showCustomModal("Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Admin Sekolah.");
@@ -216,7 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('login-section').classList.add('hidden');
             const teacher = await loadOrCreateTeacherProfile(session.user);
 
-            // Cek Status Persetujuan Akun
             const pendingSection = document.getElementById('pending-section');
             const dashboardSection = document.getElementById('dashboard-section');
 
@@ -239,16 +246,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Jika status Disetujui (Approved)
             if (pendingSection) pendingSection.classList.add('hidden');
             dashboardSection.classList.remove('hidden');
             document.getElementById('user-email').innerText = session.user.email;
 
-            // Jika Superadmin, munculkan tombol tab Verifikasi Guru
+            // Jika Superadmin, aktifkan tab Persetujuan Guru
             const approvalTabBtn = document.getElementById('tab-btn-approval');
             const roleBadge = document.getElementById('teacher-role-badge');
             if (teacher.role === 'superadmin') {
-                if (approvalTabBtn) approvalTabBtn.classList.remove('hidden');
+                if (approvalTabBtn) {
+                    approvalTabBtn.classList.remove('hidden');
+                    approvalTabBtn.classList.add('flex');
+                }
                 if (roleBadge) roleBadge.classList.remove('hidden');
             } else {
                 if (approvalTabBtn) approvalTabBtn.classList.add('hidden');
@@ -257,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             loadOptionsSettings();
             loadFilesTable();
-            checkGeminiKeyStatus();
+            loadModelSettingsUI();
         } else {
             document.getElementById('login-section').classList.remove('hidden');
             const pendingSection = document.getElementById('pending-section');
@@ -267,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 1. Profil Guru & Mata Pelajaran (30 Guru)
+    // 1. Profil Guru & Mata Pelajaran
     // ==========================================
     async function loadOrCreateTeacherProfile(user) {
         try {
@@ -286,7 +295,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateTeacherDisplay(data.nama_guru, data.mapel);
                 return data;
             } else {
-                // Cek apakah guru pertama yang pernah ada di database
                 const { count } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
                 const isFirstTeacher = !count || count === 0;
 
@@ -355,12 +363,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const { error } = await supabase.from('teachers').upsert([{
-                id: currentSession.user.id,
-                email: currentSession.user.email,
+            const { error } = await supabase.from('teachers').update({
                 nama_guru: nameInput,
                 mapel: mapelInput
-            }]);
+            }).eq('id', currentSession.user.id);
 
             if (error) throw error;
             if (currentTeacher) {
@@ -376,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ==========================================
-    // 2. Koreksi Tugas Siswa (Tanpa Google Drive)
+    // 2. Koreksi Tugas Masuk dari Siswa
     // ==========================================
     function isLinkSubmission(f) {
         return f.tipe === 'link' || 
@@ -476,7 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             }
 
-            // Status Nilai
             let gradeBadge = '';
             if (f.nilai !== null && f.nilai !== undefined && f.nilai !== '') {
                 gradeBadge = `
@@ -567,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentTeacher?.mapel || 'Informatika',
                 activeGradeItem.materi,
                 activeGradeItem.materi,
-                'Ketepatan materi, kelengkapan pengerjaan, dan orisinalitas.',
+                'Kesesuaian tugas dengan instruksi, kelengkapan, dan kerapian pengerjaan.',
                 studentContent
             );
 
@@ -613,7 +618,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (error) throw error;
 
-            // Update state lokal
             activeGradeItem.nilai = scoreNum;
             activeGradeItem.catatan_guru = feedbackVal;
             activeGradeItem.status_koreksi = 'sudah_dikoreksi';
@@ -681,14 +685,169 @@ document.addEventListener('DOMContentLoaded', () => {
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `Rekap_Nilai_LMS_SMPN58_${new Date().toISOString().slice(0,10)}.csv`);
+        link.setAttribute("download", `Rekap_Nilai_Tugas_SMPN58_${new Date().toISOString().slice(0,10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
     // ==========================================
-    // 3. Modul Materi Pembelajaran
+    // 3. Kelola Tugas / Penugasan Guru (Baru)
+    // ==========================================
+    async function loadAssignments() {
+        const container = document.getElementById('assignments-container');
+        container.innerHTML = '<div class="col-span-2 text-center py-6 font-bold text-black uppercase animate-pulse">Memuat daftar tugas siswa...</div>';
+
+        try {
+            const { data, error } = await supabase.from('assignments').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            assignmentsList = data || [];
+
+            container.innerHTML = '';
+            if (assignmentsList.length === 0) {
+                container.innerHTML = '<div class="col-span-2 bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">Belum ada tugas/PR yang dibuat guru.</div>';
+                return;
+            }
+
+            assignmentsList.forEach(a => {
+                const card = document.createElement('div');
+                card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
+                const deadlineText = a.deadline ? new Date(a.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tidak ada batas waktu';
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start gap-2 mb-2 flex-wrap">
+                            <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                Kelas ${a.kelas} &bull; ${a.mapel}
+                            </span>
+                            <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                Batas: ${deadlineText}
+                            </span>
+                        </div>
+                        <h4 class="font-black text-lg text-black mb-1">${a.judul_tugas}</h4>
+                        <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line line-clamp-3">${a.deskripsi}</p>
+                        ${a.rubrik_ai ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3">🎯 <strong>Rubrik AI:</strong> ${a.rubrik_ai}</div>` : ''}
+                    </div>
+                    <div class="flex justify-end pt-2 border-t border-slate-200">
+                        <button onclick="deleteAssignment('${a.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase">Hapus Tugas</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        } catch (e) {
+            container.innerHTML = `<div class="col-span-2 text-center text-red-600 font-bold">Gagal memuat tugas: ${e.message}</div>`;
+        }
+    }
+
+    window.openAssignmentModal = () => {
+        const kelasSelect = document.getElementById('assign-kelas');
+        kelasSelect.innerHTML = '';
+        stateKelas.forEach(k => {
+            const opt = document.createElement('option');
+            opt.value = k; opt.textContent = k;
+            kelasSelect.appendChild(opt);
+        });
+        document.getElementById('assign-judul').value = '';
+        document.getElementById('assign-deskripsi').value = '';
+        document.getElementById('assign-rubrik').value = '';
+        document.getElementById('assign-deadline').value = '';
+        document.getElementById('assignment-modal').classList.remove('hidden');
+    };
+
+    window.closeAssignmentModal = () => {
+        document.getElementById('assignment-modal').classList.add('hidden');
+    };
+
+    window.saveAssignment = async () => {
+        const kelas = document.getElementById('assign-kelas').value;
+        const judul = document.getElementById('assign-judul').value.trim();
+        const deskripsi = document.getElementById('assign-deskripsi').value.trim();
+        const rubrik = document.getElementById('assign-rubrik').value.trim();
+        const deadline = document.getElementById('assign-deadline').value;
+
+        if (!judul || !deskripsi) {
+            showCustomModal("Judul dan instruksi penugasan wajib diisi!");
+            return;
+        }
+
+        try {
+            const { error } = await supabase.from('assignments').insert([{
+                teacher_id: currentSession?.user?.id,
+                mapel: currentTeacher?.mapel || 'Informatika',
+                kelas,
+                judul_tugas: judul,
+                deskripsi,
+                rubrik_ai: rubrik,
+                deadline: deadline || null
+            }]);
+
+            if (error) throw error;
+
+            // Tambahkan juga ke tabel options materi jika belum ada
+            await supabase.from('options').insert([{ type: 'materi', name: judul }]).catch(() => {});
+
+            closeAssignmentModal();
+            loadAssignments();
+            loadOptionsSettings();
+            showCustomModal("Penugasan baru berhasil diterbitkan untuk siswa!");
+        } catch (e) {
+            showCustomModal("Gagal menyimpan penugasan: " + e.message);
+        }
+    };
+
+    window.deleteAssignment = async (id) => {
+        const conf = await showCustomModal("Hapus penugasan ini?", "confirm");
+        if (!conf) return;
+        try {
+            const { error } = await supabase.from('assignments').delete().eq('id', id);
+            if (error) throw error;
+            loadAssignments();
+        } catch (e) {
+            showCustomModal("Gagal menghapus: " + e.message);
+        }
+    };
+
+    window.openAiAssignmentModal = () => {
+        document.getElementById('ai-assign-topik').value = '';
+        document.getElementById('ai-assignment-modal').classList.remove('hidden');
+    };
+
+    window.closeAiAssignmentModal = () => {
+        document.getElementById('ai-assignment-modal').classList.add('hidden');
+    };
+
+    window.runAiGenerateAssignment = async () => {
+        const topik = document.getElementById('ai-assign-topik').value.trim();
+        if (!topik) {
+            showCustomModal("Masukkan materi penugasan terlebih dahulu!");
+            return;
+        }
+
+        const btn = document.getElementById('btn-run-ai-assign');
+        btn.disabled = true;
+        btn.innerText = "Merumuskan Tugas & Rubrik...";
+
+        try {
+            const res = await aiGenerateAssignment(
+                currentTeacher?.mapel || 'Informatika',
+                topik,
+                'SMP Kelas 7-9'
+            );
+
+            closeAiAssignmentModal();
+            openAssignmentModal();
+            if (res.judul) document.getElementById('assign-judul').value = res.judul;
+            if (res.deskripsi) document.getElementById('assign-deskripsi').value = res.deskripsi;
+            if (res.rubrik) document.getElementById('assign-rubrik').value = res.rubrik;
+        } catch (e) {
+            showCustomModal("Gagal generate tugas AI: " + e.message);
+        }
+        btn.disabled = false;
+        btn.innerText = "🚀 GENERATE TUGAS & RUBRIK SEKARANG";
+    };
+
+    // ==========================================
+    // 4. Modul Materi Pembelajaran
     // ==========================================
     async function loadMaterials() {
         const container = document.getElementById('materials-container');
@@ -827,7 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ==========================================
-    // 4. Modul Bank Soal & Ujian Online
+    // 5. Modul Bank Soal, Ujian & Hasil Koreksi
     // ==========================================
     async function loadQuizzes() {
         const container = document.getElementById('quizzes-container');
@@ -861,13 +1020,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                 Durasi: ${q.durasi_menit} Menit
                             </span>
                         </div>
-                        <h4 class="font-black text-lg text-black">${q.judul_kuis}</h4>
+                        <h4 class="font-black text-xl text-black">${q.judul_kuis}</h4>
                         <p class="text-xs text-slate-600 font-bold mt-1">
-                            Total: ${questions.length} Soal (${pgCount} Pilihan Ganda &bull; ${esaiCount} Esai)
+                            ${questions.length} Soal (${pgCount} Pilihan Ganda &bull; ${esaiCount} Esai)
                         </p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="deleteQuiz('${q.id}')" class="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 rounded-lg text-xs font-black uppercase">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="openQuizResultsModal('${q.id}')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                            📊 Hasil & Koreksi Ujian
+                        </button>
+                        <button onclick="deleteQuiz('${q.id}')" class="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 rounded-xl text-xs font-black uppercase">
                             Hapus
                         </button>
                     </div>
@@ -917,7 +1079,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("Format soal AI tidak terduga.");
             }
 
-            // Simpan kuis ke Supabase
             const { data: quizData, error: quizError } = await supabase.from('quizzes').insert([{
                 teacher_id: currentSession?.user?.id,
                 mapel: currentTeacher?.mapel || 'Informatika',
@@ -930,7 +1091,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (quizError) throw quizError;
 
-            // Masukkan butir soal
             const questionsPayload = questions.map((q, idx) => ({
                 quiz_id: quizData.id,
                 nomor: idx + 1,
@@ -959,7 +1119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.openQuizModal = () => {
-        openAiQuizModal(); // Arahkan guru ke generator soal AI untuk kemudahan instan
+        openAiQuizModal();
     };
 
     window.deleteQuiz = async (id) => {
@@ -974,33 +1134,313 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Suite Hasil Ujian & Koreksi Esai
+    window.openQuizResultsModal = async (quizId) => {
+        const quiz = quizzesList.find(q => String(q.id) === String(quizId));
+        if (!quiz) return;
+        activeQuizForResults = quiz;
+
+        document.getElementById('quiz-results-title').textContent = `${quiz.judul_kuis} (${quiz.mapel})`;
+        const tbody = document.getElementById('quiz-submissions-tbody');
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center font-bold text-slate-500 uppercase animate-pulse">Memuat hasil ujian siswa...</td></tr>';
+        document.getElementById('quiz-results-modal').classList.remove('hidden');
+
+        try {
+            const { data, error } = await supabase
+                .from('quiz_submissions')
+                .select('*')
+                .eq('quiz_id', quizId)
+                .order('total_nilai', { ascending: false });
+
+            if (error) throw error;
+            activeQuizSubmissions = data || [];
+
+            tbody.innerHTML = '';
+            if (activeQuizSubmissions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center font-bold text-slate-500 uppercase">Belum ada siswa yang menyelesaikan ujian ini.</td></tr>';
+                return;
+            }
+
+            activeQuizSubmissions.forEach(sub => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-black text-black border-b-2 border-black border-r-2">${sub.nama_siswa}</td>
+                    <td class="px-4 py-3 font-bold text-black border-b-2 border-black border-r-2">${sub.kelas}</td>
+                    <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-indigo-700">${sub.skor_pg}</td>
+                    <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-purple-700">${sub.skor_esai}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">
+                        <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-black px-2 py-0.5 rounded-lg text-sm">${sub.total_nilai}</span>
+                    </td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black">
+                        <button onclick="openExamReviewModal('${sub.id}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                            Periksa Jawaban
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-6 text-center text-red-600 font-bold uppercase">Gagal memuat: ${e.message}</td></tr>`;
+        }
+    };
+
+    window.closeQuizResultsModal = () => {
+        document.getElementById('quiz-results-modal').classList.add('hidden');
+        activeQuizForResults = null;
+    };
+
+    window.exportQuizCSV = () => {
+        if (!activeQuizSubmissions || activeQuizSubmissions.length === 0) {
+            showCustomModal("Tidak ada data hasil ujian untuk diekspor.");
+            return;
+        }
+
+        let csv = "data:text/csv;charset=utf-8,";
+        csv += "Nama Siswa,Kelas,Skor Pilihan Ganda,Skor Esai,Total Nilai,Waktu Selesai\n";
+
+        activeQuizSubmissions.forEach(s => {
+            const dateStr = s.created_at ? new Date(s.created_at).toLocaleString('id-ID') : '';
+            csv += `"${s.nama_siswa}","${s.kelas}",${s.skor_pg},${s.skor_esai},${s.total_nilai},"${dateStr}"\n`;
+        });
+
+        const encodedUri = encodeURI(csv);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Rekap_Hasil_Ujian_${activeQuizForResults?.judul_kuis || 'Kuis'}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // Periksa Lembar Jawaban Siswa & Koreksi Esai
+    window.openExamReviewModal = (submissionId) => {
+        const sub = activeQuizSubmissions.find(s => String(s.id) === String(submissionId));
+        if (!sub || !activeQuizForResults) return;
+        activeReviewSubmission = sub;
+
+        document.getElementById('exam-review-student-name').textContent = sub.nama_siswa;
+        document.getElementById('exam-review-meta').textContent = `Kelas: ${sub.kelas} • Skor PG: ${sub.skor_pg} • Total Nilai Saat Ini: ${sub.total_nilai}`;
+
+        const container = document.getElementById('exam-review-questions-container');
+        container.innerHTML = '';
+
+        const questions = activeQuizForResults.quiz_questions || [];
+        const answers = sub.jawaban_siswa || {};
+        const aiFeedback = sub.ai_feedback || {};
+
+        questions.forEach((q, idx) => {
+            const card = document.createElement('div');
+            card.className = "bg-slate-50 border-2 border-black rounded-xl p-4 space-y-2";
+
+            if (q.tipe === 'pg') {
+                const studentAns = answers[q.id] || '(Tidak dijawab)';
+                const isCorrect = studentAns.toUpperCase() === (q.kunci_pg || '').toUpperCase();
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-xs text-black">No. ${idx + 1} (Pilihan Ganda)</span>
+                        <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            ${isCorrect ? '✅ Benar (+10)' : '❌ Salah (0)'}
+                        </span>
+                    </div>
+                    <p class="font-bold text-xs text-slate-800">${q.pertanyaan}</p>
+                    <div class="text-[11px] font-bold text-slate-600 flex gap-4">
+                        <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700' : 'text-red-700'}">${studentAns}</strong></span>
+                        <span>Kunci: <strong class="text-black">${q.kunci_pg}</strong></span>
+                    </div>
+                `;
+            } else {
+                const studentEssay = answers[q.id] || '(Kosong)';
+                const currentFeedback = aiFeedback[q.id] || {};
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 uppercase">No. ${idx + 1} (Soal Esai)</span>
+                        <span class="text-xs font-bold text-slate-500">Bobot Maks: ${q.bobot || 20}</span>
+                    </div>
+                    <p class="font-bold text-xs text-black">${q.pertanyaan}</p>
+                    ${q.rubrik_esai ? `<div class="bg-yellow-50 p-2 rounded border border-yellow-200 text-[11px] font-bold text-yellow-900"><strong>Rubrik Kunci Guru:</strong> ${q.rubrik_esai}</div>` : ''}
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-300">
+                        <span class="text-[10px] font-black text-slate-400 block uppercase mb-1">Jawaban Siswa:</span>
+                        <p class="text-xs font-medium text-slate-800 whitespace-pre-line">${studentEssay}</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 items-center">
+                        <div class="sm:col-span-1">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor Esai (0-${q.bobot || 20})</label>
+                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : ''}" min="0" max="${q.bobot || 20}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Masukan / Feedback Esai</label>
+                            <input type="text" id="essay-feedback-${q.id}" value="${currentFeedback.feedback || ''}" placeholder="Catatan evaluasi esai..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                        </div>
+                    </div>
+                `;
+            }
+            container.appendChild(card);
+        });
+
+        document.getElementById('student-exam-review-modal').classList.remove('hidden');
+    };
+
+    window.closeExamReviewModal = () => {
+        document.getElementById('student-exam-review-modal').classList.add('hidden');
+        activeReviewSubmission = null;
+    };
+
+    window.runAiGradeAllEssays = async () => {
+        if (!activeReviewSubmission || !activeQuizForResults) return;
+        const btn = document.getElementById('btn-ai-grade-all-essays');
+        btn.disabled = true;
+        btn.innerText = "Menganalisis Esai...";
+
+        const questions = activeQuizForResults.quiz_questions || [];
+        const answers = activeReviewSubmission.jawaban_siswa || {};
+
+        try {
+            for (const q of questions) {
+                if (q.tipe === 'esai') {
+                    const studentAns = answers[q.id] || '';
+                    const result = await aiGradeQuizEssay(q.pertanyaan, q.rubrik_esai || 'Kesesuaian dan kelengkapan materi.', studentAns, q.bobot || 20);
+                    
+                    const scoreInput = document.getElementById(`essay-score-${q.id}`);
+                    const fbInput = document.getElementById(`essay-feedback-${q.id}`);
+                    if (scoreInput && result.skor !== undefined) scoreInput.value = result.skor;
+                    if (fbInput && result.feedback) fbInput.value = result.feedback;
+                }
+            }
+            showCustomModal("Seluruh jawaban esai berhasil dikoreksi oleh AI! Anda dapat menyesuaikan skor sebelum disimpan.");
+        } catch (e) {
+            showCustomModal("Gagal koreksi esai AI: " + e.message);
+        }
+        btn.disabled = false;
+        btn.innerText = "✨ Koreksi Semua Esai dengan AI";
+    };
+
+    window.saveExamReviewGrades = async () => {
+        if (!activeReviewSubmission || !activeQuizForResults) return;
+
+        const questions = activeQuizForResults.quiz_questions || [];
+        let totalEssayScore = 0;
+        let aiFeedbackObj = {};
+
+        questions.forEach(q => {
+            if (q.tipe === 'esai') {
+                const scoreVal = parseInt(document.getElementById(`essay-score-${q.id}`)?.value || '0', 10);
+                const fbVal = document.getElementById(`essay-feedback-${q.id}`)?.value || '';
+                totalEssayScore += isNaN(scoreVal) ? 0 : scoreVal;
+                aiFeedbackObj[q.id] = { skor: scoreVal, feedback: fbVal };
+            }
+        });
+
+        const totalFinalScore = (activeReviewSubmission.skor_pg || 0) + totalEssayScore;
+
+        try {
+            const { error } = await supabase.from('quiz_submissions').update({
+                skor_esai: totalEssayScore,
+                total_nilai: totalFinalScore,
+                ai_feedback: aiFeedbackObj,
+                status_koreksi: 'selesai'
+            }).eq('id', activeReviewSubmission.id);
+
+            if (error) throw error;
+
+            closeExamReviewModal();
+            openQuizResultsModal(activeQuizForResults.id);
+            showCustomModal(`Nilai akhir ujian berhasil disimpan! Total Nilai Siswa: ${totalFinalScore}`);
+        } catch (e) {
+            showCustomModal("Gagal menyimpan nilai ujian: " + e.message);
+        }
+    };
+
     // ==========================================
-    // 5. Pengaturan Kunci AI Gemini & Form
+    // 6. Pengaturan AI & Pilihan Model Kustom
     // ==========================================
-    function checkGeminiKeyStatus() {
-        const key = getGeminiApiKey();
-        const input = document.getElementById('gemini-api-key-input');
+    function loadModelSettingsUI() {
+        const apiKey = getGeminiApiKey();
+        const currentModel = getGeminiModel();
+
+        const keyInput = document.getElementById('gemini-api-key-input');
+        const presetSelect = document.getElementById('gemini-model-preset');
+        const customWrapper = document.getElementById('custom-model-wrapper');
+        const customInput = document.getElementById('gemini-custom-model-input');
         const statusEl = document.getElementById('gemini-status-text');
-        if (input && key) {
-            input.value = key;
-            if (statusEl) statusEl.textContent = "✅ Kunci AI Gemini aktif dan siap digunakan untuk auto-koreksi!";
-        } else if (statusEl) {
-            statusEl.textContent = "⚠️ Kunci AI belum terpasang. Dapatkan gratis di aistudio.google.com.";
+
+        if (keyInput) keyInput.value = apiKey;
+
+        const standardPresets = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro'];
+        if (standardPresets.includes(currentModel)) {
+            if (presetSelect) presetSelect.value = currentModel;
+            if (customWrapper) customWrapper.classList.add('hidden');
+        } else {
+            if (presetSelect) presetSelect.value = 'custom';
+            if (customWrapper) customWrapper.classList.remove('hidden');
+            if (customInput) customInput.value = currentModel;
+        }
+
+        if (statusEl) {
+            if (apiKey) {
+                statusEl.textContent = `✅ Model Aktif: ${currentModel} (Siap digunakan)`;
+            } else {
+                statusEl.textContent = `⚠️ Kunci AI belum terpasang. Dapatkan gratis di aistudio.google.com.`;
+            }
         }
     }
 
-    window.saveGeminiKey = () => {
-        const key = document.getElementById('gemini-api-key-input').value.trim();
-        setGeminiApiKey(key);
-        checkGeminiKeyStatus();
-        showCustomModal("Kunci API Gemini berhasil disimpan!");
+    window.onModelPresetChange = () => {
+        const presetSelect = document.getElementById('gemini-model-preset');
+        const customWrapper = document.getElementById('custom-model-wrapper');
+        if (presetSelect.value === 'custom') {
+            customWrapper.classList.remove('hidden');
+        } else {
+            customWrapper.classList.add('hidden');
+        }
     };
 
+    window.saveGeminiSettings = () => {
+        const key = document.getElementById('gemini-api-key-input').value.trim();
+        const preset = document.getElementById('gemini-model-preset').value;
+        const customModel = document.getElementById('gemini-custom-model-input').value.trim();
+
+        const modelToSave = preset === 'custom' ? (customModel || 'gemini-1.5-flash') : preset;
+
+        setGeminiApiKey(key);
+        setGeminiModel(modelToSave);
+        loadModelSettingsUI();
+        showCustomModal(`Pengaturan AI tersimpan! Model: ${modelToSave}`);
+    };
+
+    window.testAiConnection = async () => {
+        const key = document.getElementById('gemini-api-key-input').value.trim();
+        const preset = document.getElementById('gemini-model-preset').value;
+        const customModel = document.getElementById('gemini-custom-model-input').value.trim();
+        const modelToTest = preset === 'custom' ? (customModel || 'gemini-1.5-flash') : preset;
+
+        if (!key) {
+            showCustomModal("Masukkan API Key terlebih dahulu sebelum menguji koneksi.");
+            return;
+        }
+
+        const btn = document.getElementById('btn-test-ai');
+        btn.disabled = true;
+        btn.innerText = "Menguji...";
+
+        try {
+            const res = await testGeminiConnection(key, modelToTest);
+            showCustomModal(`✅ SUKSES! Model "${modelToTest}" berhasil merespons dalam ${res.duration} detik.`);
+        } catch (e) {
+            showCustomModal(`❌ Gagal terhubung ke model "${modelToTest}": ${e.message}`);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "⚡ UJI KONEKSI";
+        }
+    };
+
+    // ==========================================
+    // 7. Pengaturan Kelas SMPN 58
+    // ==========================================
     async function loadOptionsSettings() {
         const { data, error } = await supabase.from('options').select('*');
         if (!error && data) {
             stateKelas = data.filter(d => d.type === 'kelas').map(d => d.name);
-            stateMateri = data.filter(d => d.type === 'materi').map(d => d.name);
             renderOptions();
             
             if (filterKelasSelect) {
@@ -1011,12 +1451,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     filterKelasSelect.appendChild(opt);
                 });
             }
+
+            const materiSet = new Set(pendingFiles.map(f => f.materi));
             if (filterMateriSelect) {
-                filterMateriSelect.innerHTML = '<option value="">Semua Materi / Tugas</option>';
-                stateMateri.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m; opt.textContent = m;
-                    filterMateriSelect.appendChild(opt);
+                filterMateriSelect.innerHTML = '<option value="">Semua Judul Tugas</option>';
+                materiSet.forEach(m => {
+                    if (m) {
+                        const opt = document.createElement('option');
+                        opt.value = m; opt.textContent = m;
+                        filterMateriSelect.appendChild(opt);
+                    }
                 });
             }
         }
@@ -1032,45 +1476,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.addMateri = () => {
-        const input = document.getElementById('input-materi');
-        const val = input.value.trim();
-        if (val && !stateMateri.includes(val)) {
-            stateMateri.push(val);
-            input.value = '';
-            renderOptions();
-        }
-    };
-
     window.removeOption = (type, val) => {
         if (type === 'kelas') {
             stateKelas = stateKelas.filter(k => k !== val);
-        } else {
-            stateMateri = stateMateri.filter(m => m !== val);
         }
         renderOptions();
     };
 
     function renderOptions() {
         const kelasList = document.getElementById('kelas-list');
-        const materiList = document.getElementById('materi-list');
-        if (!kelasList || !materiList) return;
-        
+        if (!kelasList) return;
         kelasList.innerHTML = '';
-        materiList.innerHTML = '';
-        
         stateKelas.forEach(k => {
             const div = document.createElement('div');
             div.className = "flex justify-between items-center bg-white px-3 py-1.5 rounded-lg border border-black font-bold text-slate-800 text-xs";
             div.innerHTML = `<span>${k}</span><button onclick="removeOption('kelas', '${k}')" class="text-red-500 hover:text-red-700 font-black">&times;</button>`;
             kelasList.appendChild(div);
-        });
-        
-        stateMateri.forEach(m => {
-            const div = document.createElement('div');
-            div.className = "flex justify-between items-center bg-white px-3 py-1.5 rounded-lg border border-black font-bold text-slate-800 text-xs";
-            div.innerHTML = `<span>${m}</span><button onclick="removeOption('materi', '${m}')" class="text-red-500 hover:text-red-700 font-black">&times;</button>`;
-            materiList.appendChild(div);
         });
     }
 
@@ -1082,29 +1503,23 @@ document.addEventListener('DOMContentLoaded', () => {
         status.innerText = "";
         
         try {
-            await supabase.from('options').delete().neq('id', 0);
-            
-            const insertData = [];
-            stateKelas.forEach(k => insertData.push({ type: 'kelas', name: k }));
-            stateMateri.forEach(m => insertData.push({ type: 'materi', name: m }));
-            
+            await supabase.from('options').delete().eq('type', 'kelas');
+            const insertData = stateKelas.map(k => ({ type: 'kelas', name: k }));
             if (insertData.length > 0) {
                 const { error } = await supabase.from('options').insert(insertData);
                 if (error) throw error;
             }
-            
-            status.innerHTML = `<span class="text-emerald-700 font-bold uppercase">Berhasil disimpan!</span>`;
+            status.innerHTML = `<span class="text-emerald-700 font-bold uppercase">Kelas tersimpan!</span>`;
             loadOptionsSettings();
         } catch (e) {
-            console.error(e);
             status.innerHTML = `<span class="text-red-600 font-bold uppercase">Gagal: ${e.message}</span>`;
         }
         btn.disabled = false;
-        btn.innerText = "SIMPAN PILIHAN KELAS & TUGAS";
+        btn.innerText = "SIMPAN PILIHAN KELAS";
     };
 
     // ==========================================
-    // 6. Persetujuan Akun Guru (Superadmin Only)
+    // 8. Persetujuan Akun Guru (Superadmin Only)
     // ==========================================
     window.loadAllTeachers = async () => {
         const tbody = document.getElementById('teachers-approval-tbody');
