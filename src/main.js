@@ -36,6 +36,33 @@ export function splitQuestionImage(text) {
     return { text, gambar_url: '' };
 }
 
+export function parseQuizConfig(petunjukRaw) {
+    if (!petunjukRaw || typeof petunjukRaw !== 'string') {
+        return {
+            cleanPetunjuk: petunjukRaw || '',
+            config: { violation_limit: 3, fullscreen: true }
+        };
+    }
+    const match = petunjukRaw.match(/\[CONFIG:\s*(\{.*?\})\s*\]/);
+    if (match) {
+        try {
+            const config = JSON.parse(match[1]);
+            const cleanPetunjuk = petunjukRaw.replace(/\[CONFIG:\s*\{.*?\}\s*\]/, '').trim();
+            return {
+                cleanPetunjuk,
+                config: {
+                    violation_limit: config.violation_limit !== undefined ? config.violation_limit : 3,
+                    fullscreen: config.fullscreen !== undefined ? config.fullscreen : true
+                }
+            };
+        } catch (_) {}
+    }
+    return {
+        cleanPetunjuk: petunjukRaw,
+        config: { violation_limit: 3, fullscreen: true }
+    };
+}
+
 export function parseAssignmentQuestions(assignment) {
     if (!assignment || !assignment.deskripsi) {
         return { petunjuk: '', questions: [] };
@@ -1590,14 +1617,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     window.showMyQuizResult = (sub, judul, mapel) => {
+        let statusText = 'Menunggu Koreksi Guru';
+        if (sub.status_koreksi === 'selesai') statusText = 'Sudah Dinilai Lengkap';
+        else if (sub.status_koreksi === 'terkunci_curang') statusText = '🔒 UJIAN DIBEKUKAN (Pelanggaran Anti-Kecurangan)';
+
         showCustomModal(
             `Mata Pelajaran: ${mapel}\n` +
             `Judul Ujian: ${judul}\n` +
             `Nama Siswa: ${sub.nama_siswa} (${sub.kelas})\n\n` +
-            `Skor Pilihan Ganda : ${sub.skor_pg || 0}\n` +
-            `Skor Esai         : ${sub.skor_esai || 0}\n` +
-            `TOTAL NILAI AKHIR : ${sub.total_nilai || 0} / 100\n\n` +
-            `Status: ${sub.status_koreksi === 'selesai' ? 'Sudah Dinilai Lengkap' : 'Menunggu Koreksi Guru'}`,
+            `Skor Otomatis : ${sub.skor_pg || 0}\n` +
+            `Skor Esai     : ${sub.skor_esai || 0}\n` +
+            `TOTAL NILAI   : ${sub.total_nilai || 0} / 100\n\n` +
+            `Status: ${statusText}`,
             'alert',
             'Hasil Ujian Siswa',
             '📊'
@@ -1631,7 +1662,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             let actionBtnHtml = '';
 
             if (mySub) {
-                examStatusBadge = `
+                const isLocked = mySub.status_koreksi === 'terkunci_curang';
+                examStatusBadge = isLocked ? `
+                    <span class="bg-red-100 text-red-900 border border-red-500 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                        🔒 Dibekukan &bull; Skor: ${mySub.total_nilai}/100 &bull; Terkunci
+                    </span>
+                ` : `
                     <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                         ✅ Selesai &bull; Skor: ${mySub.total_nilai}/100 &bull; 🔒 Terkunci 1x
                     </span>
@@ -1683,6 +1719,734 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderStudentQuizzes();
     };
 
+    // ========================================================
+    // CBT EXAM ENGINE & ANTI-CHEAT ENFORCEMENT SYSTEM
+    // ========================================================
+    let activeCbtExam = null;
+    let isWarningActive = false;
+
+    async function requestFullscreenLock() {
+        try {
+            const el = document.documentElement;
+            if (el.requestFullscreen) {
+                await el.requestFullscreen();
+            } else if (el.webkitRequestFullscreen) {
+                await el.webkitRequestFullscreen();
+            } else if (el.msRequestFullscreen) {
+                await el.msRequestFullscreen();
+            }
+        } catch (_) {}
+    }
+
+    function exitFullscreenLock() {
+        try {
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            }
+        } catch (_) {}
+    }
+
+    function onFullscreenChange() {
+        if (!activeCbtExam || !activeCbtExam.fullscreenEnabled) return;
+        const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        if (!isFull && !isWarningActive) {
+            handleViolation("Meninggalkan mode layar penuh (Fullscreen) dilarang!");
+        }
+    }
+
+    function onVisibilityChange() {
+        if (!activeCbtExam) return;
+        if (document.hidden && !isWarningActive) {
+            handleViolation("Berpindah tab atau meminimalkan browser terdeteksi!");
+        }
+    }
+
+    function onWindowBlur() {
+        if (!activeCbtExam) return;
+        if (!isWarningActive) {
+            handleViolation("Jendela ujian kehilangan fokus (membuka aplikasi lain / split screen)!");
+        }
+    }
+
+    function onKeyDown(e) {
+        if (!activeCbtExam) return;
+        // Blokir F12, DevTools shortcuts, Ctrl+U
+        if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) || (e.ctrlKey && e.key.toUpperCase() === 'U')) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleViolation("Membuka Developer Tools / Inspect Element dilarang!");
+            return false;
+        }
+        // Blokir pintasan salin/tempel/cetak
+        if (e.ctrlKey && ['C', 'V', 'X', 'P'].includes(e.key.toUpperCase())) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleViolation(`Kombinasi tombol Ctrl+${e.key.toUpperCase()} dilarang saat ujian!`);
+            return false;
+        }
+    }
+
+    function onContextMenu(e) {
+        if (!activeCbtExam) return;
+        e.preventDefault();
+        return false;
+    }
+
+    function onCopyCut(e) {
+        if (!activeCbtExam) return;
+        e.preventDefault();
+        return false;
+    }
+
+    function onPopState() {
+        if (!activeCbtExam) return;
+        history.pushState(null, document.title, location.href);
+    }
+
+    function addAntiCheatListeners() {
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        window.addEventListener('blur', onWindowBlur);
+        window.addEventListener('keydown', onKeyDown, true);
+        document.addEventListener('contextmenu', onContextMenu);
+        document.addEventListener('copy', onCopyCut);
+        document.addEventListener('cut', onCopyCut);
+        window.addEventListener('popstate', onPopState);
+        history.pushState(null, document.title, location.href);
+    }
+
+    function removeAntiCheatListeners() {
+        document.removeEventListener('fullscreenchange', onFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        window.removeEventListener('blur', onWindowBlur);
+        window.removeEventListener('keydown', onKeyDown, true);
+        document.removeEventListener('contextmenu', onContextMenu);
+        document.removeEventListener('copy', onCopyCut);
+        document.removeEventListener('cut', onCopyCut);
+        window.removeEventListener('popstate', onPopState);
+    }
+
+    function handleViolation(reason) {
+        if (!activeCbtExam || isWarningActive) return;
+        isWarningActive = true;
+        activeCbtExam.cheatAttempts++;
+        activeCbtExam.cheatLogs.push({
+            reason,
+            time: new Date().toISOString()
+        });
+
+        const cheatIndText = document.getElementById('cbt-cheat-count-text');
+        const cheatIndBox = document.getElementById('cbt-cheat-indicator');
+        if (cheatIndText) {
+            cheatIndText.textContent = `Anti-Cheat: ${activeCbtExam.cheatAttempts} Pelanggaran`;
+        }
+        if (cheatIndBox) {
+            cheatIndBox.className = "bg-amber-100 border-2 border-amber-500 text-amber-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+        }
+
+        const warningOverlay = document.getElementById('cheat-warning-overlay');
+        const reasonEl = document.getElementById('cheat-warning-reason');
+        const countEl = document.getElementById('cheat-warning-count');
+        const timerEl = document.getElementById('cheat-warning-timer');
+
+        if (reasonEl) reasonEl.textContent = reason;
+        if (countEl) countEl.textContent = `Pelanggaran Ke: ${activeCbtExam.cheatAttempts} / Batas: ${activeCbtExam.violationLimit || 3}`;
+        if (warningOverlay) warningOverlay.classList.remove('hidden');
+
+        let countdown = 5;
+        if (timerEl) timerEl.textContent = `Peringatan akan ditutup dalam ${countdown} detik...`;
+
+        if (activeCbtExam.warningCountdownInterval) clearInterval(activeCbtExam.warningCountdownInterval);
+
+        activeCbtExam.warningCountdownInterval = setInterval(async () => {
+            countdown--;
+            if (timerEl) timerEl.textContent = `Peringatan akan ditutup dalam ${countdown} detik...`;
+            if (countdown <= 0) {
+                clearInterval(activeCbtExam.warningCountdownInterval);
+                if (warningOverlay) warningOverlay.classList.add('hidden');
+                isWarningActive = false;
+
+                if (activeCbtExam.violationLimit > 0 && activeCbtExam.cheatAttempts >= activeCbtExam.violationLimit) {
+                    await lockExamDueToCheating();
+                } else if (activeCbtExam.fullscreenEnabled) {
+                    await requestFullscreenLock();
+                }
+            }
+        }, 1000);
+    }
+
+    async function lockExamDueToCheating() {
+        if (!activeCbtExam) return;
+        const exam = activeCbtExam;
+        removeAntiCheatListeners();
+        exitFullscreenLock();
+        if (exam.timerInterval) clearInterval(exam.timerInterval);
+        if (exam.warningCountdownInterval) clearInterval(exam.warningCountdownInterval);
+
+        try {
+            const { autoScoreTotal } = calculateExamScore(exam.questions, exam.answers);
+            await supabase.from('quiz_submissions').insert([{
+                quiz_id: exam.quizData.id,
+                nama_siswa: exam.studentName,
+                kelas: exam.quizData.kelas,
+                jawaban_siswa: {
+                    answers: exam.answers,
+                    doubtful: exam.doubtful,
+                    cheatAttempts: exam.cheatAttempts,
+                    cheatLogs: exam.cheatLogs,
+                    lockedDueToCheating: true,
+                    completedAt: new Date().toISOString()
+                },
+                skor_pg: autoScoreTotal,
+                skor_esai: 0,
+                total_nilai: autoScoreTotal,
+                status_koreksi: 'terkunci_curang'
+            }]);
+        } catch (_) {}
+
+        const lockedOverlay = document.getElementById('cheat-locked-overlay');
+        if (lockedOverlay) lockedOverlay.classList.remove('hidden');
+    }
+
+    window.closeLockedExamAndReturn = () => {
+        const lockedOverlay = document.getElementById('cheat-locked-overlay');
+        if (lockedOverlay) lockedOverlay.classList.add('hidden');
+        document.getElementById('quiz-room-container').classList.add('hidden');
+        document.getElementById('quiz-portal-landing').classList.remove('hidden');
+        activeCbtExam = null;
+        loadStudentQuizzes();
+    };
+
+    function calculateExamScore(questions, answers) {
+        let autoScoreTotal = 0;
+        let hasSubjective = false;
+
+        questions.forEach(q => {
+            if (q.tipe === 'pg') {
+                const val = answers[q.id];
+                if (val && String(val).toUpperCase() === (q.kunci_pg || '').toUpperCase()) {
+                    autoScoreTotal += (q.bobot || 10);
+                }
+            } else if (q.tipe === 'pg_kompleks') {
+                const studentAns = answers[q.id];
+                const studentKeys = (Array.isArray(studentAns) ? studentAns : String(studentAns || '').split(','))
+                    .map(s => s.trim().toUpperCase())
+                    .filter(Boolean)
+                    .sort();
+                const correctKeys = (q.kunci_pg || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+                if (studentKeys.length > 0 && studentKeys.join(',') === correctKeys.join(',')) {
+                    autoScoreTotal += (q.bobot || 10);
+                }
+            } else if (q.tipe === 'benar_salah') {
+                const val = answers[q.id];
+                if (val && String(val).trim().toLowerCase() === String(q.kunci_pg || '').trim().toLowerCase()) {
+                    autoScoreTotal += (q.bobot || 10);
+                }
+            } else if (q.tipe === 'singkat') {
+                const val = answers[q.id];
+                if (val && q.kunci_pg && String(val).trim().toLowerCase() === String(q.kunci_pg).trim().toLowerCase()) {
+                    autoScoreTotal += (q.bobot || 10);
+                } else if (val) {
+                    hasSubjective = true;
+                }
+            } else if (q.tipe === 'menjodohkan') {
+                let pairs = [];
+                try { pairs = JSON.parse(q.rubrik_esai); } catch (_) { pairs = q.pasangan || []; }
+                const studentPairs = answers[q.id] || {};
+                let correctCount = 0;
+                (Array.isArray(pairs) ? pairs : []).forEach((p, pIdx) => {
+                    const stAns = studentPairs[pIdx];
+                    if (stAns && p.kanan && String(stAns).trim().toLowerCase() === String(p.kanan).trim().toLowerCase()) {
+                        correctCount++;
+                    }
+                });
+                if (pairs.length > 0) {
+                    autoScoreTotal += Math.round((q.bobot || 20) * (correctCount / pairs.length));
+                }
+            } else if (q.tipe === 'upload_foto' || q.tipe === 'esai') {
+                if (answers[q.id]) {
+                    hasSubjective = true;
+                }
+            }
+        });
+
+        return { autoScoreTotal, hasSubjective };
+    }
+
+    function saveCbtExamStateLocally() {
+        if (!activeCbtExam) return;
+        try {
+            const key = `cbt_exam_${activeCbtExam.quizData.id}_${encodeURIComponent(activeCbtExam.studentName)}`;
+            const state = {
+                answers: activeCbtExam.answers,
+                doubtful: activeCbtExam.doubtful,
+                cheatAttempts: activeCbtExam.cheatAttempts,
+                cheatLogs: activeCbtExam.cheatLogs,
+                timerSeconds: activeCbtExam.timerSeconds,
+                lastSavedAt: Date.now()
+            };
+            localStorage.setItem(key, JSON.stringify(state));
+        } catch (_) {}
+    }
+
+    window.saveCbtAnswer = (qId, val) => {
+        if (!activeCbtExam) return;
+        activeCbtExam.answers[qId] = val;
+        saveCbtExamStateLocally();
+        window.renderCbtNavGrid();
+    };
+
+    window.toggleCbtComplexKey = (qId, opt) => {
+        if (!activeCbtExam) return;
+        let current = activeCbtExam.answers[qId];
+        let arr = Array.isArray(current) ? [...current] : (typeof current === 'string' && current ? current.split(',') : []);
+        arr = arr.map(s => s.trim().toUpperCase()).filter(Boolean);
+        const set = new Set(arr);
+        if (set.has(opt)) set.delete(opt);
+        else set.add(opt);
+        activeCbtExam.answers[qId] = Array.from(set).sort();
+        saveCbtExamStateLocally();
+        window.renderCbtNavGrid();
+        window.renderCbtQuestion(activeCbtExam.currentIndex);
+    };
+
+    window.saveCbtMatchAnswer = (qId, pIdx, value) => {
+        if (!activeCbtExam) return;
+        if (!activeCbtExam.answers[qId] || typeof activeCbtExam.answers[qId] !== 'object') {
+            activeCbtExam.answers[qId] = {};
+        }
+        activeCbtExam.answers[qId][pIdx] = value;
+        saveCbtExamStateLocally();
+        window.renderCbtNavGrid();
+    };
+
+    window.renderCbtQuestion = (index) => {
+        if (!activeCbtExam || !activeCbtExam.questions || activeCbtExam.questions.length === 0) return;
+        if (index < 0) index = 0;
+        if (index >= activeCbtExam.questions.length) index = activeCbtExam.questions.length - 1;
+
+        activeCbtExam.currentIndex = index;
+        const q = activeCbtExam.questions[index];
+        const totalQ = activeCbtExam.questions.length;
+
+        // Update badges
+        const numBadge = document.getElementById('cbt-q-number-badge');
+        const typeBadge = document.getElementById('cbt-q-type-badge');
+        const bobotBadge = document.getElementById('cbt-q-bobot-badge');
+
+        if (numBadge) numBadge.textContent = `Soal No. ${index + 1} / ${totalQ}`;
+        if (bobotBadge) bobotBadge.textContent = `Bobot: ${q.bobot || 10} Poin`;
+
+        const typeLabels = {
+            pg: '🔘 Pilihan Ganda',
+            pg_kompleks: '☑️ PG Kompleks',
+            benar_salah: '⚖️ Benar / Salah',
+            singkat: '✏️ Isian Singkat',
+            menjodohkan: '🔀 Menjodohkan',
+            upload_foto: '📷 Upload Foto',
+            esai: '📝 Soal Esai'
+        };
+        if (typeBadge) typeBadge.textContent = typeLabels[q.tipe] || 'Soal Ujian';
+
+        // Parse image stimulus
+        const { text: cleanPertanyaan, gambar_url: qImgUrl } = splitQuestionImage(q.pertanyaan || '');
+        const displayImg = q.gambar_url || qImgUrl;
+        const imgStimulusHtml = displayImg ? `
+            <div class="my-3 max-w-md border-2 border-black rounded-xl overflow-hidden bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                <a href="${escapeHtml(displayImg)}" target="_blank" title="Klik untuk memperbesar gambar">
+                    <img src="${escapeHtml(displayImg)}" alt="Stimulus Gambar Soal ${index + 1}" class="w-full max-h-72 object-contain bg-white hover:opacity-95 transition" />
+                </a>
+                <div class="px-3 py-1.5 bg-slate-100 border-t border-slate-300 text-[10px] font-bold text-slate-600 flex justify-between items-center">
+                    <span>📷 Stimulus / Ilustrasi Soal</span>
+                    <span class="text-indigo-600 font-black">🔍 Klik untuk perbesar</span>
+                </div>
+            </div>
+        ` : '';
+
+        const bodyEl = document.getElementById('cbt-question-body');
+        if (!bodyEl) return;
+
+        let inputHtml = '';
+        const currentAns = activeCbtExam.answers[q.id];
+
+        if (q.tipe === 'pg') {
+            inputHtml = `
+                <div class="space-y-2.5 pt-2">
+                    ${['A', 'B', 'C', 'D'].map(opt => {
+                        const optKey = `opsi_${opt.toLowerCase()}`;
+                        const optText = q[optKey];
+                        if (!optText) return '';
+                        const isChecked = currentAns === opt;
+                        return `
+                            <label class="flex items-center gap-3 p-3.5 rounded-2xl border-2 border-black cursor-pointer transition ${isChecked ? 'bg-indigo-100 border-indigo-700 ring-2 ring-indigo-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-slate-50 hover:bg-slate-100'}">
+                                <input type="radio" name="cbt_answer_${q.id}" value="${opt}" ${isChecked ? 'checked' : ''} onchange="window.saveCbtAnswer('${q.id}', '${opt}')" class="w-4 h-4 accent-indigo-700 cursor-pointer">
+                                <span class="font-black text-sm text-black">${opt}.</span>
+                                <span class="font-bold text-xs md:text-sm text-slate-800 leading-snug">${escapeHtml(optText)}</span>
+                            </label>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        } else if (q.tipe === 'pg_kompleks') {
+            const selectedArr = Array.isArray(currentAns) ? currentAns : (currentAns ? String(currentAns).split(',') : []);
+            inputHtml = `
+                <div class="space-y-2 pt-2">
+                    <div class="p-2.5 bg-cyan-50 border border-cyan-300 rounded-xl text-xs font-bold text-cyan-950 flex items-center gap-2">
+                        <span>💡</span> <strong>Pilihan Ganda Kompleks:</strong> Anda dapat mencentang lebih dari satu pilihan jawaban yang benar.
+                    </div>
+                    <div class="space-y-2.5 pt-1">
+                        ${['A', 'B', 'C', 'D'].map(opt => {
+                            const optKey = `opsi_${opt.toLowerCase()}`;
+                            const optText = q[optKey];
+                            if (!optText) return '';
+                            const isChecked = selectedArr.includes(opt);
+                            return `
+                                <label class="flex items-center gap-3 p-3.5 rounded-2xl border-2 border-black cursor-pointer transition ${isChecked ? 'bg-cyan-100 border-cyan-700 ring-2 ring-cyan-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-slate-50 hover:bg-slate-100'}">
+                                    <input type="checkbox" value="${opt}" ${isChecked ? 'checked' : ''} onchange="window.toggleCbtComplexKey('${q.id}', '${opt}')" class="w-4 h-4 accent-cyan-700 rounded cursor-pointer">
+                                    <span class="font-black text-sm text-black">${opt}.</span>
+                                    <span class="font-bold text-xs md:text-sm text-slate-800 leading-snug">${escapeHtml(optText)}</span>
+                                </label>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (q.tipe === 'benar_salah') {
+            const isBenar = currentAns === 'Benar';
+            const isSalah = currentAns === 'Salah';
+            inputHtml = `
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+                    <label class="flex items-center gap-3 p-4 rounded-2xl border-2 border-black cursor-pointer transition ${isBenar ? 'bg-emerald-200 border-black ring-2 ring-emerald-500 font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' : 'bg-slate-50 hover:bg-slate-100 font-bold'}">
+                        <input type="radio" name="cbt_answer_${q.id}" value="Benar" ${isBenar ? 'checked' : ''} onchange="window.saveCbtAnswer('${q.id}', 'Benar')" class="w-5 h-5 accent-emerald-700 cursor-pointer">
+                        <span class="text-sm md:text-base text-black">✅ PERNYATAAN BENAR</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-4 rounded-2xl border-2 border-black cursor-pointer transition ${isSalah ? 'bg-red-200 border-black ring-2 ring-red-500 font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]' : 'bg-slate-50 hover:bg-slate-100 font-bold'}">
+                        <input type="radio" name="cbt_answer_${q.id}" value="Salah" ${isSalah ? 'checked' : ''} onchange="window.saveCbtAnswer('${q.id}', 'Salah')" class="w-5 h-5 accent-red-700 cursor-pointer">
+                        <span class="text-sm md:text-base text-black">❌ PERNYATAAN SALAH</span>
+                    </label>
+                </div>
+            `;
+        } else if (q.tipe === 'singkat') {
+            inputHtml = `
+                <div class="pt-2 space-y-1.5">
+                    <label class="block text-xs font-black uppercase text-slate-700">Tuliskan Jawaban Singkat Anda:</label>
+                    <input type="text" value="${escapeHtml(currentAns || '')}" oninput="window.saveCbtAnswer('${q.id}', this.value)" placeholder="Ketik kata kunci jawaban..." class="w-full h-12 px-4 border-2 border-black rounded-xl font-bold text-sm bg-white focus:ring-2 focus:ring-black">
+                    <p class="text-[11px] text-slate-500 font-bold">Pastikan ejaan jawaban benar dan teliti.</p>
+                </div>
+            `;
+        } else if (q.tipe === 'menjodohkan') {
+            let pairs = [];
+            try { pairs = JSON.parse(q.rubrik_esai); } catch (_) { pairs = q.pasangan || []; }
+            const rightOptions = (Array.isArray(pairs) ? pairs.map(p => p.kanan).filter(Boolean) : [])
+                .sort(() => Math.random() - 0.5);
+            const studentPairs = (typeof currentAns === 'object' && currentAns) ? currentAns : {};
+
+            inputHtml = `
+                <div class="space-y-3 pt-2">
+                    <div class="p-2.5 bg-teal-50 border border-teal-300 rounded-xl text-xs font-bold text-teal-950 flex items-center gap-2">
+                        <span>💡</span> Pasangkan setiap premis di sebelah kiri dengan pilihan yang tepat di sebelah kanan.
+                    </div>
+                    <div class="space-y-2.5">
+                        ${(Array.isArray(pairs) ? pairs : []).map((p, pIdx) => {
+                            const selVal = studentPairs[pIdx] || '';
+                            return `
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white border-2 border-black rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                    <div class="font-bold text-xs md:text-sm text-black flex items-center gap-2">
+                                        <span class="w-6 h-6 rounded-full bg-teal-700 text-white font-black text-xs flex items-center justify-center shrink-0">${pIdx + 1}</span>
+                                        <span>${escapeHtml(p.kiri)}</span>
+                                    </div>
+                                    <select onchange="window.saveCbtMatchAnswer('${q.id}', ${pIdx}, this.value)" class="h-10 px-3 border-2 border-black rounded-lg font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                                        <option value="">-- Pilih Pasangan Cocok --</option>
+                                        ${rightOptions.map(opt => `<option value="${escapeHtml(opt)}" ${selVal === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+                                    </select>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (q.tipe === 'upload_foto') {
+            const fileUrl = currentAns || '';
+            inputHtml = `
+                <div class="space-y-3 pt-2">
+                    ${q.rubrik_esai ? `<div class="p-3 bg-pink-50 border border-pink-300 rounded-xl text-xs font-bold text-pink-950">${escapeHtml(q.rubrik_esai)}</div>` : ''}
+                    <div class="p-4 border-2 border-dashed border-black rounded-2xl bg-white space-y-3">
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <input type="file" id="cbt_file_upload_${q.id}" accept="image/*,.pdf" class="hidden" onchange="window.handleCbtExamFileUpload(event, '${q.id}')">
+                            <button type="button" onclick="document.getElementById('cbt_file_upload_${q.id}').click()" class="px-4 py-2.5 bg-pink-500 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
+                                <span>📷</span> Ambil Foto / Pilih Berkas
+                            </button>
+                            <span id="cbt_file_status_${q.id}" class="text-xs font-bold text-slate-600">
+                                ${fileUrl ? '✅ Berkas telah diunggah' : 'Belum ada berkas terlampir'}
+                            </span>
+                        </div>
+                        ${fileUrl ? `
+                            <div class="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-300">
+                                <a href="${fileUrl}" target="_blank" class="text-xs font-bold text-indigo-700 underline truncate max-w-xs block">
+                                    ${fileUrl}
+                                </a>
+                                <span class="text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-400 font-black px-2 py-0.5 rounded">Tersimpan</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        } else {
+            inputHtml = `
+                <div class="pt-2 space-y-1.5">
+                    <label class="block text-xs font-black uppercase text-slate-700">Tuliskan Uraian / Jawaban Lengkap Anda:</label>
+                    <textarea rows="5" placeholder="Tuliskan uraian jawaban di sini..." oninput="window.saveCbtAnswer('${q.id}', this.value)" class="w-full p-3.5 border-2 border-black rounded-xl font-medium text-xs md:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black">${escapeHtml(currentAns || '')}</textarea>
+                </div>
+            `;
+        }
+
+        bodyEl.innerHTML = `
+            <div class="text-sm md:text-base font-bold text-black leading-relaxed">
+                ${escapeHtml(cleanPertanyaan)}
+            </div>
+            ${imgStimulusHtml}
+            ${inputHtml}
+        `;
+
+        // Bottom Navigation Buttons
+        const btnPrev = document.getElementById('cbt-btn-prev');
+        const btnNext = document.getElementById('cbt-btn-next');
+        const btnSubmit = document.getElementById('btn-submit-exam');
+        const btnDoubtful = document.getElementById('cbt-btn-doubtful');
+        const textDoubtful = document.getElementById('cbt-doubtful-text');
+
+        if (btnPrev) {
+            btnPrev.disabled = index === 0;
+            btnPrev.style.opacity = index === 0 ? '0.4' : '1';
+            btnPrev.style.cursor = index === 0 ? 'not-allowed' : 'pointer';
+        }
+
+        if (btnNext) {
+            if (index === totalQ - 1) {
+                btnNext.classList.add('hidden');
+            } else {
+                btnNext.classList.remove('hidden');
+            }
+        }
+
+        if (btnSubmit) {
+            if (index === totalQ - 1) {
+                btnSubmit.classList.remove('hidden');
+            } else {
+                btnSubmit.classList.add('hidden');
+            }
+        }
+
+        const isDoubtful = !!activeCbtExam.doubtful[q.id];
+        if (btnDoubtful && textDoubtful) {
+            if (isDoubtful) {
+                btnDoubtful.className = "px-4 py-2.5 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black font-black text-xs uppercase rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ring-2 ring-black active:translate-y-0.5 transition flex items-center gap-1.5";
+                textDoubtful.textContent = "Batal Ragu";
+            } else {
+                btnDoubtful.className = "px-4 py-2.5 bg-amber-200 hover:bg-amber-300 text-black border-2 border-black font-black text-xs uppercase rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5";
+                textDoubtful.textContent = "Ragu-Ragu";
+            }
+        }
+
+        window.renderCbtNavGrid();
+    };
+
+    window.renderCbtNavGrid = () => {
+        if (!activeCbtExam || !activeCbtExam.questions) return;
+        const gridEl = document.getElementById('cbt-nav-grid');
+        if (!gridEl) return;
+
+        let answeredCount = 0;
+
+        gridEl.innerHTML = activeCbtExam.questions.map((q, idx) => {
+            const isCurrent = activeCbtExam.currentIndex === idx;
+            const ans = activeCbtExam.answers[q.id];
+            let hasAnswer = false;
+            if (ans !== undefined && ans !== null && ans !== '') {
+                if (Array.isArray(ans)) hasAnswer = ans.length > 0;
+                else if (typeof ans === 'object') hasAnswer = Object.keys(ans).length > 0;
+                else hasAnswer = true;
+            }
+            if (hasAnswer) answeredCount++;
+            const isDoubt = !!activeCbtExam.doubtful[q.id];
+
+            let btnClass = '';
+            if (isCurrent) {
+                btnClass = 'bg-black text-white border-2 border-black ring-4 ring-indigo-400 font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]';
+            } else if (isDoubt) {
+                btnClass = 'bg-amber-300 text-black border-2 border-black font-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:bg-amber-400';
+            } else if (hasAnswer) {
+                btnClass = 'bg-emerald-400 text-black border-2 border-black font-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:bg-emerald-500';
+            } else {
+                btnClass = 'bg-slate-100 text-slate-800 border-2 border-slate-300 font-bold hover:bg-slate-200';
+            }
+
+            return `
+                <button type="button" onclick="window.goToCbtQuestion(${idx})" class="w-full h-10 rounded-xl text-xs flex items-center justify-center transition relative ${btnClass}">
+                    ${idx + 1}
+                    ${isDoubt ? `<span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 text-white rounded-full text-[9px] flex items-center justify-center font-black">?</span>` : ''}
+                </button>
+            `;
+        }).join('');
+
+        const progressEl = document.getElementById('cbt-progress-summary');
+        if (progressEl) {
+            progressEl.textContent = `${answeredCount} / ${activeCbtExam.questions.length} Dijawab`;
+        }
+    };
+
+    window.navigateCbtQuestion = (dir) => {
+        if (!activeCbtExam) return;
+        if (dir === 'prev') {
+            window.renderCbtQuestion(activeCbtExam.currentIndex - 1);
+        } else {
+            window.renderCbtQuestion(activeCbtExam.currentIndex + 1);
+        }
+    };
+
+    window.goToCbtQuestion = (idx) => {
+        window.renderCbtQuestion(idx);
+    };
+
+    window.toggleCbtDoubtful = () => {
+        if (!activeCbtExam || !activeCbtExam.questions) return;
+        const q = activeCbtExam.questions[activeCbtExam.currentIndex];
+        if (!q) return;
+        activeCbtExam.doubtful[q.id] = !activeCbtExam.doubtful[q.id];
+        saveCbtExamStateLocally();
+        window.renderCbtQuestion(activeCbtExam.currentIndex);
+    };
+
+    window.handleCbtExamFileUpload = async (event, qId) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const statusEl = document.getElementById(`cbt_file_status_${qId}`);
+        if (statusEl) statusEl.innerHTML = `<span class="text-indigo-600 font-bold animate-pulse">Mengunggah ${escapeHtml(file.name)}...</span>`;
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const safeName = `${Date.now()}_exam_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `exam_submissions/${safeName}`;
+
+            const { error: uploadErr } = await supabase.storage.from('uploads').upload(filePath, file);
+            if (uploadErr) throw uploadErr;
+
+            const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+            const publicUrl = publicUrlData.publicUrl;
+
+            window.saveCbtAnswer(qId, publicUrl);
+            window.renderCbtQuestion(activeCbtExam.currentIndex);
+        } catch (err) {
+            if (statusEl) statusEl.innerHTML = `<span class="text-red-600 font-bold">❌ Gagal unggah: ${escapeHtml(err.message)}</span>`;
+        }
+    };
+
+    window.confirmSubmitCbtExam = async () => {
+        if (!activeCbtExam) return;
+        const answeredCount = activeCbtExam.questions.filter(q => {
+            const a = activeCbtExam.answers[q.id];
+            return a !== undefined && a !== null && a !== '';
+        }).length;
+        const totalQ = activeCbtExam.questions.length;
+
+        const msg = answeredCount < totalQ 
+            ? `Perhatian: Anda baru menjawab ${answeredCount} dari total ${totalQ} butir soal.\n\nApakah Anda yakin ingin menyelesaikan dan mengumpulkan lembar ujian sekarang?`
+            : `Semua ${totalQ} butir soal telah terjawab!\n\nApakah Anda yakin ingin menyelesaikan dan mengirim ujian ini?`;
+
+        const conf = await showCustomModal(msg, 'confirm', 'Kumpulkan Ujian', '📝');
+        if (!conf) return;
+
+        const exam = activeCbtExam;
+        removeAntiCheatListeners();
+        exitFullscreenLock();
+        if (exam.timerInterval) clearInterval(exam.timerInterval);
+        if (exam.warningCountdownInterval) clearInterval(exam.warningCountdownInterval);
+
+        try {
+            const { autoScoreTotal, hasSubjective } = calculateExamScore(exam.questions, exam.answers);
+
+            // Cek duplikasi di DB
+            const { data: existingCheck } = await supabase
+                .from('quiz_submissions')
+                .select('id')
+                .eq('quiz_id', exam.quizData.id)
+                .ilike('nama_siswa', exam.studentName.trim())
+                .maybeSingle();
+
+            if (existingCheck) {
+                await showCustomModal(
+                    `Akses Dibatasi: Anda (${exam.studentName}) sudah pernah menyelesaikan ujian ini sebelumnya. Lembar ujian tidak dapat dikirim ulang.`,
+                    'alert',
+                    'Ujian Terkunci (1x Pengerjaan)',
+                    '🔒'
+                );
+                document.getElementById('quiz-room-container').classList.add('hidden');
+                document.getElementById('quiz-portal-landing').classList.remove('hidden');
+                activeCbtExam = null;
+                loadStudentQuizzes();
+                return;
+            }
+
+            const { error } = await supabase.from('quiz_submissions').insert([{
+                quiz_id: exam.quizData.id,
+                nama_siswa: exam.studentName,
+                kelas: exam.quizData.kelas,
+                jawaban_siswa: {
+                    answers: exam.answers,
+                    doubtful: exam.doubtful,
+                    cheatAttempts: exam.cheatAttempts,
+                    cheatLogs: exam.cheatLogs,
+                    completedAt: new Date().toISOString()
+                },
+                skor_pg: autoScoreTotal,
+                skor_esai: 0,
+                total_nilai: autoScoreTotal,
+                status_koreksi: hasSubjective ? 'belum_dikoreksi' : 'selesai'
+            }]);
+
+            if (error) throw error;
+
+            try {
+                const key = `cbt_exam_${exam.quizData.id}_${encodeURIComponent(exam.studentName)}`;
+                localStorage.removeItem(key);
+            } catch (_) {}
+
+            const successMsg = hasSubjective
+                ? `Ujian berhasil dikumpulkan! Nilai instrumen otomatis: ${autoScoreTotal} poin. Butir soal uraian/lembar foto Anda akan diperiksa dan dinilai oleh guru.`
+                : `Ujian berhasil dikumpulkan! Nilai akhir Anda: ${autoScoreTotal} poin.`;
+            await showCustomModal(successMsg, 'alert', 'Ujian Selesai', '🎉');
+
+            activeCbtExam = null;
+            document.getElementById('quiz-room-container').classList.add('hidden');
+            document.getElementById('quiz-portal-landing').classList.remove('hidden');
+            loadStudentQuizzes();
+
+        } catch (e) {
+            await showCustomModal("Gagal mengirim jawaban: " + e.message, 'alert', 'Gagal', '❌');
+        }
+    };
+
+    window.cancelExam = async () => {
+        const confExit = await showCustomModal("Apakah Anda yakin ingin membatalkan dan keluar dari ujian? Jawaban Anda tidak akan tersimpan.", 'confirm', 'Keluar Ujian', '⚠️');
+        if (confExit && activeCbtExam) {
+            removeAntiCheatListeners();
+            exitFullscreenLock();
+            if (activeCbtExam.timerInterval) clearInterval(activeCbtExam.timerInterval);
+            if (activeCbtExam.warningCountdownInterval) clearInterval(activeCbtExam.warningCountdownInterval);
+            try {
+                const key = `cbt_exam_${activeCbtExam.quizData.id}_${encodeURIComponent(activeCbtExam.studentName)}`;
+                localStorage.removeItem(key);
+            } catch (_) {}
+            activeCbtExam = null;
+            document.getElementById('quiz-room-container').classList.add('hidden');
+            document.getElementById('quiz-portal-landing').classList.remove('hidden');
+        }
+    };
+
     window.startExam = async (quizId) => {
         const studentName = globalNameInput.value.trim();
         if (!studentName) {
@@ -1696,7 +2460,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const { data: dbSub } = await supabase
                     .from('quiz_submissions')
-                    .select('id, total_nilai, created_at')
+                    .select('id, total_nilai, status_koreksi, created_at')
                     .eq('quiz_id', quizId)
                     .ilike('nama_siswa', studentName.trim())
                     .maybeSingle();
@@ -1706,363 +2470,110 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (existingSub) {
             const skor = (existingSub.total_nilai !== null && existingSub.total_nilai !== undefined) ? `${existingSub.total_nilai}/100` : 'Selesai';
-            await showCustomModal(
-                `Akses Dibatasi: Anda (${studentName}) sudah menyelesaikan ujian ini dengan skor: ${skor}.\n\nSesuai ketentuan, setiap siswa hanya berhak mengakses dan mengerjakan ujian ini 1 kali. Anda tidak diizinkan masuk kembali atau mengulang ujian.`,
-                'alert',
-                'Ujian Terkunci (1x Pengerjaan)',
-                '🔒'
-            );
+            const isLocked = existingSub.status_koreksi === 'terkunci_curang';
+            const msg = isLocked
+                ? `Akses Dibatasi: Ujian Anda sebelumnya (${studentName}) telah DIBEKUKAN oleh sistem karena pelanggaran anti-kecurangan. Anda tidak dapat mengikuti ujian kembali.`
+                : `Akses Dibatasi: Anda (${studentName}) sudah menyelesaikan ujian ini dengan skor: ${skor}.\n\nSesuai ketentuan, setiap siswa hanya berhak mengakses dan mengerjakan ujian ini 1 kali.`;
+            await showCustomModal(msg, 'alert', 'Ujian Terkunci (1x Pengerjaan)', '🔒');
             return;
         }
 
         try {
             const { data, error } = await supabase.from('quizzes').select('*, quiz_questions(*)').eq('id', quizId).single();
             if (error) throw error;
-            activeQuizData = { ...data, studentName };
 
-            // Render ke Quiz Room
+            const { config } = parseQuizConfig(data.petunjuk || '');
+            const questions = data.quiz_questions || [];
+            questions.sort((a, b) => (a.nomor || 0) - (b.nomor || 0));
+
+            if (questions.length === 0) {
+                await showCustomModal("Ujian ini belum memiliki butir soal yang aktif.", 'alert', 'Pemberitahuan', '⚠️');
+                return;
+            }
+
+            // Setup active CBT state
+            activeCbtExam = {
+                quizData: data,
+                studentName,
+                questions,
+                currentIndex: 0,
+                answers: {},
+                doubtful: {},
+                cheatAttempts: 0,
+                cheatLogs: [],
+                violationLimit: config.violation_limit !== undefined ? config.violation_limit : 3,
+                fullscreenEnabled: config.fullscreen !== undefined ? config.fullscreen : true,
+                timerInterval: null,
+                warningCountdownInterval: null,
+                timerSeconds: (data.durasi_menit || 45) * 60
+            };
+
+            // Coba pulihkan progress lokal jika ada
+            try {
+                const localKey = `cbt_exam_${data.id}_${encodeURIComponent(studentName)}`;
+                const savedRaw = localStorage.getItem(localKey);
+                if (savedRaw) {
+                    const savedState = JSON.parse(savedRaw);
+                    if (savedState.answers) activeCbtExam.answers = savedState.answers;
+                    if (savedState.doubtful) activeCbtExam.doubtful = savedState.doubtful;
+                    if (savedState.cheatAttempts) activeCbtExam.cheatAttempts = savedState.cheatAttempts;
+                    if (savedState.cheatLogs) activeCbtExam.cheatLogs = savedState.cheatLogs;
+                }
+            } catch (_) {}
+
+            // Setup UI
             document.getElementById('quiz-portal-landing').classList.add('hidden');
             const room = document.getElementById('quiz-room-container');
             room.classList.remove('hidden');
 
             document.getElementById('quiz-room-mapel').textContent = `${data.mapel} • Kelas ${data.kelas}`;
             document.getElementById('quiz-room-title').textContent = data.judul_kuis;
-            document.getElementById('quiz-room-instructions').textContent = data.petunjuk || 'Kerjakan dengan teliti.';
+            const studentTag = document.getElementById('cbt-student-tag');
+            if (studentTag) studentTag.textContent = `Siswa: ${studentName}`;
 
-            window.handleExamFileUpload = async (event, qId) => {
-                const file = event.target.files[0];
-                if (!file) return;
+            const cheatIndText = document.getElementById('cbt-cheat-count-text');
+            const cheatIndBox = document.getElementById('cbt-cheat-indicator');
+            if (cheatIndText) {
+                cheatIndText.textContent = `Anti-Cheat: ${activeCbtExam.cheatAttempts} Pelanggaran`;
+            }
+            if (cheatIndBox) {
+                cheatIndBox.className = activeCbtExam.cheatAttempts > 0
+                    ? "bg-amber-100 border-2 border-amber-500 text-amber-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                    : "bg-emerald-100 border-2 border-emerald-400 text-emerald-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+            }
 
-                const statusEl = document.getElementById(`exam-file-status-${qId}`);
-                const valInput = document.getElementById(`exam-file-val-${qId}`);
-                if (statusEl) statusEl.innerHTML = `<span class="text-indigo-600 font-bold animate-pulse">Mengunggah ${escapeHtml(file.name)}...</span>`;
+            // Render first question
+            window.renderCbtQuestion(0);
 
-                try {
-                    const fileExt = file.name.split('.').pop();
-                    const safeName = `${Date.now()}_exam_${Math.random().toString(36).substring(7)}.${fileExt}`;
-                    const filePath = `exam_submissions/${safeName}`;
-
-                    const { error: uploadErr } = await supabase.storage.from('uploads').upload(filePath, file);
-                    if (uploadErr) throw uploadErr;
-
-                    const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
-                    const publicUrl = publicUrlData.publicUrl;
-
-                    if (valInput) valInput.value = publicUrl;
-                    if (statusEl) {
-                        statusEl.innerHTML = `<span class="text-emerald-700 font-black">✅ Berhasil diunggah: <a href="${publicUrl}" target="_blank" class="underline">${escapeHtml(file.name)}</a></span>`;
-                    }
-                } catch (err) {
-                    if (statusEl) statusEl.innerHTML = `<span class="text-red-600 font-bold">❌ Gagal unggah: ${escapeHtml(err.message)}</span>`;
-                }
-            };
-
-            const qList = document.getElementById('quiz-questions-list');
-            qList.innerHTML = '';
-
-            const questions = data.quiz_questions || [];
-            questions.sort((a, b) => a.nomor - b.nomor);
-
-            questions.forEach((q, idx) => {
-                const qBox = document.createElement('div');
-                qBox.className = "bg-slate-50 border-2 border-black rounded-2xl p-4 md:p-5 space-y-3";
-                
-                const { text: cleanPertanyaan, gambar_url: qImgUrl } = splitQuestionImage(q.pertanyaan || '');
-                const displayImg = q.gambar_url || qImgUrl;
-                const imgStimulusHtml = displayImg ? `
-                    <div class="mt-2.5 mb-2 max-w-md border-2 border-black rounded-xl overflow-hidden bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                        <a href="${escapeHtml(displayImg)}" target="_blank" title="Klik untuk memperbesar gambar">
-                            <img src="${escapeHtml(displayImg)}" alt="Stimulus Gambar Soal ${idx + 1}" class="w-full max-h-64 object-contain bg-white hover:opacity-95 transition" />
-                        </a>
-                        <div class="px-2.5 py-1 bg-slate-100 border-t border-slate-300 text-[10px] font-bold text-slate-600 flex justify-between items-center">
-                            <span>📷 Stimulus / Ilustrasi Soal</span>
-                            <span class="text-indigo-600 font-black">🔍 Klik untuk perbesar</span>
-                        </div>
-                    </div>
-                ` : '';
-
-                if (q.tipe === 'pg') {
-                    qBox.innerHTML = `
-                        <div class="flex items-start gap-2">
-                            <span class="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
-                            <div>
-                                <span class="text-[10px] bg-indigo-100 text-indigo-900 font-black px-1.5 py-0.5 rounded border border-indigo-300 uppercase">Pilihan Ganda</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
-                                ${imgStimulusHtml}
-                            </div>
-                        </div>
-                        <div class="space-y-2 pl-8">
-                            ${['A', 'B', 'C', 'D'].map(opt => {
-                                const optKey = `opsi_${opt.toLowerCase()}`;
-                                const optText = q[optKey];
-                                if (!optText) return '';
-                                return `
-                                    <label class="flex items-center gap-2.5 p-2.5 bg-white border border-slate-300 rounded-xl cursor-pointer hover:bg-indigo-50 transition text-xs font-bold text-slate-800">
-                                        <input type="radio" name="question_${q.id}" value="${opt}" class="w-4 h-4 text-indigo-600">
-                                        <span><strong>${opt}.</strong> ${escapeHtml(optText)}</span>
-                                    </label>
-                                `;
-                            }).join('')}
-                        </div>
-                    `;
-                } else if (q.tipe === 'benar_salah') {
-                    qBox.innerHTML = `
-                        <div class="flex items-start gap-2">
-                            <span class="w-6 h-6 bg-amber-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
-                            <div>
-                                <span class="text-[10px] bg-amber-100 text-amber-900 font-black px-1.5 py-0.5 rounded border border-amber-300 uppercase">Benar / Salah</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
-                                ${imgStimulusHtml}
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3 pl-8">
-                            <label class="flex items-center gap-2.5 p-3 bg-white border-2 border-black rounded-xl cursor-pointer hover:bg-emerald-50 transition text-xs font-black text-emerald-800">
-                                <input type="radio" name="question_${q.id}" value="Benar" class="w-4 h-4 text-emerald-600">
-                                <span>✅ BENAR</span>
-                            </label>
-                            <label class="flex items-center gap-2.5 p-3 bg-white border-2 border-black rounded-xl cursor-pointer hover:bg-red-50 transition text-xs font-black text-red-800">
-                                <input type="radio" name="question_${q.id}" value="Salah" class="w-4 h-4 text-red-600">
-                                <span>❌ SALAH</span>
-                            </label>
-                        </div>
-                    `;
-                } else if (q.tipe === 'singkat') {
-                    qBox.innerHTML = `
-                        <div class="flex items-start gap-2">
-                            <span class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
-                            <div>
-                                <span class="text-[10px] bg-blue-100 text-blue-900 font-black px-1.5 py-0.5 rounded border border-blue-300 uppercase">Isian Singkat</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
-                                ${imgStimulusHtml}
-                            </div>
-                        </div>
-                        <div class="pl-8">
-                            <input type="text" name="question_${q.id}" placeholder="Tuliskan jawaban singkat Anda di sini..." class="w-full h-11 px-3.5 border-2 border-black rounded-xl font-bold text-xs focus:outline-none bg-white">
-                        </div>
-                    `;
-                } else if (q.tipe === 'menjodohkan') {
-                    let pairs = [];
-                    try { pairs = JSON.parse(q.rubrik_esai); } catch (_) { pairs = q.pasangan || []; }
-                    const rightOptions = (Array.isArray(pairs) ? pairs.map(p => p.kanan).filter(Boolean) : [])
-                        .sort(() => Math.random() - 0.5);
-
-                    qBox.innerHTML = `
-                        <div class="flex items-start gap-2">
-                            <span class="w-6 h-6 bg-teal-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
-                            <div>
-                                <span class="text-[10px] bg-teal-100 text-teal-900 font-black px-1.5 py-0.5 rounded border border-teal-300 uppercase">Menjodohkan</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
-                                ${imgStimulusHtml}
-                            </div>
-                        </div>
-                        <div class="space-y-2.5 pl-8">
-                            ${(Array.isArray(pairs) ? pairs : []).map((p, pIdx) => `
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-white border border-slate-300 rounded-xl">
-                                    <div class="font-bold text-xs text-slate-800">${pIdx + 1}. ${escapeHtml(p.kiri)}</div>
-                                    <select class="quiz-match-select h-9 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50 focus:bg-white" data-qid="${q.id}" data-pidx="${pIdx}">
-                                        <option value="">-- Pilih Pasangan Cocok --</option>
-                                        ${rightOptions.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
-                                    </select>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                } else if (q.tipe === 'upload_foto') {
-                    qBox.innerHTML = `
-                        <div class="flex items-start gap-2">
-                            <span class="w-6 h-6 bg-pink-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
-                            <div>
-                                <span class="text-[10px] bg-pink-100 text-pink-900 font-black px-1.5 py-0.5 rounded border border-pink-300 uppercase">Upload Lembar Kerja / Foto</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
-                                ${imgStimulusHtml}
-                            </div>
-                        </div>
-                        <div class="pl-8 space-y-2">
-                            ${q.rubrik_esai ? `<div class="p-2.5 bg-yellow-50 border border-yellow-200 rounded-xl text-xs font-bold text-yellow-900">${escapeHtml(q.rubrik_esai)}</div>` : ''}
-                            <div class="flex items-center gap-3 flex-wrap">
-                                <input type="file" id="exam-file-${q.id}" accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="window.handleExamFileUpload(event, '${q.id}')">
-                                <button type="button" onclick="document.getElementById('exam-file-${q.id}').click()" class="px-4 py-2 bg-pink-500 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
-                                    <span>📷</span> Unggah Foto / Berkas Lembar Kerja
-                                </button>
-                                <span id="exam-file-status-${q.id}" class="text-xs font-bold text-slate-500">Belum ada berkas dipilih</span>
-                                <input type="hidden" id="exam-file-val-${q.id}" value="">
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    qBox.innerHTML = `
-                        <div class="flex items-start gap-2">
-                            <span class="w-6 h-6 bg-purple-700 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
-                            <div>
-                                <span class="text-[10px] bg-purple-100 text-purple-900 font-black px-1.5 py-0.5 rounded border border-purple-300 uppercase">Soal Esai</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
-                                ${imgStimulusHtml}
-                            </div>
-                        </div>
-                        <div class="pl-8">
-                            <textarea name="question_${q.id}" rows="4" placeholder="Tuliskan uraian jawaban Anda di sini..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs focus:outline-none bg-white"></textarea>
-                        </div>
-                    `;
-                }
-                qList.appendChild(qBox);
-            });
-
-            // Countdown Timer
-            let remainingSeconds = (data.durasi_menit || 45) * 60;
+            // Timer
             const timerEl = document.getElementById('quiz-timer');
             if (quizTimerInterval) clearInterval(quizTimerInterval);
 
-            quizTimerInterval = setInterval(() => {
-                remainingSeconds--;
-                const m = Math.floor(remainingSeconds / 60);
-                const s = remainingSeconds % 60;
-                timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            activeCbtExam.timerInterval = setInterval(() => {
+                activeCbtExam.timerSeconds--;
+                const m = Math.floor(activeCbtExam.timerSeconds / 60);
+                const s = activeCbtExam.timerSeconds % 60;
+                if (timerEl) {
+                    timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                }
 
-                if (remainingSeconds <= 0) {
-                    clearInterval(quizTimerInterval);
-                    showCustomModal("Waktu ujian telah habis! Jawaban Anda dikirim secara otomatis.", 'alert', 'Waktu Habis', '⏰');
-                    submitExamAnswers();
+                if (activeCbtExam.timerSeconds <= 0) {
+                    clearInterval(activeCbtExam.timerInterval);
+                    showCustomModal("Waktu ujian telah habis! Lembar ujian Anda dikumpulkan secara otomatis.", 'alert', 'Waktu Habis', '⏰');
+                    window.confirmSubmitCbtExam();
                 }
             }, 1000);
+
+            // Activate Anti-Cheat
+            addAntiCheatListeners();
+            if (activeCbtExam.fullscreenEnabled) {
+                await requestFullscreenLock();
+            }
 
             window.scrollTo({ top: room.offsetTop - 50, behavior: 'smooth' });
 
         } catch (e) {
             await showCustomModal("Gagal memulai ujian: " + e.message, 'alert', 'Gagal', '❌');
-        }
-    };
-
-    window.cancelExam = async () => {
-        const confExit = await showCustomModal("Apakah Anda yakin ingin membatalkan dan keluar dari ujian? Jawaban Anda tidak akan tersimpan.", 'confirm', 'Keluar Ujian', '⚠️');
-        if (confExit) {
-            if (quizTimerInterval) clearInterval(quizTimerInterval);
-            activeQuizData = null;
-            document.getElementById('quiz-room-container').classList.add('hidden');
-            document.getElementById('quiz-portal-landing').classList.remove('hidden');
-        }
-    };
-
-    window.submitExamAnswers = async () => {
-        if (!activeQuizData) return;
-        const confirmSubmit = await showCustomModal("Apakah Anda yakin ingin menyelesaikan dan mengirim jawaban ujian ini?", 'confirm', 'Kumpulkan Ujian', '📝');
-        if (!confirmSubmit) return;
-
-        if (quizTimerInterval) clearInterval(quizTimerInterval);
-
-        const btn = document.getElementById('btn-submit-exam');
-        btn.disabled = true;
-        btn.innerText = "Mengirim Jawaban...";
-
-        try {
-            const questions = activeQuizData.quiz_questions || [];
-            let answers = {};
-            let autoScoreTotal = 0;
-            let hasSubjective = false;
-
-            questions.forEach(q => {
-                if (q.tipe === 'pg') {
-                    const selected = document.querySelector(`input[name="question_${q.id}"]:checked`);
-                    const val = selected ? selected.value : '';
-                    answers[q.id] = val;
-                    if (val && val.toUpperCase() === (q.kunci_pg || '').toUpperCase()) {
-                        autoScoreTotal += (q.bobot || 10);
-                    }
-                } else if (q.tipe === 'benar_salah') {
-                    const selected = document.querySelector(`input[name="question_${q.id}"]:checked`);
-                    const val = selected ? selected.value : '';
-                    answers[q.id] = val;
-                    if (val && val.trim().toLowerCase() === String(q.kunci_pg || '').trim().toLowerCase()) {
-                        autoScoreTotal += (q.bobot || 10);
-                    }
-                } else if (q.tipe === 'singkat') {
-                    const inputEl = document.querySelector(`input[name="question_${q.id}"]`);
-                    const val = inputEl ? inputEl.value.trim() : '';
-                    answers[q.id] = val;
-                    if (val && q.kunci_pg && val.toLowerCase() === String(q.kunci_pg).trim().toLowerCase()) {
-                        autoScoreTotal += (q.bobot || 10);
-                    } else if (val) {
-                        hasSubjective = true;
-                    }
-                } else if (q.tipe === 'menjodohkan') {
-                    let pairs = [];
-                    try { pairs = JSON.parse(q.rubrik_esai); } catch (_) { pairs = q.pasangan || []; }
-                    const studentPairs = {};
-                    let correctCount = 0;
-
-                    const selects = document.querySelectorAll(`select.quiz-match-select[data-qid="${q.id}"]`);
-                    selects.forEach(sel => {
-                        const pIdx = sel.getAttribute('data-pidx');
-                        const val = sel.value;
-                        studentPairs[pIdx] = val;
-                        const correctVal = pairs[pIdx]?.kanan || '';
-                        if (val && correctVal && val.trim().toLowerCase() === correctVal.trim().toLowerCase()) {
-                            correctCount++;
-                        }
-                    });
-                    answers[q.id] = studentPairs;
-                    if (pairs.length > 0) {
-                        const scorePart = Math.round((q.bobot || 20) * (correctCount / pairs.length));
-                        autoScoreTotal += scorePart;
-                    }
-                } else if (q.tipe === 'upload_foto') {
-                    const hiddenVal = document.getElementById(`exam-file-val-${q.id}`);
-                    answers[q.id] = hiddenVal ? hiddenVal.value : '';
-                    hasSubjective = true;
-                } else {
-                    const textEl = document.querySelector(`textarea[name="question_${q.id}"]`);
-                    answers[q.id] = textEl ? textEl.value.trim() : '';
-                    hasSubjective = true;
-                }
-            });
-
-            // Database-level check cegah duplikasi submission
-            const { data: existingSubCheck } = await supabase
-                .from('quiz_submissions')
-                .select('id, total_nilai')
-                .eq('quiz_id', activeQuizData.id)
-                .ilike('nama_siswa', activeQuizData.studentName.trim())
-                .maybeSingle();
-
-            if (existingSubCheck) {
-                await showCustomModal(
-                    `Akses Dibatasi: Anda (${activeQuizData.studentName}) sudah pernah menyelesaikan ujian ini sebelumnya.\n\nSesuai sistem pembatasan 1x pengerjaan, lembar jawaban Anda tidak dapat dikirim ulang.`,
-                    'alert',
-                    'Ujian Terkunci (1x Saja)',
-                    '🔒'
-                );
-                activeQuizData = null;
-                document.getElementById('quiz-room-container').classList.add('hidden');
-                document.getElementById('quiz-portal-landing').classList.remove('hidden');
-                loadStudentQuizzes();
-                return;
-            }
-
-            // Simpan ke Supabase quiz_submissions
-            const { error } = await supabase.from('quiz_submissions').insert([{
-                quiz_id: activeQuizData.id,
-                nama_siswa: activeQuizData.studentName,
-                kelas: activeQuizData.kelas,
-                jawaban_siswa: answers,
-                skor_pg: autoScoreTotal,
-                skor_esai: 0,
-                total_nilai: autoScoreTotal,
-                status_koreksi: hasSubjective ? 'belum_dikoreksi' : 'selesai'
-            }]);
-
-            if (error) throw error;
-
-            const modalMsg = hasSubjective 
-                ? `Ujian berhasil dikumpulkan! Nilai instrumen terpadu: ${autoScoreTotal} poin. Soal uraian / lembar foto Anda akan diperiksa dan dinilai oleh guru.`
-                : `Ujian berhasil dikumpulkan! Nilai akhir Anda: ${autoScoreTotal} poin.`;
-            await showCustomModal(modalMsg, 'alert', 'Ujian Selesai', '🎉');
-            activeQuizData = null;
-            document.getElementById('quiz-room-container').classList.add('hidden');
-            document.getElementById('quiz-portal-landing').classList.remove('hidden');
-            loadStudentQuizzes();
-        } catch (e) {
-            await showCustomModal("Gagal mengirim jawaban: " + e.message, 'alert', 'Gagal', '❌');
-            btn.disabled = false;
-            btn.innerText = "SELESAI & KIRIM JAWABAN";
         }
     };
 

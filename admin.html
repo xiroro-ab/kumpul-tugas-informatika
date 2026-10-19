@@ -846,6 +846,7 @@
                             <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Skor PG</th>
                             <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Skor Esai</th>
                             <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Total Nilai</th>
+                            <th class="px-3 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Anti-Cheat</th>
                             <th class="px-4 py-3 font-black uppercase border-b-2 border-black text-center">Aksi Guru</th>
                         </tr>
                     </thead>
@@ -1312,6 +1313,24 @@
                             <input type="text" id="manual-quiz-petunjuk" placeholder="Contoh: Kerjakan dengan teliti, jujur, dan mandiri." class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
                         </div>
                     </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                        <div>
+                            <label class="block text-[11px] font-black uppercase text-black mb-1">Batas Toleransi Anti-Cheat</label>
+                            <select id="manual-quiz-violation-limit" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                                <option value="3" selected>3 Kali Pelanggaran (Standar CBT)</option>
+                                <option value="2">2 Kali Pelanggaran (Ketat)</option>
+                                <option value="1">1 Kali Pelanggaran (Sangat Ketat)</option>
+                                <option value="5">5 Kali Pelanggaran (Toleran)</option>
+                                <option value="0">0 (Hanya Peringatan Tanpa Batas)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 pt-4 sm:pt-6">
+                            <label class="flex items-center gap-2 cursor-pointer font-black text-xs uppercase select-none text-slate-900">
+                                <input type="checkbox" id="manual-quiz-fullscreen-lock" checked class="w-4 h-4 accent-indigo-600 rounded">
+                                <span>🛡️ Wajib Layar Penuh (Anti Pindah Tab)</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Bagian Butir Soal -->
@@ -1319,11 +1338,14 @@
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2">
                         <div>
                             <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">2. Butir-Butir Soal (<span id="manual-quiz-total-count">0</span> Soal)</h4>
-                            <p class="text-[11px] text-slate-500 font-bold">Tambahkan butir soal PG, Benar/Salah, Singkat, Menjodohkan, Upload Foto, atau Esai.</p>
+                            <p class="text-[11px] text-slate-500 font-bold">Tambahkan butir soal PG, PG Kompleks, Benar/Salah, Singkat, Menjodohkan, Upload Foto, atau Esai.</p>
                         </div>
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <button type="button" onclick="addManualQuestionItem('pg')" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
                                 <span>🔘</span> PG
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('pg_kompleks')" class="px-2.5 py-1.5 bg-cyan-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>☑️</span> PG Kompleks
                             </button>
                             <button type="button" onclick="addManualQuestionItem('benar_salah')" class="px-2.5 py-1.5 bg-amber-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
                                 <span>⚖️</span> B/S
@@ -1354,6 +1376,9 @@
                         <div class="flex flex-wrap items-center gap-1.5">
                             <button type="button" onclick="addManualQuestionItem('pg')" class="px-2.5 py-1.5 bg-yellow-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
                                 <span>🔘</span> PG
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('pg_kompleks')" class="px-2.5 py-1.5 bg-cyan-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>☑️</span> PG Kompleks
                             </button>
                             <button type="button" onclick="addManualQuestionItem('benar_salah')" class="px-2.5 py-1.5 bg-rose-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
                                 <span>⚖️</span> B/S

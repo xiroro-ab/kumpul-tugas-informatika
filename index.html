@@ -210,29 +210,135 @@
                 </div>
             </div>
 
-            <!-- Quiz Room (Interactive Exam Screen) -->
-            <div id="quiz-room-container" class="hidden bg-white border-[3px] border-black rounded-[36px] md:rounded-[40px] p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] space-y-6">
-                <div class="flex justify-between items-center border-b-2 border-black pb-4">
-                    <div>
-                        <span id="quiz-room-mapel" class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2.5 py-1 rounded uppercase">Informatika</span>
-                        <h3 id="quiz-room-title" class="text-2xl font-black uppercase mt-1">Judul Ujian</h3>
-                        <p id="quiz-room-instructions" class="text-xs font-bold text-slate-500 mt-0.5">Petunjuk pengerjaan</p>
+            <!-- ======================================================== -->
+            <!-- CBT EXAM ROOM (1 SOAL PER HALAMAN + KISI NOMOR + ANTI-CHEAT) -->
+            <!-- ======================================================== -->
+            <div id="quiz-room-container" class="hidden space-y-4">
+                <!-- Top Status Header Bar -->
+                <div class="bg-white border-[3px] border-black rounded-[28px] p-4 md:p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black text-xl flex items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            📝
+                        </span>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span id="quiz-room-mapel" class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Informatika</span>
+                                <span id="cbt-student-tag" class="bg-yellow-200 text-black border border-black text-[10px] font-black px-2 py-0.5 rounded uppercase">Siswa: -</span>
+                            </div>
+                            <h3 id="quiz-room-title" class="text-lg md:text-xl font-black text-black uppercase mt-0.5">Judul Ujian</h3>
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <span class="text-[10px] font-bold text-slate-400 block uppercase">Sisa Waktu</span>
-                        <span id="quiz-timer" class="font-mono font-black text-2xl text-red-600 bg-red-50 border-2 border-red-300 px-3 py-1 rounded-xl inline-block shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">45:00</span>
+
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <!-- Anti-Cheat Status Badge -->
+                        <div id="cbt-cheat-indicator" class="bg-emerald-100 border-2 border-emerald-400 text-emerald-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <span class="text-sm">🛡️</span>
+                            <span id="cbt-cheat-count-text">Anti-Cheat: Aktif (0 Pelanggaran)</span>
+                        </div>
+
+                        <!-- Timer Box -->
+                        <div class="bg-red-50 border-[3px] border-black px-4 py-1.5 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center">
+                            <span class="text-[9px] font-black text-red-600 uppercase tracking-widest block">SISA WAKTU</span>
+                            <span id="quiz-timer" class="font-mono font-black text-xl md:text-2xl text-red-600">00:00</span>
+                        </div>
                     </div>
                 </div>
 
-                <div id="quiz-questions-list" class="space-y-6"></div>
+                <!-- Main CBT Grid Layout: Left Question Area + Right Navigation Sidebar -->
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+                    
+                    <!-- Left: Question & Answers Container (3 cols on desktop) -->
+                    <div class="lg:col-span-3 bg-white border-[3px] border-black rounded-[28px] p-5 md:p-7 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between min-h-[500px]">
+                        
+                        <!-- Question Header (Number, Type, Score) -->
+                        <div>
+                            <div class="flex items-center justify-between border-b-2 border-slate-200 pb-3 mb-4 flex-wrap gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span id="cbt-q-number-badge" class="px-3 py-1 bg-black text-white rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                        Soal No. 1
+                                    </span>
+                                    <span id="cbt-q-type-badge" class="px-2.5 py-1 bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-lg font-black text-[10px] uppercase">
+                                        Pilihan Ganda
+                                    </span>
+                                </div>
+                                <span id="cbt-q-bobot-badge" class="px-2.5 py-1 bg-slate-100 text-slate-800 border border-slate-300 rounded-lg font-bold text-[10px] uppercase">
+                                    Bobot: 10 Poin
+                                </span>
+                            </div>
 
-                <div class="pt-4 border-t-2 border-black flex justify-between items-center">
-                    <button type="button" onclick="cancelExam()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl">
-                        Tinggalkan Ujian
-                    </button>
-                    <button id="btn-submit-exam" onclick="submitExamAnswers()" class="bg-emerald-400 hover:bg-emerald-500 text-black border-[3px] border-black font-black px-8 py-3 rounded-2xl uppercase tracking-wider text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
-                        SELESAI & KIRIM JAWABAN
-                    </button>
+                            <!-- Question Content & Media -->
+                            <div id="cbt-question-body" class="space-y-4">
+                                <!-- Rendered dynamically by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Bottom Navigation Buttons -->
+                        <div class="pt-6 mt-6 border-t-2 border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                            <button type="button" id="cbt-btn-prev" onclick="navigateCbtQuestion('prev')" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-black border-2 border-black font-black text-xs uppercase rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
+                                <span>⬅️</span> Soal Sebelumnya
+                            </button>
+
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button type="button" id="cbt-btn-doubtful" onclick="toggleCbtDoubtful()" class="px-4 py-2.5 bg-amber-300 hover:bg-amber-400 text-black border-2 border-black font-black text-xs uppercase rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
+                                    <span>🟡</span> <span id="cbt-doubtful-text">Ragu-Ragu</span>
+                                </button>
+
+                                <button type="button" id="cbt-btn-next" onclick="navigateCbtQuestion('next')" class="px-5 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
+                                    Soal Selanjutnya <span>➡️</span>
+                                </button>
+
+                                <button type="button" id="btn-submit-exam" onclick="confirmSubmitCbtExam()" class="hidden px-5 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
+                                    <span>💾</span> Kumpulkan Ujian Selesai
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Right: Number Grid Sidebar (1 col on desktop) -->
+                    <div class="bg-white border-[3px] border-black rounded-[28px] p-4 md:p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                        <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2">
+                            <h4 class="font-black text-xs uppercase text-black flex items-center gap-1.5">
+                                <span>🔢</span> Kisi Nomor Soal
+                            </h4>
+                            <span id="cbt-progress-summary" class="text-[10px] font-black bg-indigo-50 border border-indigo-200 text-indigo-900 px-2 py-0.5 rounded">
+                                0 / 0 Dijawab
+                            </span>
+                        </div>
+
+                        <!-- Number Buttons Grid -->
+                        <div id="cbt-nav-grid" class="grid grid-cols-5 gap-2 max-h-72 overflow-y-auto p-1">
+                            <!-- Rendered dynamically by JS -->
+                        </div>
+
+                        <!-- Legend Status -->
+                        <div class="pt-3 border-t-2 border-slate-100 space-y-1.5 text-[10px] font-bold text-slate-700">
+                            <div class="flex items-center gap-2">
+                                <span class="w-4 h-4 rounded bg-emerald-400 border border-black inline-block shrink-0"></span>
+                                <span>Hijau: Sudah Dijawab</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-4 h-4 rounded bg-amber-300 border border-black inline-block shrink-0"></span>
+                                <span>Kuning: Ragu-Ragu</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-4 h-4 rounded bg-slate-100 border border-slate-300 inline-block shrink-0"></span>
+                                <span>Putih/Abu: Belum Dijawab</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-4 h-4 rounded bg-black border border-black inline-block shrink-0"></span>
+                                <span>Hitam: Nomor Sedang Dibuka</span>
+                            </div>
+                        </div>
+
+                        <!-- Exit Exam Button -->
+                        <div class="pt-2">
+                            <button type="button" onclick="cancelExam()" class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-700 border-2 border-red-300 font-black text-[11px] uppercase rounded-xl transition">
+                                ❌ Batalkan & Keluar
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -526,6 +632,46 @@
             </svg>
             <h3 class="text-xl font-black text-black uppercase tracking-tight">Menyimpan ke LMS...</h3>
             <p class="text-xs text-black font-bold mt-1">Tugas Anda sedang dikirim ke database sekolah.</p>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- OVERLAY: PERINGATAN ANTI-KECURANGAN (ANTI-CHEAT WARNING) -->
+    <!-- ======================================================== -->
+    <div id="cheat-warning-overlay" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-[999] flex items-center justify-center p-4 text-center">
+        <div class="bg-white border-[4px] border-black rounded-[32px] p-6 md:p-8 max-w-md w-full shadow-[12px_12px_0px_0px_rgba(239,68,68,1)] flex flex-col items-center gap-3">
+            <span class="text-5xl animate-bounce">⚠️</span>
+            <h3 class="text-2xl font-black uppercase text-red-600 tracking-wider">PERINGATAN UJIAN!</h3>
+            <div id="cheat-warning-reason" class="bg-red-50 border-2 border-red-300 rounded-xl p-3 text-xs font-bold text-red-950 w-full">
+                Aktivitas di luar jendela ujian terdeteksi!
+            </div>
+            <p class="text-xs font-medium text-slate-700 leading-relaxed">
+                Harap tetap fokus pada lembar ujian. Pindah tab, keluar layar penuh, atau membuka aplikasi lain dilarang dan dicatat otomatis oleh sistem pengawas.
+            </p>
+            <div id="cheat-warning-count" class="text-sm font-black text-black bg-amber-200 border-2 border-black px-4 py-1.5 rounded-xl uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                Pelanggaran Ke: 1 / Batas: 3
+            </div>
+            <p id="cheat-warning-timer" class="text-xs font-black text-slate-500 mt-2">
+                Peringatan akan ditutup dalam 5 detik...
+            </p>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- OVERLAY: UJIAN DIBEKUKAN / DIKUNCI (EXAM LOCKED)        -->
+    <!-- ======================================================== -->
+    <div id="cheat-locked-overlay" class="hidden fixed inset-0 bg-red-950/95 backdrop-blur-lg z-[1000] flex items-center justify-center p-4 text-center">
+        <div class="bg-white border-[4px] border-black rounded-[36px] p-6 md:p-8 max-w-lg w-full shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center gap-4">
+            <span class="text-6xl">🔒</span>
+            <h2 class="text-2xl md:text-3xl font-black uppercase text-red-600">UJIAN DIBEKUKAN!</h2>
+            <div class="bg-red-100 border-2 border-red-400 rounded-2xl p-4 text-xs font-bold text-red-950 text-left space-y-2">
+                <p>⚠️ <strong>Batas toleransi pelanggaran telah tercapai.</strong></p>
+                <p>Sistem mendeteksi aktivitas mencurigakan yang melampaui batas yang diizinkan (berpindah jendela/keluar layar penuh berulang kali).</p>
+                <p>Lembar ujian Anda telah otomatis diserahkan ke guru dan akses pengerjaan telah dikunci.</p>
+            </div>
+            <button type="button" onclick="closeLockedExamAndReturn()" class="w-full h-12 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                Kembali ke Portal Siswa
+            </button>
         </div>
     </div>
 

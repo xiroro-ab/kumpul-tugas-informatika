@@ -138,6 +138,33 @@ export function splitQuestionImage(text) {
     return { text, gambar_url: '' };
 }
 
+export function parseQuizConfig(petunjukRaw) {
+    if (!petunjukRaw || typeof petunjukRaw !== 'string') {
+        return {
+            cleanPetunjuk: petunjukRaw || '',
+            config: { violation_limit: 3, fullscreen: true }
+        };
+    }
+    const match = petunjukRaw.match(/\[CONFIG:\s*(\{.*?\})\s*\]/);
+    if (match) {
+        try {
+            const config = JSON.parse(match[1]);
+            const cleanPetunjuk = petunjukRaw.replace(/\[CONFIG:\s*\{.*?\}\s*\]/, '').trim();
+            return {
+                cleanPetunjuk,
+                config: {
+                    violation_limit: config.violation_limit !== undefined ? config.violation_limit : 3,
+                    fullscreen: config.fullscreen !== undefined ? config.fullscreen : true
+                }
+            };
+        } catch (_) {}
+    }
+    return {
+        cleanPetunjuk: petunjukRaw,
+        config: { violation_limit: 3, fullscreen: true }
+    };
+}
+
 export function parseAssignmentQuestions(assignment) {
     if (!assignment || !assignment.deskripsi) {
         return { petunjuk: '', questions: [] };
@@ -2519,12 +2546,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("AI tidak berhasil menghasilkan butir soal. Silakan coba kembali dengan materi pokok yang lebih spesifik.");
             }
 
+            const basePetunjuk = result.petunjuk || `Ujian ${topik}. Kerjakan dengan teliti dan jujur!`;
+            const antiCheatConfig = { violation_limit: 3, fullscreen: true };
+            const fullPetunjuk = `${basePetunjuk}\n[CONFIG:${JSON.stringify(antiCheatConfig)}]`;
+
             const { data: quizData, error: quizError } = await supabase.from('quizzes').insert([{
                 teacher_id: currentSession?.user?.id,
                 mapel,
                 kelas,
                 judul_kuis: judul,
-                petunjuk: result.petunjuk || `Ujian ${topik}. Kerjakan dengan teliti dan jujur!`,
+                petunjuk: fullPetunjuk,
                 durasi_menit: durasi,
                 status: 'aktif'
             }]).select().single();
@@ -2654,6 +2685,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('manual-quiz-judul').value = '';
         document.getElementById('manual-quiz-petunjuk').value = 'Kerjakan dengan teliti, jujur, dan mandiri.';
         document.getElementById('manual-quiz-durasi').value = '45';
+        const limitSelect = document.getElementById('manual-quiz-violation-limit');
+        if (limitSelect) limitSelect.value = '3';
+        const fsLock = document.getElementById('manual-quiz-fullscreen-lock');
+        if (fsLock) fsLock.checked = true;
 
         manualQuizQuestions = [
             {
@@ -2707,9 +2742,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const mapelSelect = document.getElementById('manual-quiz-mapel');
         if (mapelSelect) mapelSelect.value = quiz.mapel || 'Informatika';
 
+        const { cleanPetunjuk, config: quizCfg } = parseQuizConfig(quiz.petunjuk || '');
         document.getElementById('manual-quiz-judul').value = quiz.judul_kuis || '';
         document.getElementById('manual-quiz-durasi').value = quiz.durasi_menit || '45';
-        document.getElementById('manual-quiz-petunjuk').value = quiz.petunjuk || 'Kerjakan dengan teliti, jujur, dan mandiri.';
+        document.getElementById('manual-quiz-petunjuk').value = cleanPetunjuk || 'Kerjakan dengan teliti, jujur, dan mandiri.';
+
+        const editLimitSelect = document.getElementById('manual-quiz-violation-limit');
+        if (editLimitSelect) editLimitSelect.value = String(quizCfg.violation_limit !== undefined ? quizCfg.violation_limit : '3');
+        const editFsLock = document.getElementById('manual-quiz-fullscreen-lock');
+        if (editFsLock) editFsLock.checked = quizCfg.fullscreen !== undefined ? !!quizCfg.fullscreen : true;
 
         const rawQuestions = Array.isArray(quiz.quiz_questions) ? [...quiz.quiz_questions] : [];
         rawQuestions.sort((a, b) => (a.nomor || 0) - (b.nomor || 0));
@@ -2787,7 +2828,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const defaultBobot = (type === 'esai' || type === 'upload_foto' || type === 'menjodohkan') ? 20 : 10;
         let defaultPasangan = [];
         let defaultKunci = '';
-        if (type === 'pg') defaultKunci = 'A';
+        if (type === 'pg' || type === 'pg_kompleks') defaultKunci = 'A';
         else if (type === 'benar_salah') defaultKunci = 'Benar';
         else if (type === 'menjodohkan') {
             defaultPasangan = [
@@ -2818,6 +2859,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }, 50);
+    };
+
+    window.toggleManualQuizComplexKey = (idx, opt) => {
+        if (!manualQuizQuestions[idx]) return;
+        const currentVal = manualQuizQuestions[idx].kunci_pg || '';
+        const currentKeys = currentVal.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+        const keySet = new Set(currentKeys);
+        if (keySet.has(opt)) {
+            keySet.delete(opt);
+        } else {
+            keySet.add(opt);
+        }
+        manualQuizQuestions[idx].kunci_pg = Array.from(keySet).sort().join(',');
+        renderManualQuizQuestions();
     };
 
     window.addManualQuizPair = (qIdx) => {
@@ -2868,6 +2923,8 @@ document.addEventListener('DOMContentLoaded', () => {
             manualQuizQuestions[idx].bobot = (newType === 'esai' || newType === 'upload_foto' || newType === 'menjodohkan') ? 20 : 10;
             if (newType === 'pg' && !['A', 'B', 'C', 'D'].includes(manualQuizQuestions[idx].kunci_pg)) {
                 manualQuizQuestions[idx].kunci_pg = 'A';
+            } else if (newType === 'pg_kompleks' && !manualQuizQuestions[idx].kunci_pg) {
+                manualQuizQuestions[idx].kunci_pg = 'A';
             } else if (newType === 'benar_salah') {
                 manualQuizQuestions[idx].kunci_pg = 'Benar';
             } else if (newType === 'menjodohkan' && (!Array.isArray(manualQuizQuestions[idx].pasangan) || manualQuizQuestions[idx].pasangan.length === 0)) {
@@ -2896,6 +2953,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const typeColors = {
             pg: 'bg-indigo-100 text-indigo-900 border-indigo-400',
+            pg_kompleks: 'bg-cyan-100 text-cyan-900 border-cyan-400',
             benar_salah: 'bg-amber-100 text-amber-900 border-amber-400',
             singkat: 'bg-blue-100 text-blue-900 border-blue-400',
             menjodohkan: 'bg-teal-100 text-teal-900 border-teal-400',
@@ -2933,6 +2991,31 @@ document.addEventListener('DOMContentLoaded', () => {
                                 `;
                             }).join('')}
                         </div>
+                    </div>
+                `;
+            } else if (currentType === 'pg_kompleks') {
+                const activeKeys = (q.kunci_pg || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+                specificContent = `
+                    <div class="space-y-2 pt-1">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-[11px] font-black uppercase text-black">Pilihan Ganda Kompleks (Bisa >1 Kunci Benar)</label>
+                            <span class="text-[10px] font-bold text-cyan-800 bg-cyan-100 px-2 py-0.5 rounded border border-cyan-300">Centang kotak untuk memilih KUNCI BENAR</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${['A', 'B', 'C', 'D'].map(opt => {
+                                const key = `opsi_${opt.toLowerCase()}`;
+                                const val = q[key] || '';
+                                const isChecked = activeKeys.includes(opt);
+                                return `
+                                    <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${isChecked ? 'bg-cyan-100 border-cyan-600 ring-2 ring-cyan-500' : 'bg-slate-50'}">
+                                        <input type="checkbox" value="${opt}" ${isChecked ? 'checked' : ''} onchange="window.toggleManualQuizComplexKey(${idx}, '${opt}')" class="cursor-pointer accent-cyan-700 w-4 h-4 rounded">
+                                        <span class="font-black text-xs">${opt}.</span>
+                                        <input type="text" placeholder="Pilihan ${opt}..." value="${escapeHtml(val)}" oninput="window.updateManualQuestionField(${idx}, '${key}', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="text-[10px] font-bold text-slate-500">Kunci Jawaban Terpilih: <strong class="text-cyan-900">${activeKeys.join(', ') || '(Belum dipilih)'}</strong></div>
                     </div>
                 `;
             } else if (currentType === 'benar_salah') {
@@ -3013,6 +3096,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </span>
                             <select onchange="window.changeManualQuestionType(${idx}, this.value)" class="h-8 px-2 border-2 border-black rounded-lg font-black text-xs ${typeColors[currentType] || 'bg-slate-100'} cursor-pointer">
                                 <option value="pg" ${currentType === 'pg' ? 'selected' : ''}>🔘 Pilihan Ganda (PG)</option>
+                                <option value="pg_kompleks" ${currentType === 'pg_kompleks' ? 'selected' : ''}>☑️ PG Kompleks (Multi Kunci)</option>
                                 <option value="benar_salah" ${currentType === 'benar_salah' ? 'selected' : ''}>⚖️ Benar / Salah</option>
                                 <option value="singkat" ${currentType === 'singkat' ? 'selected' : ''}>✏️ Isian Singkat</option>
                                 <option value="menjodohkan" ${currentType === 'menjodohkan' ? 'selected' : ''}>🔀 Menjodohkan</option>
@@ -3086,6 +3170,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const judul = document.getElementById('manual-quiz-judul').value.trim();
         const durasi = parseInt(document.getElementById('manual-quiz-durasi').value, 10) || 45;
         const petunjuk = document.getElementById('manual-quiz-petunjuk').value.trim() || 'Kerjakan dengan teliti, jujur, dan mandiri.';
+        const violationLimit = parseInt(document.getElementById('manual-quiz-violation-limit')?.value || '3', 10);
+        const fullscreenLock = document.getElementById('manual-quiz-fullscreen-lock')?.checked ?? true;
+        const configObj = { violation_limit: violationLimit, fullscreen: fullscreenLock };
+        const fullPetunjuk = `${petunjuk}\n[CONFIG:${JSON.stringify(configObj)}]`;
 
         if (!judul) {
             showCustomModal("Judul ujian / kuis wajib diisi!");
@@ -3103,9 +3191,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 showCustomModal(`Pertanyaan pada soal nomor ${i + 1} belum diisi!`);
                 return;
             }
-            if (q.tipe === 'pg') {
+            if (q.tipe === 'pg' || q.tipe === 'pg_kompleks') {
                 if (!q.opsi_a.trim() || !q.opsi_b.trim() || !q.opsi_c.trim() || !q.opsi_d.trim()) {
                     showCustomModal(`Pilihan jawaban (A, B, C, D) pada soal nomor ${i + 1} harus diisi lengkap!`);
+                    return;
+                }
+                if (q.tipe === 'pg_kompleks' && (!q.kunci_pg || !q.kunci_pg.trim())) {
+                    showCustomModal(`Pilih minimal 1 kunci jawaban benar untuk soal PG Kompleks nomor ${i + 1}!`);
                     return;
                 }
             } else if (q.tipe === 'menjodohkan') {
@@ -3130,7 +3222,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     mapel,
                     kelas,
                     judul_kuis: judul,
-                    petunjuk,
+                    petunjuk: fullPetunjuk,
                     durasi_menit: durasi
                 }).eq('id', editingQuizId);
 
@@ -3146,7 +3238,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     let kunci = q.kunci_pg || '';
                     if (q.tipe === 'benar_salah' && !kunci) kunci = 'Benar';
-                    if (q.tipe === 'pg' && !kunci) kunci = 'A';
+                    if ((q.tipe === 'pg' || q.tipe === 'pg_kompleks') && !kunci) kunci = 'A';
 
                     let cleanText = splitQuestionImage(q.pertanyaan || '').text.trim();
                     if (q.gambar_url && q.gambar_url.trim()) {
@@ -3182,7 +3274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     mapel,
                     kelas,
                     judul_kuis: judul,
-                    petunjuk,
+                    petunjuk: fullPetunjuk,
                     durasi_menit: durasi,
                     status: 'aktif'
                 }]).select().single();
@@ -3260,7 +3352,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('quiz-results-title').textContent = `${quiz.judul_kuis} (${quiz.mapel})`;
         const tbody = document.getElementById('quiz-submissions-tbody');
-        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center font-bold text-slate-500 uppercase animate-pulse">Memuat hasil ujian siswa...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center font-bold text-slate-500 uppercase animate-pulse">Memuat hasil ujian siswa...</td></tr>';
         document.getElementById('quiz-results-modal').classList.remove('hidden');
 
         try {
@@ -3275,11 +3367,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
             tbody.innerHTML = '';
             if (activeQuizSubmissions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center font-bold text-slate-500 uppercase">Belum ada siswa yang menyelesaikan ujian ini.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center font-bold text-slate-500 uppercase">Belum ada siswa yang menyelesaikan ujian ini.</td></tr>';
                 return;
             }
 
             activeQuizSubmissions.forEach(sub => {
+                let cheatAttempts = 0;
+                if (sub.jawaban_siswa && typeof sub.jawaban_siswa === 'object') {
+                    cheatAttempts = sub.jawaban_siswa.cheatAttempts || 0;
+                } else if (typeof sub.jawaban_siswa === 'string') {
+                    try {
+                        const parsed = JSON.parse(sub.jawaban_siswa);
+                        cheatAttempts = parsed.cheatAttempts || 0;
+                    } catch (_) {}
+                }
+
+                const isLocked = sub.status_koreksi === 'terkunci_curang';
+                let antiCheatBadge = '';
+                if (isLocked) {
+                    antiCheatBadge = `<span class="bg-red-100 text-red-900 border border-red-500 font-black px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} pelanggaran - Ujian dibekukan sistem">🔒 Dibekukan (${cheatAttempts})</span>`;
+                } else if (cheatAttempts > 0) {
+                    antiCheatBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-500 font-bold px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} peringatan tercatat">⚠️ ${cheatAttempts}x Peringatan</span>`;
+                } else {
+                    antiCheatBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-bold px-2 py-0.5 rounded text-[10px]">🛡️ Tertib (0)</span>`;
+                }
+
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition";
                 tr.innerHTML = `
@@ -3290,6 +3402,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">
                         <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-black px-2 py-0.5 rounded-lg text-sm">${sub.total_nilai}</span>
                     </td>
+                    <td class="px-3 py-3 text-center border-b-2 border-black border-r-2">
+                        ${antiCheatBadge}
+                    </td>
                     <td class="px-4 py-3 text-center border-b-2 border-black">
                         <button onclick="openExamReviewModal('${sub.id}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
                             Periksa Jawaban
@@ -3299,7 +3414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tbody.appendChild(tr);
             });
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-6 text-center text-red-600 font-bold uppercase">Gagal memuat: ${e.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-red-600 font-bold uppercase">Gagal memuat: ${e.message}</td></tr>`;
         }
     };
 
@@ -3464,8 +3579,47 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = '';
 
         const questions = activeQuizForResults.quiz_questions || [];
-        const answers = sub.jawaban_siswa || {};
+        let answers = {};
+        let cheatAttempts = 0;
+        let cheatLogs = [];
+        if (sub.jawaban_siswa && typeof sub.jawaban_siswa === 'object') {
+            if (sub.jawaban_siswa.answers && typeof sub.jawaban_siswa.answers === 'object') {
+                answers = sub.jawaban_siswa.answers;
+                cheatAttempts = sub.jawaban_siswa.cheatAttempts || 0;
+                cheatLogs = sub.jawaban_siswa.cheatLogs || [];
+            } else {
+                answers = sub.jawaban_siswa;
+            }
+        } else if (typeof sub.jawaban_siswa === 'string') {
+            try {
+                const parsed = JSON.parse(sub.jawaban_siswa);
+                if (parsed.answers && typeof parsed.answers === 'object') {
+                    answers = parsed.answers;
+                    cheatAttempts = parsed.cheatAttempts || 0;
+                    cheatLogs = parsed.cheatLogs || [];
+                } else {
+                    answers = parsed;
+                }
+            } catch (_) {}
+        }
         const aiFeedback = sub.ai_feedback || {};
+
+        if (sub.status_koreksi === 'terkunci_curang' || cheatAttempts > 0) {
+            const cheatBanner = document.createElement('div');
+            cheatBanner.className = `p-3 rounded-xl border-2 font-bold text-xs mb-3 ${sub.status_koreksi === 'terkunci_curang' ? 'bg-red-100 border-red-500 text-red-950' : 'bg-amber-50 border-amber-400 text-amber-950'}`;
+            cheatBanner.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span>${sub.status_koreksi === 'terkunci_curang' ? '🔒 Ujian Dibekukan Sistem (Batas Pelanggaran Terlampaui)' : '⚠️ Catatan Pengawas Anti-Kecurangan'}</span>
+                    <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-white/70 border border-current">${cheatAttempts} Kali Pelanggaran</span>
+                </div>
+                ${cheatLogs.length > 0 ? `
+                    <div class="mt-2 pt-2 border-t border-black/10 text-[10px] space-y-1 font-mono">
+                        ${cheatLogs.map(l => `<div>• [${l.time ? new Date(l.time).toLocaleTimeString('id-ID') : '-'}] ${escapeHtml(l.reason || 'Pelanggaran')}</div>`).join('')}
+                    </div>
+                ` : ''}
+            `;
+            container.appendChild(cheatBanner);
+        }
 
         questions.forEach((q, idx) => {
             const card = document.createElement('div');
@@ -3497,6 +3651,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="text-[11px] font-bold text-slate-600 flex gap-4">
                         <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(studentAns)}</strong></span>
                         <span>Kunci: <strong class="text-black">${escapeHtml(q.kunci_pg)}</strong></span>
+                    </div>
+                `;
+            } else if (q.tipe === 'pg_kompleks') {
+                const studentAns = answers[q.id] || [];
+                const studentKeys = (Array.isArray(studentAns) ? studentAns : String(studentAns).split(',')).map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+                const correctKeys = (q.kunci_pg || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+                const isCorrect = studentKeys.length > 0 && studentKeys.join(',') === correctKeys.join(',');
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-xs text-cyan-900 bg-cyan-100 px-2 py-0.5 rounded border border-cyan-300 uppercase">No. ${idx + 1} (☑️ PG Kompleks)</span>
+                        <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            ${isCorrect ? `✅ Benar (+${q.bobot || 10})` : '❌ Kurang Tepat (0)'}
+                        </span>
+                    </div>
+                    <p class="font-bold text-xs text-slate-800">${escapeHtml(cleanPertanyaan)}</p>
+                    ${imgStimulusHtml}
+                    <div class="text-[11px] font-bold text-slate-600 flex gap-4">
+                        <span>Pilihan Siswa: <strong class="${isCorrect ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(studentKeys.join(', ') || '(Tidak dijawab)')}</strong></span>
+                        <span>Kunci Benar: <strong class="text-black">${escapeHtml(correctKeys.join(', '))}</strong></span>
                     </div>
                 `;
             } else if (q.tipe === 'benar_salah') {
