@@ -196,17 +196,23 @@ export function robustJsonParse(raw) {
                 };
                 const pertanyaan = getField('pertanyaan');
                 if (pertanyaan) {
+                    let detectedType = 'esai';
+                    if (qStr.includes('"opsi_a"')) detectedType = 'pg';
+                    else if (qStr.includes('"benar_salah"')) detectedType = 'benar_salah';
+                    else if (qStr.includes('"singkat"')) detectedType = 'singkat';
+                    else if (qStr.includes('"menjodohkan"') || qStr.includes('"pasangan"')) detectedType = 'menjodohkan';
+
                     recoveredQuestions.push({
                         nomor: idx + 1,
-                        tipe: qStr.includes('"opsi_a"') ? 'pg' : 'esai',
+                        tipe: getField('tipe') || detectedType,
                         pertanyaan,
                         opsi_a: getField('opsi_a'),
                         opsi_b: getField('opsi_b'),
                         opsi_c: getField('opsi_c'),
                         opsi_d: getField('opsi_d'),
-                        kunci_pg: getField('kunci_pg') || 'A',
+                        kunci_pg: getField('kunci_pg') || (detectedType === 'pg' ? 'A' : (detectedType === 'benar_salah' ? 'Benar' : '')),
                         rubrik_esai: getField('rubrik_esai'),
-                        bobot: qStr.includes('"opsi_a"') ? 10 : 25
+                        bobot: detectedType === 'pg' || detectedType === 'benar_salah' || detectedType === 'singkat' ? 10 : 20
                     });
                 }
             }
@@ -425,7 +431,7 @@ Pastikan instruksi sangat mudah dimengerti siswa SMP dan rubrik penilaian memili
 }
 
 /**
- * AI Generator Butir Soal Ujian (Pilihan Ganda & Esai)
+ * AI Generator Butir Soal Ujian (Pilihan Ganda, Benar/Salah, Singkat, Menjodohkan, Esai)
  * Mendukung Taksonomi Bloom (LOTS/MOTS/HOTS), Tingkat Kesulitan, dan Stimulus AKM
  */
 export async function aiGenerateQuestions(
@@ -456,6 +462,9 @@ export async function aiGenerateQuestions(
         };
     }
 
+    const ragam = cfg.ragam || cfg.modelRagam || 'campuran';
+    const totalSoal = Number(cfg.totalSoal) || (Number(cfg.jmlPg || 0) + Number(cfg.jmlEsai || 0)) || 5;
+
     const taksonomiDescriptions = {
         campuran: 'Kombinasi Berimbang Kurikulum Nasional: LOTS 30% (C1-C2 Pemahaman Dasar), MOTS 40% (C3 Aplikasi Konsep), HOTS 30% (C4 Analisis & C5 Evaluasi).',
         hots: 'Dominan HOTS (Higher Order Thinking Skills): C4 Analisis data/kasus, C5 Evaluasi keputusan, C6 Kreasi solusi. Soal menuntut nalar kritis siswa, bukan sekadar hafalan definisi.',
@@ -471,25 +480,43 @@ export async function aiGenerateQuestions(
     }[cfg.kesulitan] || 'Berimbang';
 
     const stimulusDescriptions = {
-        kontekstual: 'Gunakan stimulus cerita/kasus nyata (standar Asesmen Nasional / AKM). Setiap nomor soal (atau kluster soal) diawali narasi situasi nyata, kutipan informasi, atau studi kasus praktis siswa sebelum mengajukan pertanyaan.',
+        kontekstual: 'Gunakan stimulus cerita/kasus nyata (standar Asesmen Nasional / AKM). Setiap nomor soal diawali narasi situasi nyata atau studi kasus praktis siswa sebelum mengajukan pertanyaan.',
         langsung: 'Pertanyaan langsung to-the-point dan konseptual tanpa narasi cerita panjang.'
     }[cfg.stimulus] || 'Kontekstual';
 
-    const system = `Anda adalah ahli pengembang asesmen pendidikan SMP Negeri 58 Palembang berstandar Kurikulum Merdeka dan AKM Kemendikbudristek.
-Tugas Anda merancang instrumen evaluasi kuis/ujian dengan kriteria profesional:
-1. Pilihan Ganda (PG):
-   - Pokok soal jelas, tegas, tidak multitafsir.
-   - Memiliki tepat 4 opsi jawaban (A, B, C, D) yang masuk akal dan pengecoh berfungsi.
-   - Wajib menyertakan "kunci_pg" HANYA satu huruf: "A", "B", "C", atau "D".
-   - Wajib menyertakan "pembahasan" ringkas mengapa jawaban tersebut benar.
-   - Bobot PG standar: 10 poin per soal.
-2. Soal Esai / Uraian:
-   - Soal menguji penalaran dan daya analisis siswa.
-   - Wajib menyertakan "rubrik_esai" berupa kriteria penilaian bertingkat dan kata kunci jawaban untuk guru.
-   - Bobot Esai standar: 20-25 poin per soal.
-3. Wajib menyertakan "tingkat_kognitif" (contoh: "HOTS (C4 Analisis)", "MOTS (C3 Aplikasi)", atau "LOTS (C2 Pemahaman)").
+    const ragamGuidelines = {
+        campuran: 'Kombinasikan variasi butir soal secara berimbang: Pilihan Ganda (pg), Benar/Salah (benar_salah), Isian Singkat (singkat), Menjodohkan (menjodohkan), dan Esai Uraian (esai).',
+        pg_murni: 'Semua butir soal bertipe Pilihan Ganda (pg) dengan 4 opsi (A, B, C, D).',
+        pg_esai: 'Kombinasikan soal Pilihan Ganda (pg) dan Esai Uraian (esai).',
+        akm_khusus: 'Fokus pada butir soal tipe AKM: Pilihan Ganda (pg), Benar/Salah (benar_salah), dan Menjodohkan (menjodohkan).',
+        esai_murni: 'Semua butir soal bertipe Esai Uraian (esai) analisis mendalam.'
+    }[ragam] || 'Kombinasikan variasi soal: Pilihan Ganda (pg), Benar/Salah (benar_salah), Singkat (singkat), Menjodohkan (menjodohkan), dan Esai (esai).';
 
-KEMBALIKAN HANYA JSON MURNI SESUAI SCHEMA:
+    const system = `Anda adalah ahli pengembang asesmen pendidikan SMP Negeri 58 Palembang berstandar Kurikulum Merdeka dan AKM Kemendikbudristek.
+Tugas Anda merancang instrumen evaluasi kuis/ujian dengan spesifikasi butir soal:
+1. Pilihan Ganda ("tipe": "pg"):
+   - Memiliki tepat 4 opsi jawaban ("opsi_a", "opsi_b", "opsi_c", "opsi_d").
+   - "kunci_pg": SATU HURUF ("A", "B", "C", atau "D").
+   - "bobot": 10
+2. Benar/Salah ("tipe": "benar_salah"):
+   - Pertanyaan berisi pernyataan stimulus untuk dievaluasi siswa kebenarannya.
+   - "kunci_pg": "Benar" atau "Salah".
+   - "bobot": 10
+3. Isian Singkat ("tipe": "singkat"):
+   - Pertanyaan membutuhkan jawaban pasti singkat (1-3 kata / istilah / angka).
+   - "kunci_pg": string kata kunci jawaban yang tepat.
+   - "bobot": 10
+4. Menjodohkan ("tipe": "menjodohkan"):
+   - Pertanyaan berupa instruksi menjodohkan premis di kolom kiri dengan pasangan tepat di kolom kanan.
+   - "pasangan": array of 2 sampai 4 objek { "kiri": "pernyataan/istilah", "kanan": "definisi/pasangan tepat" }.
+   - "bobot": 20
+5. Esai Uraian ("tipe": "esai"):
+   - Soal analisis, penalaran, atau pemecahan masalah.
+   - "rubrik_esai": kriteria penilaian bertingkat untuk acuan guru & AI.
+   - "bobot": 25
+
+PENTING: Jangan gunakan karakter em dash.
+KEMBALIKAN HANYA JSON MURNI TANPA MARKDOWN BACKTICKS SESUAI SCHEMA:
 {
   "judul_kuis": "string",
   "petunjuk": "string",
@@ -497,37 +524,30 @@ KEMBALIKAN HANYA JSON MURNI SESUAI SCHEMA:
   "soal": [
     {
       "nomor": 1,
-      "tipe": "pg",
+      "tipe": "pg|benar_salah|singkat|menjodohkan|esai",
       "tingkat_kognitif": "string",
       "pertanyaan": "string",
-      "opsi_a": "string",
-      "opsi_b": "string",
-      "opsi_c": "string",
-      "opsi_d": "string",
-      "kunci_pg": "A/B/C/D",
-      "pembahasan": "string",
-      "bobot": 10
-    },
-    {
-      "nomor": 2,
-      "tipe": "esai",
-      "tingkat_kognitif": "string",
-      "pertanyaan": "string",
-      "rubrik_esai": "string",
-      "bobot": 20
+      "opsi_a": "opsional jika pg",
+      "opsi_b": "opsional jika pg",
+      "opsi_c": "opsional jika pg",
+      "opsi_d": "opsional jika pg",
+      "kunci_pg": "opsional jika pg/benar_salah/singkat",
+      "pasangan": [ { "kiri": "string", "kanan": "string" } ],
+      "rubrik_esai": "opsional jika esai",
+      "bobot": number
     }
   ]
 }`;
 
-    const prompt = `Susunlah instrumen ujian SMP dengan spesifikasi:
+    const prompt = `Susunlah ${totalSoal} butir soal ujian SMP dengan spesifikasi:
 - Mata Pelajaran: ${cfg.mapel}
 - Kelas: ${cfg.kelas}
 - Materi Pokok / Capaian Pembelajaran: ${cfg.topik}
+- Model Ragam Soal: ${ragamGuidelines}
 - Taksonomi Bloom: ${taksonomiDescriptions}
 - Tingkat Kesulitan: ${kesulitanDescriptions}
 - Karakteristik Stimulus: ${stimulusDescriptions}
-- Jumlah Soal Pilihan Ganda: ${cfg.jmlPg} butir
-- Jumlah Soal Esai: ${cfg.jmlEsai} butir
+- Total Butir Soal: ${totalSoal} butir
 - Alokasi Durasi Ujian: ${cfg.durasi} menit`;
 
     const raw = await callGemini(prompt, system, true);

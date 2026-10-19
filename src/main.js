@@ -46,7 +46,7 @@ export function isClassMatch(targetKelas, studentKelas) {
     const target = String(targetKelas).trim().toLowerCase();
     const student = String(studentKelas).trim().toLowerCase();
 
-    if (target === 'semua' || target === 'semua kelas' || (target.includes('semua') && !target.match(/[789]|vii|viii|ix/))) {
+    if (target === '' || target === 'semua' || target === 'semua kelas' || (target.includes('semua') && !target.match(/[789]|vii|viii|ix/))) {
         return true;
     }
 
@@ -262,12 +262,6 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
     });
 }
 
-const DEFAULT_CLASSES = [
-    '7.1', '7.2', '7.3', '7.4', '7.5', '7.6', '7.7', '7.8', '7.9', '7.10',
-    '8.1', '8.2', '8.3', '8.4', '8.5', '8.6', '8.7', '8.8', '8.9', '8.10',
-    '9.1', '9.2', '9.3', '9.4', '9.5', '9.6', '9.7', '9.8', '9.9', '9.10'
-];
-
 document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper Modal Alert/Confirm Neobrutalisme (Standard LMS SMPN 58)
@@ -341,14 +335,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const subKelasSelect = document.getElementById('sub-kelas');
 
     async function loadClassOptions() {
-        let classes = [...DEFAULT_CLASSES];
+        let classes = [];
         try {
             const { data } = await supabase.from('options').select('name').eq('type', 'kelas');
             if (data && data.length > 0) {
                 classes = data.map(o => o.name);
             }
         } catch (e) {
-            console.warn("Using fallback class options", e);
+            console.warn("Could not load classes from database", e);
         }
 
         const populate = (el, includeAll = false) => {
@@ -1548,6 +1542,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('quiz-room-title').textContent = data.judul_kuis;
             document.getElementById('quiz-room-instructions').textContent = data.petunjuk || 'Kerjakan dengan teliti.';
 
+            window.handleExamFileUpload = async (event, qId) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const statusEl = document.getElementById(`exam-file-status-${qId}`);
+                const valInput = document.getElementById(`exam-file-val-${qId}`);
+                if (statusEl) statusEl.innerHTML = `<span class="text-indigo-600 font-bold animate-pulse">Mengunggah ${escapeHtml(file.name)}...</span>`;
+
+                try {
+                    const fileExt = file.name.split('.').pop();
+                    const safeName = `${Date.now()}_exam_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const filePath = `exam_submissions/${safeName}`;
+
+                    const { error: uploadErr } = await supabase.storage.from('uploads').upload(filePath, file);
+                    if (uploadErr) throw uploadErr;
+
+                    const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+                    const publicUrl = publicUrlData.publicUrl;
+
+                    if (valInput) valInput.value = publicUrl;
+                    if (statusEl) {
+                        statusEl.innerHTML = `<span class="text-emerald-700 font-black">✅ Berhasil diunggah: <a href="${publicUrl}" target="_blank" class="underline">${escapeHtml(file.name)}</a></span>`;
+                    }
+                } catch (err) {
+                    if (statusEl) statusEl.innerHTML = `<span class="text-red-600 font-bold">❌ Gagal unggah: ${escapeHtml(err.message)}</span>`;
+                }
+            };
+
             const qList = document.getElementById('quiz-questions-list');
             qList.innerHTML = '';
 
@@ -1562,7 +1584,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     qBox.innerHTML = `
                         <div class="flex items-start gap-2">
                             <span class="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
-                            <p class="font-bold text-sm text-black leading-relaxed">${q.pertanyaan}</p>
+                            <div>
+                                <span class="text-[10px] bg-indigo-100 text-indigo-900 font-black px-1.5 py-0.5 rounded border border-indigo-300 uppercase">Pilihan Ganda</span>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                            </div>
                         </div>
                         <div class="space-y-2 pl-8">
                             ${['A', 'B', 'C', 'D'].map(opt => {
@@ -1572,10 +1597,90 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 return `
                                     <label class="flex items-center gap-2.5 p-2.5 bg-white border border-slate-300 rounded-xl cursor-pointer hover:bg-indigo-50 transition text-xs font-bold text-slate-800">
                                         <input type="radio" name="question_${q.id}" value="${opt}" class="w-4 h-4 text-indigo-600">
-                                        <span><strong>${opt}.</strong> ${optText}</span>
+                                        <span><strong>${opt}.</strong> ${escapeHtml(optText)}</span>
                                     </label>
                                 `;
                             }).join('')}
+                        </div>
+                    `;
+                } else if (q.tipe === 'benar_salah') {
+                    qBox.innerHTML = `
+                        <div class="flex items-start gap-2">
+                            <span class="w-6 h-6 bg-amber-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
+                            <div>
+                                <span class="text-[10px] bg-amber-100 text-amber-900 font-black px-1.5 py-0.5 rounded border border-amber-300 uppercase">Benar / Salah</span>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 pl-8">
+                            <label class="flex items-center gap-2.5 p-3 bg-white border-2 border-black rounded-xl cursor-pointer hover:bg-emerald-50 transition text-xs font-black text-emerald-800">
+                                <input type="radio" name="question_${q.id}" value="Benar" class="w-4 h-4 text-emerald-600">
+                                <span>✅ BENAR</span>
+                            </label>
+                            <label class="flex items-center gap-2.5 p-3 bg-white border-2 border-black rounded-xl cursor-pointer hover:bg-red-50 transition text-xs font-black text-red-800">
+                                <input type="radio" name="question_${q.id}" value="Salah" class="w-4 h-4 text-red-600">
+                                <span>❌ SALAH</span>
+                            </label>
+                        </div>
+                    `;
+                } else if (q.tipe === 'singkat') {
+                    qBox.innerHTML = `
+                        <div class="flex items-start gap-2">
+                            <span class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
+                            <div>
+                                <span class="text-[10px] bg-blue-100 text-blue-900 font-black px-1.5 py-0.5 rounded border border-blue-300 uppercase">Isian Singkat</span>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                            </div>
+                        </div>
+                        <div class="pl-8">
+                            <input type="text" name="question_${q.id}" placeholder="Tuliskan jawaban singkat Anda di sini..." class="w-full h-11 px-3.5 border-2 border-black rounded-xl font-bold text-xs focus:outline-none bg-white">
+                        </div>
+                    `;
+                } else if (q.tipe === 'menjodohkan') {
+                    let pairs = [];
+                    try { pairs = JSON.parse(q.rubrik_esai); } catch (_) { pairs = q.pasangan || []; }
+                    const rightOptions = (Array.isArray(pairs) ? pairs.map(p => p.kanan).filter(Boolean) : [])
+                        .sort(() => Math.random() - 0.5);
+
+                    qBox.innerHTML = `
+                        <div class="flex items-start gap-2">
+                            <span class="w-6 h-6 bg-teal-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
+                            <div>
+                                <span class="text-[10px] bg-teal-100 text-teal-900 font-black px-1.5 py-0.5 rounded border border-teal-300 uppercase">Menjodohkan</span>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2.5 pl-8">
+                            ${(Array.isArray(pairs) ? pairs : []).map((p, pIdx) => `
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-white border border-slate-300 rounded-xl">
+                                    <div class="font-bold text-xs text-slate-800">${pIdx + 1}. ${escapeHtml(p.kiri)}</div>
+                                    <select class="quiz-match-select h-9 px-2.5 border-2 border-black rounded-lg font-bold text-xs bg-slate-50 focus:bg-white" data-qid="${q.id}" data-pidx="${pIdx}">
+                                        <option value="">-- Pilih Pasangan Cocok --</option>
+                                        ${rightOptions.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+                                    </select>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else if (q.tipe === 'upload_foto') {
+                    qBox.innerHTML = `
+                        <div class="flex items-start gap-2">
+                            <span class="w-6 h-6 bg-pink-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
+                            <div>
+                                <span class="text-[10px] bg-pink-100 text-pink-900 font-black px-1.5 py-0.5 rounded border border-pink-300 uppercase">Upload Lembar Kerja / Foto</span>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                            </div>
+                        </div>
+                        <div class="pl-8 space-y-2">
+                            ${q.rubrik_esai ? `<div class="p-2.5 bg-yellow-50 border border-yellow-200 rounded-xl text-xs font-bold text-yellow-900">${escapeHtml(q.rubrik_esai)}</div>` : ''}
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <input type="file" id="exam-file-${q.id}" accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="window.handleExamFileUpload(event, '${q.id}')">
+                                <button type="button" onclick="document.getElementById('exam-file-${q.id}').click()" class="px-4 py-2 bg-pink-500 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
+                                    <span>📷</span> Unggah Foto / Berkas Lembar Kerja
+                                </button>
+                                <span id="exam-file-status-${q.id}" class="text-xs font-bold text-slate-500">Belum ada berkas dipilih</span>
+                                <input type="hidden" id="exam-file-val-${q.id}" value="">
+                            </div>
                         </div>
                     `;
                 } else {
@@ -1584,11 +1689,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="w-6 h-6 bg-purple-700 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
                             <div>
                                 <span class="text-[10px] bg-purple-100 text-purple-900 font-black px-1.5 py-0.5 rounded border border-purple-300 uppercase">Soal Esai</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${q.pertanyaan}</p>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
                             </div>
                         </div>
                         <div class="pl-8">
-                            <textarea name="question_${q.id}" rows="3" placeholder="Tuliskan jawaban Anda di sini..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs focus:outline-none bg-white"></textarea>
+                            <textarea name="question_${q.id}" rows="4" placeholder="Tuliskan uraian jawaban Anda di sini..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs focus:outline-none bg-white"></textarea>
                         </div>
                     `;
                 }
@@ -1644,7 +1749,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const questions = activeQuizData.quiz_questions || [];
             let answers = {};
-            let pgScoreTotal = 0;
+            let autoScoreTotal = 0;
+            let hasSubjective = false;
 
             questions.forEach(q => {
                 if (q.tipe === 'pg') {
@@ -1652,11 +1758,53 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const val = selected ? selected.value : '';
                     answers[q.id] = val;
                     if (val && val.toUpperCase() === (q.kunci_pg || '').toUpperCase()) {
-                        pgScoreTotal += (q.bobot || 10);
+                        autoScoreTotal += (q.bobot || 10);
                     }
+                } else if (q.tipe === 'benar_salah') {
+                    const selected = document.querySelector(`input[name="question_${q.id}"]:checked`);
+                    const val = selected ? selected.value : '';
+                    answers[q.id] = val;
+                    if (val && val.trim().toLowerCase() === String(q.kunci_pg || '').trim().toLowerCase()) {
+                        autoScoreTotal += (q.bobot || 10);
+                    }
+                } else if (q.tipe === 'singkat') {
+                    const inputEl = document.querySelector(`input[name="question_${q.id}"]`);
+                    const val = inputEl ? inputEl.value.trim() : '';
+                    answers[q.id] = val;
+                    if (val && q.kunci_pg && val.toLowerCase() === String(q.kunci_pg).trim().toLowerCase()) {
+                        autoScoreTotal += (q.bobot || 10);
+                    } else if (val) {
+                        hasSubjective = true;
+                    }
+                } else if (q.tipe === 'menjodohkan') {
+                    let pairs = [];
+                    try { pairs = JSON.parse(q.rubrik_esai); } catch (_) { pairs = q.pasangan || []; }
+                    const studentPairs = {};
+                    let correctCount = 0;
+
+                    const selects = document.querySelectorAll(`select.quiz-match-select[data-qid="${q.id}"]`);
+                    selects.forEach(sel => {
+                        const pIdx = sel.getAttribute('data-pidx');
+                        const val = sel.value;
+                        studentPairs[pIdx] = val;
+                        const correctVal = pairs[pIdx]?.kanan || '';
+                        if (val && correctVal && val.trim().toLowerCase() === correctVal.trim().toLowerCase()) {
+                            correctCount++;
+                        }
+                    });
+                    answers[q.id] = studentPairs;
+                    if (pairs.length > 0) {
+                        const scorePart = Math.round((q.bobot || 20) * (correctCount / pairs.length));
+                        autoScoreTotal += scorePart;
+                    }
+                } else if (q.tipe === 'upload_foto') {
+                    const hiddenVal = document.getElementById(`exam-file-val-${q.id}`);
+                    answers[q.id] = hiddenVal ? hiddenVal.value : '';
+                    hasSubjective = true;
                 } else {
                     const textEl = document.querySelector(`textarea[name="question_${q.id}"]`);
                     answers[q.id] = textEl ? textEl.value.trim() : '';
+                    hasSubjective = true;
                 }
             });
 
@@ -1666,15 +1814,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 nama_siswa: activeQuizData.studentName,
                 kelas: activeQuizData.kelas,
                 jawaban_siswa: answers,
-                skor_pg: pgScoreTotal,
+                skor_pg: autoScoreTotal,
                 skor_esai: 0,
-                total_nilai: pgScoreTotal,
-                status_koreksi: 'selesai'
+                total_nilai: autoScoreTotal,
+                status_koreksi: hasSubjective ? 'belum_dikoreksi' : 'selesai'
             }]);
 
             if (error) throw error;
 
-            await showCustomModal(`Ujian berhasil dikumpulkan! Nilai Pilihan Ganda Anda: ${pgScoreTotal} poin.`, 'alert', 'Ujian Selesai', '🎉');
+            const modalMsg = hasSubjective 
+                ? `Ujian berhasil dikumpulkan! Nilai instrumen terpadu: ${autoScoreTotal} poin. Soal uraian / lembar foto Anda akan diperiksa dan dinilai oleh guru.`
+                : `Ujian berhasil dikumpulkan! Nilai akhir Anda: ${autoScoreTotal} poin.`;
+            await showCustomModal(modalMsg, 'alert', 'Ujian Selesai', '🎉');
             activeQuizData = null;
             document.getElementById('quiz-room-container').classList.add('hidden');
             document.getElementById('quiz-portal-landing').classList.remove('hidden');

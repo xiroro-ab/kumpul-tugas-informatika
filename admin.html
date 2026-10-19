@@ -1172,22 +1172,22 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-black uppercase text-black mb-1">Jml Pilihan Ganda</label>
-                        <select id="ai-quiz-count-pg" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
-                            <option value="5" selected>5 Soal PG</option>
-                            <option value="10">10 Soal PG</option>
-                            <option value="15">15 Soal PG</option>
-                            <option value="20">20 Soal PG</option>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Ragam / Tipe Soal</label>
+                        <select id="ai-quiz-model-ragam" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="campuran" selected>Kombinasi Variasi AKM (PG, B/S, Singkat, Jodohkan, Esai)</option>
+                            <option value="pg_murni">Pilihan Ganda (PG) Murni</option>
+                            <option value="pg_esai">Standar Ujian (PG & Esai)</option>
+                            <option value="akm_khusus">Literasi AKM (PG, Benar/Salah, Menjodohkan)</option>
+                            <option value="esai_murni">Uraian / Penalaran Esai Saja</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-black uppercase text-black mb-1">Jml Soal Esai</label>
-                        <select id="ai-quiz-count-esai" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
-                            <option value="0">0 Esai (Hanya PG)</option>
-                            <option value="1">1 Soal Esai</option>
-                            <option value="2" selected>2 Soal Esai</option>
-                            <option value="3">3 Soal Esai</option>
-                            <option value="5">5 Soal Esai</option>
+                        <label class="block text-xs font-black uppercase text-black mb-1">Total Butir Soal</label>
+                        <select id="ai-quiz-total-soal" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                            <option value="5" selected>5 Butir Soal</option>
+                            <option value="10">10 Butir Soal</option>
+                            <option value="15">15 Butir Soal</option>
+                            <option value="20">20 Butir Soal</option>
                         </select>
                     </div>
                 </div>
@@ -1288,17 +1288,29 @@
 
                 <!-- Bagian Butir Soal -->
                 <div class="space-y-3">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2">
                         <div>
                             <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">2. Butir-Butir Soal (<span id="manual-quiz-total-count">0</span> Soal)</h4>
-                            <p class="text-[11px] text-slate-500 font-bold">Tambahkan soal Pilihan Ganda (auto-koreksi) atau Soal Esai mandiri.</p>
+                            <p class="text-[11px] text-slate-500 font-bold">Tambahkan butir soal PG, Benar/Salah, Singkat, Menjodohkan, Upload Foto, atau Esai.</p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="addManualQuestionItem('pg')" class="px-3 py-1.5 bg-indigo-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                ➕ Tambah Soal PG
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <button type="button" onclick="addManualQuestionItem('pg')" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>🔘</span> PG
                             </button>
-                            <button type="button" onclick="addManualQuestionItem('esai')" class="px-3 py-1.5 bg-purple-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                ➕ Tambah Soal Esai
+                            <button type="button" onclick="addManualQuestionItem('benar_salah')" class="px-2.5 py-1.5 bg-amber-400 hover:bg-black hover:text-white text-black font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>⚖️</span> B/S
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('singkat')" class="px-2.5 py-1.5 bg-blue-500 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>✏️</span> Singkat
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('menjodohkan')" class="px-2.5 py-1.5 bg-teal-500 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>🔀</span> Jodohkan
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('upload_foto')" class="px-2.5 py-1.5 bg-pink-500 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>📷</span> Foto
+                            </button>
+                            <button type="button" onclick="addManualQuestionItem('esai')" class="px-2.5 py-1.5 bg-purple-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                                <span>📝</span> Esai
                             </button>
                         </div>
                     </div>

@@ -29,22 +29,45 @@ let activeAssignmentForSubmissions = null;
 let formBuilderQuestions = [];
 let editingAssignmentId = null;
 
-export const TARGET_CLASS_OPTIONS = [
-    { value: 'Semua Kelas', label: '🌐 Semua Kelas (VII, VIII, IX)' },
-    { value: 'Semua Kelas 7 (VII)', label: '📚 Khusus Semua Kelas 7 (VII.1 - VII.10)' },
-    { value: 'Semua Kelas 8 (VIII)', label: '📚 Khusus Semua Kelas 8 (VIII.1 - VIII.10)' },
-    { value: 'Semua Kelas 9 (IX)', label: '📚 Khusus Semua Kelas 9 (IX.1 - IX.10)' },
-    ...['7.1', '7.2', '7.3', '7.4', '7.5', '7.6', '7.7', '7.8', '7.9', '7.10'].map(c => ({ value: c, label: `Kelas ${c}` })),
-    ...['8.1', '8.2', '8.3', '8.4', '8.5', '8.6', '8.7', '8.8', '8.9', '8.10'].map(c => ({ value: c, label: `Kelas ${c}` })),
-    ...['9.1', '9.2', '9.3', '9.4', '9.5', '9.6', '9.7', '9.8', '9.9', '9.10'].map(c => ({ value: c, label: `Kelas ${c}` }))
-];
+export function getDynamicClassOptions(classes = stateKelas) {
+    const list = Array.isArray(classes) ? classes.filter(Boolean) : [];
+    const options = [
+        { value: 'Semua Kelas', label: '🌐 Semua Kelas (Seluruh Siswa)' }
+    ];
+
+    if (list.length === 0) {
+        return options;
+    }
+
+    // Deteksi tingkat kelas yang benar-benar ada di daftar pengaturan
+    const hasGrade7 = list.some(k => /\b7\b|vii/i.test(k));
+    const hasGrade8 = list.some(k => /\b8\b|viii/i.test(k));
+    const hasGrade9 = list.some(k => /\b9\b|ix/i.test(k));
+
+    if (hasGrade7) {
+        options.push({ value: 'Semua Kelas 7 (VII)', label: '📚 Khusus Semua Kelas 7 (VII)' });
+    }
+    if (hasGrade8) {
+        options.push({ value: 'Semua Kelas 8 (VIII)', label: '📚 Khusus Semua Kelas 8 (VIII)' });
+    }
+    if (hasGrade9) {
+        options.push({ value: 'Semua Kelas 9 (IX)', label: '📚 Khusus Semua Kelas 9 (IX)' });
+    }
+
+    // Tambahkan HANYA kelas yang terdaftar di Pengaturan
+    list.forEach(k => {
+        options.push({ value: k, label: `Kelas ${k}` });
+    });
+
+    return options;
+}
 
 export function isClassMatch(targetKelas, studentKelas) {
     if (!targetKelas || !studentKelas) return true;
     const target = String(targetKelas).trim().toLowerCase();
     const student = String(studentKelas).trim().toLowerCase();
 
-    if (target === 'semua' || target === 'semua kelas' || (target.includes('semua') && !target.match(/[789]|vii|viii|ix/))) {
+    if (target === '' || target === 'semua' || target === 'semua kelas' || (target.includes('semua') && !target.match(/[789]|vii|viii|ix/))) {
         return true;
     }
 
@@ -73,6 +96,7 @@ export function isClassMatch(targetKelas, studentKelas) {
 
 export function populateTargetClassSelect(selectElement, selectedValue = 'Semua Kelas', includeAllFilter = false) {
     if (!selectElement) return;
+    const currentVal = selectedValue !== undefined ? selectedValue : selectElement.value;
     selectElement.innerHTML = '';
 
     if (includeAllFilter) {
@@ -82,25 +106,21 @@ export function populateTargetClassSelect(selectElement, selectedValue = 'Semua 
         selectElement.appendChild(opt);
     }
 
-    TARGET_CLASS_OPTIONS.forEach(item => {
+    const options = getDynamicClassOptions(stateKelas);
+    options.forEach(item => {
         const opt = document.createElement('option');
         opt.value = item.value;
         opt.textContent = item.label;
-        if (item.value === selectedValue) opt.selected = true;
+        if (item.value === currentVal) opt.selected = true;
         selectElement.appendChild(opt);
     });
 
-    if (Array.isArray(stateKelas)) {
-        stateKelas.forEach(k => {
-            const exists = Array.from(selectElement.options).some(o => o.value === k);
-            if (!exists) {
-                const opt = document.createElement('option');
-                opt.value = k;
-                opt.textContent = `Kelas ${k}`;
-                if (k === selectedValue) opt.selected = true;
-                selectElement.appendChild(opt);
-            }
-        });
+    if (currentVal && !Array.from(selectElement.options).some(o => o.value === currentVal)) {
+        const fallbackOpt = document.createElement('option');
+        fallbackOpt.value = currentVal;
+        fallbackOpt.textContent = `Kelas ${currentVal}`;
+        fallbackOpt.selected = true;
+        selectElement.appendChild(fallbackOpt);
     }
 }
 
@@ -2355,8 +2375,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const taksonomi = document.getElementById('ai-quiz-taksonomi').value;
         const kesulitan = document.getElementById('ai-quiz-kesulitan').value;
         const stimulus = document.getElementById('ai-quiz-stimulus').value;
-        const countPG = parseInt(document.getElementById('ai-quiz-count-pg').value, 10) || 5;
-        const countEsai = parseInt(document.getElementById('ai-quiz-count-esai').value, 10) || 0;
+        const ragam = document.getElementById('ai-quiz-model-ragam')?.value || 'campuran';
+        const totalSoal = parseInt(document.getElementById('ai-quiz-total-soal')?.value, 10) || 5;
         const durasi = parseInt(document.getElementById('ai-quiz-durasi').value, 10) || 45;
 
         if (!judul || !topik) {
@@ -2376,8 +2396,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 taksonomi,
                 kesulitan,
                 stimulus,
-                jmlPg: countPG,
-                jmlEsai: countEsai,
+                ragam,
+                totalSoal,
                 durasi
             });
 
@@ -2399,26 +2419,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (quizError) throw quizError;
 
-            const questionsPayload = questions.map((q, idx) => ({
-                quiz_id: quizData.id,
-                nomor: idx + 1,
-                tipe: q.tipe || 'pg',
-                pertanyaan: q.pertanyaan,
-                opsi_a: q.opsi_a || '',
-                opsi_b: q.opsi_b || '',
-                opsi_c: q.opsi_c || '',
-                opsi_d: q.opsi_d || '',
-                kunci_pg: q.kunci_pg || '',
-                rubrik_esai: q.rubrik_esai || '',
-                bobot: q.bobot || (q.tipe === 'esai' ? 25 : 10)
-            }));
+            const questionsPayload = questions.map((q, idx) => {
+                let rubrik = q.rubrik_esai || '';
+                if (q.tipe === 'menjodohkan') {
+                    rubrik = JSON.stringify(q.pasangan || []);
+                }
+                return {
+                    quiz_id: quizData.id,
+                    nomor: idx + 1,
+                    tipe: q.tipe || 'pg',
+                    pertanyaan: q.pertanyaan,
+                    opsi_a: q.opsi_a || '',
+                    opsi_b: q.opsi_b || '',
+                    opsi_c: q.opsi_c || '',
+                    opsi_d: q.opsi_d || '',
+                    kunci_pg: q.kunci_pg || '',
+                    rubrik_esai: rubrik,
+                    bobot: q.bobot || (q.tipe === 'esai' || q.tipe === 'menjodohkan' || q.tipe === 'upload_foto' ? 20 : 10)
+                };
+            });
 
             const { error: qError } = await supabase.from('quiz_questions').insert(questionsPayload);
             if (qError) throw qError;
 
             closeAiQuizModal();
             loadQuizzes();
-            showCustomModal(`✅ Berhasil! Kuis "${judul}" berisi ${questions.length} butir soal (${countPG} PG & ${countEsai} Esai) telah dipublikasikan ke ${kelas}!`);
+            const typesSummary = [...new Set(questions.map(q => q.tipe || 'pg'))].join(', ');
+            showCustomModal(`✅ Berhasil! Kuis "${judul}" berisi ${questions.length} butir soal (${typesSummary}) telah dipublikasikan ke ${kelas}!`);
         } catch (e) {
             showCustomModal("Gagal generate bank soal AI: " + e.message);
         } finally {
@@ -2467,6 +2494,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.addManualQuestionItem = (type = 'pg') => {
+        const defaultBobot = (type === 'esai' || type === 'upload_foto' || type === 'menjodohkan') ? 20 : 10;
+        let defaultPasangan = [];
+        let defaultKunci = '';
+        if (type === 'pg') defaultKunci = 'A';
+        else if (type === 'benar_salah') defaultKunci = 'Benar';
+        else if (type === 'menjodohkan') {
+            defaultPasangan = [
+                { kiri: '', kanan: '' },
+                { kiri: '', kanan: '' }
+            ];
+        }
+
         manualQuizQuestions.push({
             id: Date.now() + Math.random(),
             tipe: type,
@@ -2475,9 +2514,10 @@ document.addEventListener('DOMContentLoaded', () => {
             opsi_b: '',
             opsi_c: '',
             opsi_d: '',
-            kunci_pg: 'A',
-            rubrik_esai: '',
-            bobot: type === 'pg' ? 10 : 25
+            kunci_pg: defaultKunci,
+            rubrik_esai: type === 'upload_foto' ? 'Unggah foto lembar pekerjaan / hitungan dengan jelas.' : '',
+            pasangan: defaultPasangan,
+            bobot: defaultBobot
         });
         renderManualQuizQuestions();
 
@@ -2487,6 +2527,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }, 50);
+    };
+
+    window.addManualQuizPair = (qIdx) => {
+        if (manualQuizQuestions[qIdx]) {
+            if (!Array.isArray(manualQuizQuestions[qIdx].pasangan)) {
+                manualQuizQuestions[qIdx].pasangan = [];
+            }
+            manualQuizQuestions[qIdx].pasangan.push({ kiri: '', kanan: '' });
+            renderManualQuizQuestions();
+        }
+    };
+
+    window.removeManualQuizPair = (qIdx, pIdx) => {
+        if (manualQuizQuestions[qIdx] && Array.isArray(manualQuizQuestions[qIdx].pasangan)) {
+            if (manualQuizQuestions[qIdx].pasangan.length <= 1) {
+                showCustomModal("Minimal harus ada 1 pasangan soal menjodohkan!");
+                return;
+            }
+            manualQuizQuestions[qIdx].pasangan.splice(pIdx, 1);
+            renderManualQuizQuestions();
+        }
+    };
+
+    window.updateManualQuizPair = (qIdx, pIdx, side, value) => {
+        if (manualQuizQuestions[qIdx] && Array.isArray(manualQuizQuestions[qIdx].pasangan) && manualQuizQuestions[qIdx].pasangan[pIdx]) {
+            manualQuizQuestions[qIdx].pasangan[pIdx][side] = value;
+        }
     };
 
     window.deleteManualQuestionItem = (idx) => {
@@ -2507,7 +2574,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.changeManualQuestionType = (idx, newType) => {
         if (manualQuizQuestions[idx]) {
             manualQuizQuestions[idx].tipe = newType;
-            manualQuizQuestions[idx].bobot = newType === 'pg' ? 10 : 25;
+            manualQuizQuestions[idx].bobot = (newType === 'esai' || newType === 'upload_foto' || newType === 'menjodohkan') ? 20 : 10;
+            if (newType === 'pg' && !['A', 'B', 'C', 'D'].includes(manualQuizQuestions[idx].kunci_pg)) {
+                manualQuizQuestions[idx].kunci_pg = 'A';
+            } else if (newType === 'benar_salah') {
+                manualQuizQuestions[idx].kunci_pg = 'Benar';
+            } else if (newType === 'menjodohkan' && (!Array.isArray(manualQuizQuestions[idx].pasangan) || manualQuizQuestions[idx].pasangan.length === 0)) {
+                manualQuizQuestions[idx].pasangan = [
+                    { kiri: '', kanan: '' },
+                    { kiri: '', kanan: '' }
+                ];
+            } else if (newType === 'upload_foto' && !manualQuizQuestions[idx].rubrik_esai) {
+                manualQuizQuestions[idx].rubrik_esai = 'Unggah foto lembar pekerjaan / hitungan dengan jelas.';
+            }
             renderManualQuizQuestions();
         }
     };
@@ -2520,28 +2599,135 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!container) return;
 
         if (manualQuizQuestions.length === 0) {
-            container.innerHTML = '<div class="p-6 text-center text-xs font-bold text-slate-500 bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl">Belum ada soal. Klik tombol "Tambah Soal PG" atau "Tambah Soal Esai" di atas.</div>';
+            container.innerHTML = '<div class="p-6 text-center text-xs font-bold text-slate-500 bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl">Belum ada soal. Klik salah satu tombol tambah soal di atas.</div>';
             return;
         }
 
+        const typeColors = {
+            pg: 'bg-indigo-100 text-indigo-900 border-indigo-400',
+            benar_salah: 'bg-amber-100 text-amber-900 border-amber-400',
+            singkat: 'bg-blue-100 text-blue-900 border-blue-400',
+            menjodohkan: 'bg-teal-100 text-teal-900 border-teal-400',
+            upload_foto: 'bg-pink-100 text-pink-900 border-pink-400',
+            esai: 'bg-purple-100 text-purple-900 border-purple-400'
+        };
+
         container.innerHTML = manualQuizQuestions.map((q, idx) => {
-            const isPg = q.tipe === 'pg';
+            const currentType = q.tipe || 'pg';
+            let specificContent = '';
+
+            if (currentType === 'pg') {
+                specificContent = `
+                    <div class="space-y-2 pt-1">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-[11px] font-black uppercase text-black">Pilihan Jawaban (A, B, C, D)</label>
+                            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">Pilih radio untuk Kunci Jawaban Benar</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${['A', 'B', 'C', 'D'].map(opt => {
+                                const key = `opsi_${opt.toLowerCase()}`;
+                                const val = q[key] || '';
+                                const isChecked = q.kunci_pg === opt;
+                                return `
+                                    <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${isChecked ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
+                                        <input type="radio" name="manual_quiz_kunci_${idx}" value="${opt}" ${isChecked ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', '${opt}'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
+                                        <span class="font-black text-xs">${opt}.</span>
+                                        <input type="text" placeholder="Pilihan ${opt}..." value="${escapeHtml(val)}" oninput="window.updateManualQuestionField(${idx}, '${key}', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (currentType === 'benar_salah') {
+                const isBenar = q.kunci_pg === 'Benar';
+                specificContent = `
+                    <div class="space-y-2 pt-1">
+                        <label class="block text-[11px] font-black uppercase text-black">Tentukan Kunci Kebenaran Pernyataan</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center gap-2.5 p-3 rounded-xl border-2 border-black cursor-pointer ${isBenar ? 'bg-emerald-200 border-black ring-2 ring-emerald-500 font-black' : 'bg-slate-50 font-bold'}">
+                                <input type="radio" name="manual_quiz_bs_${idx}" value="Benar" ${isBenar ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'Benar'); window.renderManualQuizQuestions();" class="accent-emerald-700">
+                                <span class="text-xs text-black">✅ PERNYATAAN BENAR</span>
+                            </label>
+                            <label class="flex items-center gap-2.5 p-3 rounded-xl border-2 border-black cursor-pointer ${!isBenar ? 'bg-red-200 border-black ring-2 ring-red-500 font-black' : 'bg-slate-50 font-bold'}">
+                                <input type="radio" name="manual_quiz_bs_${idx}" value="Salah" ${!isBenar ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'Salah'); window.renderManualQuizQuestions();" class="accent-red-700">
+                                <span class="text-xs text-black">❌ PERNYATAAN SALAH</span>
+                            </label>
+                        </div>
+                    </div>
+                `;
+            } else if (currentType === 'singkat') {
+                specificContent = `
+                    <div class="pt-1">
+                        <label class="block text-[11px] font-black uppercase text-black mb-1">Kunci Jawaban Singkat (Kata Kunci Jawaban Benar)</label>
+                        <input type="text" placeholder="Contoh: RAM, CPU, Fotosintesis, atau angka pasti..." value="${escapeHtml(q.kunci_pg || '')}" oninput="window.updateManualQuestionField(${idx}, 'kunci_pg', this.value)" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white">
+                        <p class="text-[10px] text-slate-500 font-bold mt-1">Jawaban siswa akan dicocokkan otomatis (tidak membedakan huruf besar/kecil).</p>
+                    </div>
+                `;
+            } else if (currentType === 'menjodohkan') {
+                const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
+                specificContent = `
+                    <div class="space-y-2 pt-1">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-[11px] font-black uppercase text-black">Pasangan Soal Menjodohkan</label>
+                            <button type="button" onclick="window.addManualQuizPair(${idx})" class="text-[11px] bg-teal-600 hover:bg-black text-white font-black px-2.5 py-1 rounded-lg border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition">
+                                ➕ Tambah Pasangan
+                            </button>
+                        </div>
+                        <div class="space-y-2">
+                            ${pairs.map((p, pIdx) => `
+                                <div class="flex items-center gap-2 bg-teal-50/60 p-2 rounded-xl border border-teal-300">
+                                    <span class="w-6 h-6 rounded-full bg-teal-700 text-white font-black text-[10px] flex items-center justify-center shrink-0">${pIdx + 1}</span>
+                                    <input type="text" placeholder="Pernyataan Kiri (Premis)..." value="${escapeHtml(p.kiri || '')}" oninput="window.updateManualQuizPair(${idx}, ${pIdx}, 'kiri', this.value)" class="flex-1 h-9 px-2.5 border-2 border-black rounded-lg font-medium text-xs bg-white">
+                                    <span class="font-black text-xs text-slate-400">➔</span>
+                                    <input type="text" placeholder="Jawaban Cocok Kanan..." value="${escapeHtml(p.kanan || '')}" oninput="window.updateManualQuizPair(${idx}, ${pIdx}, 'kanan', this.value)" class="flex-1 h-9 px-2.5 border-2 border-black rounded-lg font-medium text-xs bg-white">
+                                    <button type="button" onclick="window.removeManualQuizPair(${idx}, ${pIdx})" class="w-8 h-8 rounded-lg border border-red-400 text-red-600 hover:bg-red-500 hover:text-white flex items-center justify-center font-black transition text-sm shrink-0">
+                                        &times;
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (currentType === 'upload_foto') {
+                specificContent = `
+                    <div class="pt-1 space-y-1.5">
+                        <div class="p-2.5 bg-pink-50 border border-pink-300 rounded-xl text-[11px] font-bold text-pink-900 flex items-center gap-2">
+                            <span>📷</span> Siswa akan mengunggah berkas/foto lembar jawaban fisik langsung ke server melalui kamera/galeri.
+                        </div>
+                        <label class="block text-[11px] font-black uppercase text-black">Rubrik Penilaian & Ketentuan Lembar Foto</label>
+                        <textarea rows="2" placeholder="Contoh: Foto hitungan rumus step-by-step dengan tulisan tangan rapi dan jelas..." oninput="window.updateManualQuestionField(${idx}, 'rubrik_esai', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.rubrik_esai || '')}</textarea>
+                    </div>
+                `;
+            } else {
+                specificContent = `
+                    <div class="pt-1">
+                        <label class="block text-[11px] font-black uppercase text-black mb-1">Rubrik / Kunci Penilaian Jawaban Esai (Panduan Koreksi Guru & AI)</label>
+                        <textarea rows="2" placeholder="Tuliskan kriteria penilaian atau poin-poin yang wajib dijawab siswa..." oninput="window.updateManualQuestionField(${idx}, 'rubrik_esai', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.rubrik_esai || '')}</textarea>
+                    </div>
+                `;
+            }
+
             return `
                 <div class="border-2 border-black rounded-2xl p-4 bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-3">
-                    <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2.5">
+                    <div class="flex items-center justify-between border-b-2 border-slate-200 pb-2.5 flex-wrap gap-2">
                         <div class="flex items-center gap-2">
                             <span class="w-7 h-7 rounded-lg bg-black text-white font-black text-xs flex items-center justify-center">
                                 ${idx + 1}
                             </span>
-                            <select onchange="window.changeManualQuestionType(${idx}, this.value)" class="h-8 px-2 border-2 border-black rounded-lg font-black text-xs ${isPg ? 'bg-indigo-100 text-indigo-900' : 'bg-purple-100 text-purple-900'} cursor-pointer">
-                                <option value="pg" ${isPg ? 'selected' : ''}>Pilihan Ganda (PG)</option>
-                                <option value="esai" ${!isPg ? 'selected' : ''}>Esai / Uraian</option>
+                            <select onchange="window.changeManualQuestionType(${idx}, this.value)" class="h-8 px-2 border-2 border-black rounded-lg font-black text-xs ${typeColors[currentType] || 'bg-slate-100'} cursor-pointer">
+                                <option value="pg" ${currentType === 'pg' ? 'selected' : ''}>🔘 Pilihan Ganda (PG)</option>
+                                <option value="benar_salah" ${currentType === 'benar_salah' ? 'selected' : ''}>⚖️ Benar / Salah</option>
+                                <option value="singkat" ${currentType === 'singkat' ? 'selected' : ''}>✏️ Isian Singkat</option>
+                                <option value="menjodohkan" ${currentType === 'menjodohkan' ? 'selected' : ''}>🔀 Menjodohkan</option>
+                                <option value="upload_foto" ${currentType === 'upload_foto' ? 'selected' : ''}>📷 Upload Foto / Berkas</option>
+                                <option value="esai" ${currentType === 'esai' ? 'selected' : ''}>📝 Esai / Uraian</option>
                             </select>
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="flex items-center gap-1.5">
                                 <label class="text-[11px] font-black uppercase text-slate-600">Bobot:</label>
-                                <input type="number" min="1" max="100" value="${q.bobot || (isPg ? 10 : 25)}" oninput="window.updateManualQuestionField(${idx}, 'bobot', this.value)" class="w-14 h-8 px-1.5 border-2 border-black rounded-lg font-black text-xs text-center bg-slate-50">
+                                <input type="number" min="1" max="100" value="${q.bobot || 10}" oninput="window.updateManualQuestionField(${idx}, 'bobot', this.value)" class="w-14 h-8 px-1.5 border-2 border-black rounded-lg font-black text-xs text-center bg-slate-50">
                             </div>
                             <button type="button" onclick="window.deleteManualQuestionItem(${idx})" title="Hapus Soal" class="w-8 h-8 rounded-lg border-2 border-red-500 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white flex items-center justify-center font-black transition">
                                 &times;
@@ -2554,41 +2740,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <textarea rows="2" placeholder="Tuliskan butir soal di sini..." oninput="window.updateManualQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.pertanyaan)}</textarea>
                     </div>
 
-                    ${isPg ? `
-                        <div class="space-y-2 pt-1">
-                            <div class="flex justify-between items-center">
-                                <label class="block text-[11px] font-black uppercase text-black">Pilihan Jawaban (A, B, C, D)</label>
-                                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">Pilih radio button untuk Kunci Benar</span>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${q.kunci_pg === 'A' ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
-                                    <input type="radio" name="kunci_${idx}" value="A" ${q.kunci_pg === 'A' ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'A'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
-                                    <span class="font-black text-xs">A.</span>
-                                    <input type="text" placeholder="Opsi A..." value="${escapeHtml(q.opsi_a)}" oninput="window.updateManualQuestionField(${idx}, 'opsi_a', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
-                                </div>
-                                <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${q.kunci_pg === 'B' ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
-                                    <input type="radio" name="kunci_${idx}" value="B" ${q.kunci_pg === 'B' ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'B'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
-                                    <span class="font-black text-xs">B.</span>
-                                    <input type="text" placeholder="Opsi B..." value="${escapeHtml(q.opsi_b)}" oninput="window.updateManualQuestionField(${idx}, 'opsi_b', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
-                                </div>
-                                <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${q.kunci_pg === 'C' ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
-                                    <input type="radio" name="kunci_${idx}" value="C" ${q.kunci_pg === 'C' ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'C'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
-                                    <span class="font-black text-xs">C.</span>
-                                    <input type="text" placeholder="Opsi C..." value="${escapeHtml(q.opsi_c)}" oninput="window.updateManualQuestionField(${idx}, 'opsi_c', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
-                                </div>
-                                <div class="flex items-center gap-2 border-2 border-black rounded-xl px-2.5 py-1.5 ${q.kunci_pg === 'D' ? 'bg-emerald-100 border-emerald-600 ring-2 ring-emerald-500' : 'bg-slate-50'}">
-                                    <input type="radio" name="kunci_${idx}" value="D" ${q.kunci_pg === 'D' ? 'checked' : ''} onchange="window.updateManualQuestionField(${idx}, 'kunci_pg', 'D'); window.renderManualQuizQuestions();" class="cursor-pointer accent-emerald-600">
-                                    <span class="font-black text-xs">D.</span>
-                                    <input type="text" placeholder="Opsi D..." value="${escapeHtml(q.opsi_d)}" oninput="window.updateManualQuestionField(${idx}, 'opsi_d', this.value)" class="w-full bg-transparent font-medium text-xs outline-none">
-                                </div>
-                            </div>
-                        </div>
-                    ` : `
-                        <div class="pt-1">
-                            <label class="block text-[11px] font-black uppercase text-black mb-1">Rubrik / Kunci Penilaian Jawaban Esai (Panduan Koreksi)</label>
-                            <textarea rows="2" placeholder="Tuliskan kriteria penilaian atau poin-poin yang wajib dijawab siswa..." oninput="window.updateManualQuestionField(${idx}, 'rubrik_esai', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.rubrik_esai)}</textarea>
-                        </div>
-                    `}
+                    ${specificContent}
                 </div>
             `;
         }).join('');
@@ -2622,6 +2774,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     showCustomModal(`Pilihan jawaban (A, B, C, D) pada soal nomor ${i + 1} harus diisi lengkap!`);
                     return;
                 }
+            } else if (q.tipe === 'menjodohkan') {
+                const pairs = q.pasangan || [];
+                const validPairs = pairs.filter(p => p.kiri && p.kiri.trim() && p.kanan && p.kanan.trim());
+                if (validPairs.length === 0) {
+                    showCustomModal(`Pasangan pada soal nomor ${i + 1} harus diisi minimal 1 pasangan lengkap!`);
+                    return;
+                }
             }
         }
 
@@ -2644,28 +2803,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (quizError) throw quizError;
 
-            const questionsPayload = manualQuizQuestions.map((q, idx) => ({
-                quiz_id: quizData.id,
-                nomor: idx + 1,
-                tipe: q.tipe || 'pg',
-                pertanyaan: q.pertanyaan.trim(),
-                opsi_a: q.opsi_a ? q.opsi_a.trim() : '',
-                opsi_b: q.opsi_b ? q.opsi_b.trim() : '',
-                opsi_c: q.opsi_c ? q.opsi_c.trim() : '',
-                opsi_d: q.opsi_d ? q.opsi_d.trim() : '',
-                kunci_pg: q.kunci_pg || 'A',
-                rubrik_esai: q.rubrik_esai ? q.rubrik_esai.trim() : '',
-                bobot: parseInt(q.bobot, 10) || (q.tipe === 'esai' ? 25 : 10)
-            }));
+            const questionsPayload = manualQuizQuestions.map((q, idx) => {
+                let rubrik = q.rubrik_esai ? q.rubrik_esai.trim() : '';
+                if (q.tipe === 'menjodohkan') {
+                    rubrik = JSON.stringify(q.pasangan || []);
+                }
+                let kunci = q.kunci_pg || '';
+                if (q.tipe === 'benar_salah' && !kunci) kunci = 'Benar';
+                if (q.tipe === 'pg' && !kunci) kunci = 'A';
+
+                return {
+                    quiz_id: quizData.id,
+                    nomor: idx + 1,
+                    tipe: q.tipe || 'pg',
+                    pertanyaan: q.pertanyaan.trim(),
+                    opsi_a: q.opsi_a ? q.opsi_a.trim() : '',
+                    opsi_b: q.opsi_b ? q.opsi_b.trim() : '',
+                    opsi_c: q.opsi_c ? q.opsi_c.trim() : '',
+                    opsi_d: q.opsi_d ? q.opsi_d.trim() : '',
+                    kunci_pg: kunci,
+                    rubrik_esai: rubrik,
+                    bobot: parseInt(q.bobot, 10) || 10
+                };
+            });
 
             const { error: qError } = await supabase.from('quiz_questions').insert(questionsPayload);
             if (qError) throw qError;
 
             closeManualQuizModal();
             loadQuizzes();
-            const countPg = manualQuizQuestions.filter(q => q.tipe === 'pg').length;
-            const countEsai = manualQuizQuestions.filter(q => q.tipe === 'esai').length;
-            showCustomModal(`✅ Berhasil! Kuis manual "${judul}" (${countPg} PG & ${countEsai} Esai) telah berhasil diterbitkan untuk ${kelas}!`);
+            const typesSummary = [...new Set(manualQuizQuestions.map(q => q.tipe || 'pg'))].join(', ');
+            showCustomModal(`✅ Berhasil! Kuis manual "${judul}" (${manualQuizQuestions.length} butir soal: ${typesSummary}) telah berhasil diterbitkan untuk ${kelas}!`);
         } catch (e) {
             showCustomModal("Gagal menyimpan kuis manual: " + e.message);
         } finally {
@@ -2916,15 +3084,148 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isCorrect = studentAns.toUpperCase() === (q.kunci_pg || '').toUpperCase();
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-black">No. ${idx + 1} (Pilihan Ganda)</span>
+                        <span class="font-black text-xs text-black">No. ${idx + 1} (🔘 Pilihan Ganda)</span>
                         <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${isCorrect ? '✅ Benar (+10)' : '❌ Salah (0)'}
+                            ${isCorrect ? `✅ Benar (+${q.bobot || 10})` : '❌ Salah (0)'}
                         </span>
                     </div>
-                    <p class="font-bold text-xs text-slate-800">${q.pertanyaan}</p>
+                    <p class="font-bold text-xs text-slate-800">${escapeHtml(q.pertanyaan)}</p>
                     <div class="text-[11px] font-bold text-slate-600 flex gap-4">
-                        <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700' : 'text-red-700'}">${studentAns}</strong></span>
-                        <span>Kunci: <strong class="text-black">${q.kunci_pg}</strong></span>
+                        <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(studentAns)}</strong></span>
+                        <span>Kunci: <strong class="text-black">${escapeHtml(q.kunci_pg)}</strong></span>
+                    </div>
+                `;
+            } else if (q.tipe === 'benar_salah') {
+                const studentAns = answers[q.id] || '(Tidak dijawab)';
+                const isCorrect = String(studentAns).trim().toLowerCase() === String(q.kunci_pg || '').trim().toLowerCase();
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-xs text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 uppercase">No. ${idx + 1} (⚖️ Benar/Salah)</span>
+                        <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            ${isCorrect ? `✅ Benar (+${q.bobot || 10})` : '❌ Salah (0)'}
+                        </span>
+                    </div>
+                    <p class="font-bold text-xs text-slate-800">${escapeHtml(q.pertanyaan)}</p>
+                    <div class="text-[11px] font-bold text-slate-600 flex gap-4">
+                        <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(studentAns)}</strong></span>
+                        <span>Kunci Kebenaran: <strong class="text-black">${escapeHtml(q.kunci_pg)}</strong></span>
+                    </div>
+                `;
+            } else if (q.tipe === 'singkat') {
+                const studentAns = answers[q.id] || '(Kosong)';
+                const isCorrect = String(studentAns).trim().toLowerCase() === String(q.kunci_pg || '').trim().toLowerCase();
+                const currentFeedback = aiFeedback[q.id] || {};
+                const defaultScore = isCorrect ? (q.bobot || 10) : 0;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-xs text-blue-900 bg-blue-100 px-2 py-0.5 rounded border border-blue-300 uppercase">No. ${idx + 1} (✏️ Isian Singkat)</span>
+                        <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-amber-100 text-amber-900 border-amber-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            ${isCorrect ? `✅ Cocok Otomatis (+${q.bobot || 10})` : 'Perlu Evaluasi Guru/AI'}
+                        </span>
+                    </div>
+                    <p class="font-bold text-xs text-black">${escapeHtml(q.pertanyaan)}</p>
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-300 text-xs">
+                        <div class="font-bold text-slate-600">Jawaban Siswa: <strong class="text-black text-sm">${escapeHtml(studentAns)}</strong></div>
+                        <div class="text-[11px] font-bold text-emerald-700 mt-0.5">Kunci Kata Jawaban: ${escapeHtml(q.kunci_pg || '-')}</div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 items-center">
+                        <div class="sm:col-span-1">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor (0-${q.bobot || 10})</label>
+                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : defaultScore}" min="0" max="${q.bobot || 10}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Catatan / Evaluasi</label>
+                            <input type="text" id="essay-feedback-${q.id}" value="${currentFeedback.feedback || ''}" placeholder="Catatan evaluasi guru..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                        </div>
+                    </div>
+                `;
+            } else if (q.tipe === 'menjodohkan') {
+                let pairs = [];
+                try { pairs = JSON.parse(q.rubrik_esai); } catch (_) { pairs = q.pasangan || []; }
+                const studentPairs = answers[q.id] || {};
+                const currentFeedback = aiFeedback[q.id] || {};
+
+                let correctMatches = 0;
+                const rows = (Array.isArray(pairs) ? pairs : []).map((p, pIdx) => {
+                    const stAns = studentPairs[pIdx] || '(Kosong)';
+                    const isMatch = String(stAns).trim().toLowerCase() === String(p.kanan || '').trim().toLowerCase();
+                    if (isMatch) correctMatches++;
+                    return `
+                        <tr class="border-b border-slate-200">
+                            <td class="p-2 font-bold text-xs text-black">${escapeHtml(p.kiri)}</td>
+                            <td class="p-2 font-bold text-xs ${isMatch ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(stAns)}</td>
+                            <td class="p-2 font-bold text-xs text-slate-600">${escapeHtml(p.kanan)}</td>
+                            <td class="p-2 text-center text-xs">${isMatch ? '✅' : '❌'}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                const autoScore = pairs.length > 0 ? Math.round((q.bobot || 20) * (correctMatches / pairs.length)) : 0;
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-xs text-teal-900 bg-teal-100 px-2 py-0.5 rounded border border-teal-300 uppercase">No. ${idx + 1} (🔀 Menjodohkan)</span>
+                        <span class="text-xs font-bold text-slate-500">Kesesuaian: ${correctMatches}/${pairs.length} Pasangan</span>
+                    </div>
+                    <p class="font-bold text-xs text-black">${escapeHtml(q.pertanyaan)}</p>
+                    <div class="overflow-x-auto bg-white rounded-xl border border-slate-300">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 border-b border-slate-300 font-black text-slate-700 uppercase text-[10px]">
+                                <tr>
+                                    <th class="p-2">Premis (Kiri)</th>
+                                    <th class="p-2">Pilihan Siswa</th>
+                                    <th class="p-2">Kunci Sebenarnya</th>
+                                    <th class="p-2 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 items-center">
+                        <div class="sm:col-span-1">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor (0-${q.bobot || 20})</label>
+                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : autoScore}" min="0" max="${q.bobot || 20}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Masukan / Feedback Guru</label>
+                            <input type="text" id="essay-feedback-${q.id}" value="${currentFeedback.feedback || ''}" placeholder="Catatan evaluasi menjodohkan..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                        </div>
+                    </div>
+                `;
+            } else if (q.tipe === 'upload_foto') {
+                const fileUrl = answers[q.id] || '';
+                const currentFeedback = aiFeedback[q.id] || {};
+                const isImage = fileUrl.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i);
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-xs text-pink-900 bg-pink-100 px-2 py-0.5 rounded border border-pink-300 uppercase">No. ${idx + 1} (📷 Upload Foto / Berkas)</span>
+                        <span class="text-xs font-bold text-slate-500">Bobot Maks: ${q.bobot || 20}</span>
+                    </div>
+                    <p class="font-bold text-xs text-black">${escapeHtml(q.pertanyaan)}</p>
+                    ${q.rubrik_esai ? `<div class="bg-yellow-50 p-2 rounded border border-yellow-200 text-[11px] font-bold text-yellow-900"><strong>Rubrik Kunci Guru:</strong> ${escapeHtml(q.rubrik_esai)}</div>` : ''}
+                    <div class="bg-white p-3 rounded-xl border border-slate-300 space-y-2">
+                        <span class="text-[10px] font-black text-slate-400 block uppercase">Berkas Lampiran Hasil Pengerjaan Siswa:</span>
+                        ${fileUrl ? `
+                            <div class="flex items-center gap-3">
+                                ${isImage ? `<a href="${fileUrl}" target="_blank" title="Klik untuk memperbesar foto"><img src="${fileUrl}" class="w-24 h-24 object-cover rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:scale-105 transition-transform cursor-pointer"></a>` : ''}
+                                <div>
+                                    <a href="${fileUrl}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-black text-white rounded-lg font-black text-xs transition">
+                                        <span>🔍</span> Buka Berkas Penuh ↗
+                                    </a>
+                                </div>
+                            </div>
+                        ` : `<p class="text-xs font-bold text-red-500 italic">Siswa tidak mengunggah berkas pada soal ini.</p>`}
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 items-center">
+                        <div class="sm:col-span-1">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor (0-${q.bobot || 20})</label>
+                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : ''}" min="0" max="${q.bobot || 20}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Masukan / Feedback Guru</label>
+                            <input type="text" id="essay-feedback-${q.id}" value="${currentFeedback.feedback || ''}" placeholder="Catatan evaluasi lembar kerja..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                        </div>
                     </div>
                 `;
             } else {
@@ -2932,14 +3233,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentFeedback = aiFeedback[q.id] || {};
                 card.innerHTML = `
                     <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 uppercase">No. ${idx + 1} (Soal Esai)</span>
+                        <span class="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 uppercase">No. ${idx + 1} (📝 Soal Esai)</span>
                         <span class="text-xs font-bold text-slate-500">Bobot Maks: ${q.bobot || 20}</span>
                     </div>
-                    <p class="font-bold text-xs text-black">${q.pertanyaan}</p>
-                    ${q.rubrik_esai ? `<div class="bg-yellow-50 p-2 rounded border border-yellow-200 text-[11px] font-bold text-yellow-900"><strong>Rubrik Kunci Guru:</strong> ${q.rubrik_esai}</div>` : ''}
+                    <p class="font-bold text-xs text-black">${escapeHtml(q.pertanyaan)}</p>
+                    ${q.rubrik_esai ? `<div class="bg-yellow-50 p-2 rounded border border-yellow-200 text-[11px] font-bold text-yellow-900"><strong>Rubrik Kunci Guru:</strong> ${escapeHtml(q.rubrik_esai)}</div>` : ''}
                     <div class="bg-white p-2.5 rounded-lg border border-slate-300">
                         <span class="text-[10px] font-black text-slate-400 block uppercase mb-1">Jawaban Siswa:</span>
-                        <p class="text-xs font-medium text-slate-800 whitespace-pre-line">${studentEssay}</p>
+                        <p class="text-xs font-medium text-slate-800 whitespace-pre-line">${escapeHtml(studentEssay)}</p>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 items-center">
                         <div class="sm:col-span-1">
@@ -2968,16 +3269,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!activeReviewSubmission || !activeQuizForResults) return;
         const btn = document.getElementById('btn-ai-grade-all-essays');
         btn.disabled = true;
-        btn.innerText = "Menganalisis Esai...";
+        btn.innerText = "Menganalisis Jawaban...";
 
         const questions = activeQuizForResults.quiz_questions || [];
         const answers = activeReviewSubmission.jawaban_siswa || {};
 
         try {
             for (const q of questions) {
-                if (q.tipe === 'esai') {
+                if (q.tipe === 'esai' || q.tipe === 'upload_foto' || q.tipe === 'singkat') {
                     const studentAns = answers[q.id] || '';
-                    const result = await aiGradeQuizEssay(q.pertanyaan, q.rubrik_esai || 'Kesesuaian dan kelengkapan materi.', studentAns, q.bobot || 20);
+                    const result = await aiGradeQuizEssay(q.pertanyaan, q.rubrik_esai || q.kunci_pg || 'Kesesuaian dan kelengkapan materi.', String(studentAns), q.bobot || 20);
                     
                     const scoreInput = document.getElementById(`essay-score-${q.id}`);
                     const fbInput = document.getElementById(`essay-feedback-${q.id}`);
@@ -2985,35 +3286,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (fbInput && result.feedback) fbInput.value = result.feedback;
                 }
             }
-            showCustomModal("Seluruh jawaban esai berhasil dikoreksi oleh AI! Anda dapat menyesuaikan skor sebelum disimpan.");
+            showCustomModal("Seluruh butir soal non-PG berhasil dianalisis oleh AI! Anda dapat menyesuaikan skor sebelum disimpan.");
         } catch (e) {
-            showCustomModal("Gagal koreksi esai AI: " + e.message);
+            showCustomModal("Gagal koreksi AI: " + e.message);
         }
         btn.disabled = false;
-        btn.innerText = "✨ Koreksi Semua Esai dengan AI";
+        btn.innerText = "✨ Koreksi Semua Jawaban dengan AI";
     };
 
     window.saveExamReviewGrades = async () => {
         if (!activeReviewSubmission || !activeQuizForResults) return;
 
         const questions = activeQuizForResults.quiz_questions || [];
-        let totalEssayScore = 0;
+        let totalManualScore = 0;
         let aiFeedbackObj = {};
 
         questions.forEach(q => {
-            if (q.tipe === 'esai') {
-                const scoreVal = parseInt(document.getElementById(`essay-score-${q.id}`)?.value || '0', 10);
+            const scoreInput = document.getElementById(`essay-score-${q.id}`);
+            if (scoreInput) {
+                const scoreVal = parseInt(scoreInput.value || '0', 10);
                 const fbVal = document.getElementById(`essay-feedback-${q.id}`)?.value || '';
-                totalEssayScore += isNaN(scoreVal) ? 0 : scoreVal;
+                totalManualScore += isNaN(scoreVal) ? 0 : scoreVal;
                 aiFeedbackObj[q.id] = { skor: scoreVal, feedback: fbVal };
             }
         });
 
-        const totalFinalScore = (activeReviewSubmission.skor_pg || 0) + totalEssayScore;
+        const totalFinalScore = (activeReviewSubmission.skor_pg || 0) + totalManualScore;
 
         try {
             const { error } = await supabase.from('quiz_submissions').update({
-                skor_esai: totalEssayScore,
+                skor_esai: totalManualScore,
                 total_nilai: totalFinalScore,
                 ai_feedback: aiFeedbackObj,
                 status_koreksi: 'selesai'
@@ -3122,6 +3424,19 @@ document.addEventListener('DOMContentLoaded', () => {
             stateKelas = data.filter(d => d.type === 'kelas').map(d => d.name);
             renderOptions();
             
+            const classSelectIds = [
+                'assign-kelas',
+                'ai-assign-kelas',
+                'mat-kelas',
+                'ai-mat-kelas',
+                'manual-quiz-kelas',
+                'ai-quiz-kelas'
+            ];
+            classSelectIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) populateTargetClassSelect(el, el.value || 'Semua Kelas');
+            });
+
             if (filterKelasSelect) {
                 populateTargetClassSelect(filterKelasSelect, '', true);
             }
