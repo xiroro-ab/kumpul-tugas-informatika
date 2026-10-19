@@ -971,11 +971,16 @@
                 <!-- List per nomor soal dan jawaban siswa -->
             </div>
 
-            <div class="flex justify-between items-center pt-3 border-t-2 border-black">
-                <button onclick="runAiGradeAllEssays()" id="btn-ai-grade-all-essays" class="bg-purple-600 hover:bg-purple-700 text-white font-black px-4 py-2.5 rounded-xl text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                    Koreksi Semua Esai dengan AI
-                </button>
-                <button onclick="saveExamReviewGrades()" class="bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black px-5 py-2.5 rounded-xl text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+            <div class="flex flex-wrap justify-between items-center gap-2 pt-3 border-t-2 border-black">
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="unlockCurrentReviewStudent()" id="btn-review-unlock-student" class="hidden bg-amber-400 hover:bg-amber-500 text-black border-2 border-black font-black px-4 py-2.5 rounded-xl text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                        Buka Kunci Akun Siswa
+                    </button>
+                    <button type="button" onclick="runAiGradeAllEssays()" id="btn-ai-grade-all-essays" class="bg-purple-600 hover:bg-purple-700 text-white font-black px-4 py-2.5 rounded-xl text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                        Koreksi Semua Esai dengan AI
+                    </button>
+                </div>
+                <button type="button" onclick="saveExamReviewGrades()" class="bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black px-5 py-2.5 rounded-xl text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
                     Simpan Nilai Akhir Ujian
                 </button>
             </div>

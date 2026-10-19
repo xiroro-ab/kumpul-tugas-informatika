@@ -3776,17 +3776,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 let actionButtonsHtml = '';
                 if (isLocked) {
                     actionButtonsHtml = `
-                        <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1 mx-auto">
-                            Buka Kunci Akun
-                        </button>
+                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                            <button onclick="openExamReviewModal('${sub.id}')" title="Periksa lembar jawaban & rincian pelanggaran siswa" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-black text-white rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                Periksa
+                            </button>
+                            <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Buka kunci agar siswa dapat melanjutkan ujian" class="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                Buka Kunci
+                            </button>
+                            <button onclick="resetStudentExamSession('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Hapus sesi agar siswa ujian dari awal" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg font-black text-[11px] uppercase">
+                                Reset
+                            </button>
+                        </div>
                     `;
                 } else if (isOngoing) {
                     actionButtonsHtml = `
                         <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                            <button onclick="openExamReviewModal('${sub.id}')" title="Pantau lembar jawaban langsung" class="px-2.5 py-1 bg-indigo-600 hover:bg-black text-white rounded-lg font-black text-[11px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                Pantau
+                            </button>
                             <button onclick="forceFinishStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-2.5 py-1 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
                                 Paksa Selesai
                             </button>
-                            <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg font-black text-[11px] uppercase">
+                            <button onclick="resetStudentExamSession('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg font-black text-[11px] uppercase">
                                 Reset Sesi
                             </button>
                         </div>
@@ -3797,7 +3808,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button onclick="openExamReviewModal('${sub.id}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
                                 Periksa
                             </button>
-                            <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Reset nilai agar siswa bisa ujian ulang" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-black border border-black rounded-lg font-black text-[11px] uppercase">
+                            <button onclick="resetStudentExamSession('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Reset nilai agar siswa bisa ujian ulang" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-black border border-black rounded-lg font-black text-[11px] uppercase">
                                 Reset
                             </button>
                         </div>
@@ -3815,7 +3826,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-indigo-700">${isOngoing ? '-' : (sub.skor_pg || 0)}</td>
                     <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-purple-700">${isOngoing ? '-' : (sub.skor_esai || 0)}</td>
                     <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">
-                        <span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-black px-2 py-0.5 rounded-lg text-sm">${isOngoing ? '...' : (sub.total_nilai || 0)}</span>
+                        <span class="${isLocked ? 'bg-red-100 text-red-900 border border-red-500' : 'bg-emerald-100 text-emerald-900 border border-emerald-400'} font-black px-2 py-0.5 rounded-lg text-sm">${isOngoing ? '...' : (sub.total_nilai || 0)}</span>
                     </td>
                     <td class="px-3 py-3 text-center border-b-2 border-black border-r-2">
                         ${antiCheatBadge}
@@ -3833,7 +3844,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.unlockStudentExam = async (subId, studentName) => {
         const conf = await showCustomModal(
-            `Buka kunci akun siswa "${studentName}"?\n\nSiswa akan dapat memasukkan token ujian dan mengerjakan kembali lembar soal dari awal.`,
+            `Buka kunci akun siswa "${studentName}"?\n\nSiswa akan diizinkan login kembali menggunakan token aktif dan melanjutkan pengerjaan soal. Jumlah pelanggaran anti-kecurangan akan di-reset ke 0, dan seluruh jawaban yang sudah diisi sebelumnya tetap tersimpan utuh.`,
             'confirm',
             'Buka Kunci Akun Siswa',
             ''
@@ -3841,15 +3852,60 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!conf) return;
 
         try {
+            const { data: cur, error: getErr } = await supabase.from('quiz_submissions').select('*').eq('id', subId).single();
+            if (getErr) throw getErr;
+
+            let curJawaban = cur?.jawaban_siswa || {};
+            if (typeof curJawaban === 'string') {
+                try { curJawaban = JSON.parse(curJawaban); } catch (_) { curJawaban = {}; }
+            }
+            curJawaban.cheatAttempts = 0;
+            curJawaban.lockedDueToCheating = false;
+            curJawaban.unlockedAt = new Date().toISOString();
+
+            const { error: updErr } = await supabase.from('quiz_submissions').update({
+                status_koreksi: 'sedang_ujian',
+                jawaban_siswa: curJawaban
+            }).eq('id', subId);
+
+            if (updErr) throw updErr;
+
+            await showCustomModal(`Berhasil! Akun siswa "${studentName}" telah dibuka kembali. Siswa dapat memasukkan token ujian dan langsung melanjutkan pengerjaan.`, 'alert', 'Akun Dibuka', '');
+            if (activeQuizForResults) {
+                openQuizResultsModal(activeQuizForResults.id);
+            }
+            const unlockBtn = document.getElementById('btn-review-unlock-student');
+            if (unlockBtn) unlockBtn.classList.add('hidden');
+        } catch (err) {
+            showCustomModal("Gagal membuka kunci akun: " + err.message);
+        }
+    };
+
+    window.resetStudentExamSession = async (subId, studentName) => {
+        const conf = await showCustomModal(
+            `PERINGATAN: Reset sesi ujian siswa "${studentName}"?\n\nSemua jawaban dan nilai siswa ini akan DIHAPUS dari sistem. Siswa harus mengerjakan ujian dari soal nomor 1 kembali.`,
+            'confirm',
+            'Reset Sesi Ujian Siswa',
+            ''
+        );
+        if (!conf) return;
+
+        try {
             const { error } = await supabase.from('quiz_submissions').delete().eq('id', subId);
             if (error) throw error;
-            await showCustomModal(`Berhasil! Akun siswa "${studentName}" telah dibuka kembali. Siswa dapat login kembali menggunakan token aktif.`, 'alert', 'Akun Dibuka', '');
+            await showCustomModal(`Sesi ujian siswa "${studentName}" berhasil direset. Siswa dapat login kembali dari awal.`, 'alert', 'Sesi Direset', '');
             if (activeQuizForResults) {
                 openQuizResultsModal(activeQuizForResults.id);
             }
         } catch (err) {
-            showCustomModal("Gagal membuka kunci akun: " + err.message);
+            showCustomModal("Gagal reset sesi: " + err.message);
         }
+    };
+
+    window.unlockCurrentReviewStudent = async () => {
+        if (!activeReviewSubmission) return;
+        await window.unlockStudentExam(activeReviewSubmission.id, activeReviewSubmission.nama_siswa);
+        closeExamReviewModal();
     };
 
     window.forceFinishStudentExam = async (subId, studentName) => {
@@ -4295,6 +4351,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             container.appendChild(card);
         });
+
+        const unlockBtn = document.getElementById('btn-review-unlock-student');
+        if (unlockBtn) {
+            if (sub.status_koreksi === 'terkunci_curang') {
+                unlockBtn.classList.remove('hidden');
+            } else {
+                unlockBtn.classList.add('hidden');
+            }
+        }
 
         document.getElementById('student-exam-review-modal').classList.remove('hidden');
     };
