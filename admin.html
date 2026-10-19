@@ -3,30 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Pengumpulan Tugas Informatika</title>
+    <title>Panel Guru - LMS SMP Negeri 58 Palembang</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/xiroro-ab/smp58dataguru/refs/heads/main/ico.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module" src="/src/admin.js"></script>
 </head>
-<body class="bg-[#f8fafc] min-h-screen p-4 md:p-8 font-sans flex flex-col items-center">
+<body class="bg-[#f8fafc] min-h-screen p-3 sm:p-6 md:p-8 font-sans flex flex-col items-center">
     
     <div class="w-full max-w-5xl">
         
-        <!-- Header -->
-        <div class="bg-indigo-600 border-[3px] border-black rounded-[40px] p-8 text-white flex flex-col md:flex-row justify-between items-center mb-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+        <!-- Header Neobrutalisme -->
+        <div class="bg-indigo-600 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-8 text-white flex flex-col md:flex-row justify-between items-center mb-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <div class="mb-4 md:mb-0 text-center md:text-left">
-                <h1 class="text-4xl font-black tracking-tight uppercase">Admin Panel</h1>
-                <p class="text-indigo-100 font-bold tracking-widest text-sm mt-2">KELOLA TUGAS & SINKRONISASI DRIVE</p>
+                <div class="inline-flex items-center gap-2 bg-yellow-300 text-black px-3 py-1 rounded-lg border-2 border-black font-black text-xs uppercase tracking-widest mb-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    🏫 LMS SMPN 58 PALEMBANG
+                </div>
+                <h1 class="text-3xl md:text-4xl font-black tracking-tight uppercase">Panel Guru</h1>
+                <p class="text-indigo-100 font-bold tracking-wide text-xs md:text-sm mt-1">Pusat Pembelajaran, Bank Soal & Asisten AI Koreksi</p>
             </div>
-            <a href="/" class="px-6 py-3 bg-white text-black border-[3px] border-black hover:bg-slate-200 rounded-2xl font-black uppercase tracking-widest transition-transform active:translate-y-1">KEMBALI KE FORM</a>
+            <a href="/" class="px-5 py-3 bg-white text-black border-[3px] border-black hover:bg-slate-100 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-transform active:translate-y-1 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                Portal Siswa ↗
+            </a>
         </div>
 
-        <!-- Login Section -->
-        <div id="login-section" class="bg-yellow-400 border-[3px] border-black rounded-[40px] p-12 text-center shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] mb-8 hidden">
-            <h2 class="text-3xl font-black text-black mb-4 uppercase">Login Guru</h2>
-            <p class="text-black font-bold mb-8 max-w-md mx-auto">Masuk dengan akun Google Anda untuk mengakses panel admin dan mengizinkan aplikasi untuk menyimpan tugas ke Google Drive Anda.</p>
+        <!-- Login Section Guru -->
+        <div id="login-section" class="bg-yellow-400 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-8 md:p-12 text-center shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] mb-8 hidden">
+            <span class="inline-block bg-white text-black text-xs font-black px-3 py-1 rounded-full border-2 border-black uppercase tracking-wider mb-4">
+                Khusus Bapak / Ibu Guru
+            </span>
+            <h2 class="text-3xl md:text-4xl font-black text-black mb-3 uppercase tracking-tight">Login Portal Guru</h2>
+            <p class="text-black font-bold mb-8 max-w-lg mx-auto text-sm md:text-base">
+                Masuk dengan akun Google Anda untuk mengelola materi ajar, bank soal ujian, dan koreksi tugas otomatis dengan bantuan AI.
+            </p>
             
-            <button onclick="loginWithGoogle()" class="inline-flex items-center justify-center gap-3 bg-white border-[3px] border-black text-black font-black py-4 px-8 rounded-2xl hover:bg-slate-100 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all">
+            <button onclick="loginWithGoogle()" class="inline-flex items-center justify-center gap-3 bg-white border-[3px] border-black text-black font-black py-4 px-8 rounded-2xl hover:bg-slate-100 shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all text-sm md:text-base uppercase tracking-wider">
                 <svg viewBox="0 0 48 48" class="w-6 h-6">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
                     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
@@ -34,157 +44,420 @@
                     <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
                     <path fill="none" d="M0 0h48v48H0z"></path>
                 </svg>
-                SIGN IN WITH GOOGLE
+                Masuk dengan Akun Google
             </button>
         </div>
 
-        <!-- Dashboard Section -->
-        <div id="dashboard-section" class="hidden space-y-8 w-full max-w-5xl">
+        <!-- Dashboard Section Guru (Aktif setelah Login) -->
+        <div id="dashboard-section" class="hidden space-y-6 w-full max-w-5xl">
             
-            <div class="flex justify-between items-center bg-white border-[3px] border-black rounded-[40px] px-4 md:px-8 py-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                <div>
-                    <p class="text-xs text-slate-500 font-black uppercase tracking-wider">Login sebagai</p>
-                    <p id="user-email" class="text-sm md:text-lg font-black text-black truncate max-w-[150px] md:max-w-none"></p>
-                </div>
-                <button onclick="logout()" class="text-red-500 hover:text-red-700 font-black text-xs md:text-sm uppercase tracking-widest border-2 border-transparent hover:border-red-500 px-3 md:px-4 py-2 rounded-xl transition whitespace-nowrap">LOGOUT</button>
-            </div>
-
-            <!-- Sync Widget -->
-            <div class="bg-emerald-400 border-[3px] border-black rounded-[40px] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                <div>
-                    <h3 class="text-3xl font-black text-black mb-2 uppercase tracking-tighter">Pindahkan ke Drive</h3>
-                    <p class="text-black font-bold text-sm max-w-xl">
-                        Tugas yang dikirim siswa saat ini disimpan sementara di server. 
-                        Klik tombol di samping untuk mengunggah semuanya ke Google Drive Anda.
-                    </p>
-                </div>
-                <div class="flex flex-col items-end shrink-0 w-full md:w-auto">
-                    <button id="sync-btn" onclick="syncToDrive()" class="bg-black hover:bg-slate-800 text-white font-black py-4 px-8 rounded-2xl shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] transition w-full md:w-auto uppercase tracking-widest">
-                        SINKRONISASI SEKARANG
-                    </button>
-                    <p id="sync-status" class="text-sm mt-3 font-black text-black bg-white px-3 py-1 rounded-lg border-2 border-black inline-block empty:hidden"></p>
-                </div>
-            </div>
-
-            <!-- Options Management Widget -->
-            <div class="bg-blue-400 border-[3px] border-black rounded-[40px] p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                <h3 class="text-3xl font-black text-black mb-2 uppercase tracking-tighter">Pengaturan Form</h3>
-                <p class="text-black font-bold mb-6">Kelola daftar Kelas dan Materi Tugas yang akan muncul di form siswa.</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <!-- Kelas -->
-                    <div class="bg-white border-[3px] border-black rounded-3xl p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                        <h4 class="font-black text-xl mb-4 uppercase">Daftar Kelas</h4>
-                        <div class="flex gap-2 mb-4">
-                            <input type="text" id="input-kelas" placeholder="Misal: VII.1" class="w-full h-12 px-4 rounded-xl border-[3px] border-black font-bold focus:outline-none focus:ring-0">
-                            <button onclick="addKelas()" class="bg-black text-white px-6 rounded-xl font-black hover:bg-slate-800 transition">TAMBAH</button>
-                        </div>
-                        <div id="kelas-list" class="max-h-60 overflow-y-auto space-y-2 pr-2">
-                            <!-- Items here -->
-                        </div>
+            <!-- Profil Guru Bar -->
+            <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] p-4 md:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-indigo-500 text-white rounded-2xl border-2 border-black flex items-center justify-center font-black text-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        👨‍🏫
                     </div>
-
-                    <!-- Materi -->
-                    <div class="bg-white border-[3px] border-black rounded-3xl p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                        <h4 class="font-black text-xl mb-4 uppercase">Daftar Tugas</h4>
-                        <div class="flex gap-2 mb-4">
-                            <input type="text" id="input-materi" placeholder="Misal: Tugas 1 BK" class="w-full h-12 px-4 rounded-xl border-[3px] border-black font-bold focus:outline-none focus:ring-0">
-                            <button onclick="addMateri()" class="bg-black text-white px-6 rounded-xl font-black hover:bg-slate-800 transition">TAMBAH</button>
-                        </div>
-                        <div id="materi-list" class="max-h-60 overflow-y-auto space-y-2 pr-2">
-                            <!-- Items here -->
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-8 flex flex-col md:flex-row items-center gap-4">
-                    <button id="save-options-btn" onclick="saveOptionsSettings()" class="bg-black hover:bg-slate-800 text-white font-black py-4 px-8 rounded-2xl transition shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] active:translate-y-1 active:shadow-none uppercase tracking-widest">
-                        SIMPAN PENGATURAN
-                    </button>
-                    <span id="options-status" class="text-sm font-black bg-white px-3 py-1 rounded-lg border-2 border-black empty:hidden"></span>
-                </div>
-            </div>
-
-            <!-- File List -->
-            <div class="bg-white border-[3px] border-black rounded-[40px] p-5 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                <!-- Top Header & Rekap Button -->
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
                     <div>
-                        <h3 class="text-2xl font-black text-black uppercase tracking-tighter">Tugas Belum Disinkronisasi</h3>
-                        <p class="text-slate-500 font-bold text-xs mt-0.5">Daftar tugas siswa yang tersimpan sementara di server</p>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="teacher-name-display" class="font-black text-lg text-black">Guru SMPN 58</span>
+                            <span id="teacher-mapel-badge" class="bg-emerald-300 text-black text-xs font-black px-2.5 py-0.5 rounded-lg border-2 border-black uppercase tracking-wider">
+                                Informatika
+                            </span>
+                        </div>
+                        <p id="user-email" class="text-xs text-slate-500 font-bold truncate"></p>
                     </div>
-                    <button onclick="exportCSV()" class="bg-emerald-400 hover:bg-emerald-500 text-black border-[3px] border-black font-black h-12 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 w-full sm:w-auto">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        <span>Rekap CSV / Excel</span>
+                </div>
+
+                <div class="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+                    <button onclick="openProfileModal()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-black border-2 border-black rounded-xl font-bold text-xs transition uppercase">
+                        ⚙️ Ubah Profil & Mapel
+                    </button>
+                    <button onclick="logout()" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-black rounded-xl font-black text-xs transition uppercase">
+                        Logout
                     </button>
                 </div>
+            </div>
 
-                <!-- Filters Bar -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 mb-5">
-                    <div class="lg:col-span-3">
-                        <select id="filter-kelas-tugas" class="w-full h-12 px-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50 cursor-pointer">
-                            <option value="">Semua Kelas</option>
-                        </select>
-                    </div>
-                    <div class="lg:col-span-4">
-                        <select id="filter-materi-tugas" class="w-full h-12 px-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50 cursor-pointer">
-                            <option value="">Semua Materi</option>
-                        </select>
-                    </div>
-                    <div class="lg:col-span-5 relative">
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                            <svg class="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
+            <!-- LMS Navigation Tabs (Neobrutalism Style) -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
+                <button onclick="switchTab('tugas')" id="tab-btn-tugas" class="lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    📋 Koreksi Tugas
+                </button>
+                <button onclick="switchTab('materi')" id="tab-btn-materi" class="lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100">
+                    📖 Materi Ajar
+                </button>
+                <button onclick="switchTab('kuis')" id="tab-btn-kuis" class="lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100">
+                    📝 Bank Soal Ujian
+                </button>
+                <button onclick="switchTab('setting')" id="tab-btn-setting" class="lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100">
+                    ⚙️ AI & Opsi
+                </button>
+            </div>
+
+            <!-- ======================================================= -->
+            <!-- TAB 1: KOREKSI TUGAS MASUK (PENGGANTI GOOGLE DRIVE)      -->
+            <!-- ======================================================= -->
+            <div id="tab-content-tugas" class="space-y-6">
+                <div class="bg-white border-[3px] border-black rounded-[32px] md:rounded-[40px] p-5 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-2xl font-black text-black uppercase tracking-tight">Meja Koreksi Tugas Siswa</h3>
+                                <span class="bg-indigo-100 text-indigo-800 text-[11px] font-black px-2 py-0.5 rounded border border-indigo-400">Database Supabase</span>
+                            </div>
+                            <p class="text-slate-500 font-bold text-xs mt-1">Beri nilai tugas berkas dan tautan siswa secara langsung atau gunakan bantuan AI.</p>
                         </div>
-                        <input type="text" id="search-tugas" placeholder="Cari nama siswa atau file..." class="w-full h-12 pl-10 pr-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50">
+                        <button onclick="exportCSV()" class="bg-emerald-400 hover:bg-emerald-500 text-black border-[3px] border-black font-black h-11 px-5 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0 w-full sm:w-auto">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            <span>Unduh Rekap Nilai CSV</span>
+                        </button>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 mb-5">
+                        <div class="lg:col-span-3">
+                            <select id="filter-kelas-tugas" class="w-full h-11 px-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50 cursor-pointer">
+                                <option value="">Semua Kelas</option>
+                            </select>
+                        </div>
+                        <div class="lg:col-span-4">
+                            <select id="filter-materi-tugas" class="w-full h-11 px-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50 cursor-pointer">
+                                <option value="">Semua Materi / Tugas</option>
+                            </select>
+                        </div>
+                        <div class="lg:col-span-5 relative">
+                            <input type="text" id="search-tugas" placeholder="Cari nama siswa atau file..." class="w-full h-11 pl-4 pr-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50">
+                        </div>
+                    </div>
+
+                    <!-- Table Tugas -->
+                    <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-2 px-1">
+                        <span>Daftar Pengumpulan</span>
+                        <span class="md:hidden text-indigo-600 font-extrabold">👉 Geser tabel ke kanan untuk melihat lengkap</span>
+                    </div>
+                    <div class="border-[3px] border-black rounded-2xl overflow-x-auto shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
+                        <table class="w-full min-w-[780px] divide-y-2 divide-black border-collapse text-left">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="w-20 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Kelas</th>
+                                    <th class="w-32 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Materi</th>
+                                    <th class="w-40 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Siswa</th>
+                                    <th class="px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2 min-w-[220px]">Rincian Tugas</th>
+                                    <th class="w-24 px-3 py-3 text-center text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Nilai</th>
+                                    <th class="w-44 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black">Aksi Guru</th>
+                                </tr>
+                            </thead>
+                            <tbody id="files-tbody" class="bg-white divide-y-2 divide-black">
+                                <!-- Diisi via admin.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================= -->
+            <!-- TAB 2: MATERI PEMBELAJARAN GURU                         -->
+            <!-- ======================================================= -->
+            <div id="tab-content-materi" class="space-y-6 hidden">
+                <div class="bg-blue-400 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h3 class="text-3xl font-black text-black uppercase tracking-tight">Materi Pembelajaran</h3>
+                            <p class="text-black font-bold text-xs md:text-sm mt-0.5">Kelola ringkasan materi, modul modul belajar, dan video untuk siswa.</p>
+                        </div>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button onclick="openAiMaterialModal()" class="flex-1 sm:flex-none bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black px-4 py-2.5 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5">
+                                ✨ AI Buatkan Materi
+                            </button>
+                            <button onclick="openMaterialModal()" class="flex-1 sm:flex-none bg-black hover:bg-slate-800 text-white font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5">
+                                + Tambah Materi
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="materials-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Kartu Materi akan dirender via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================= -->
+            <!-- TAB 3: BANK SOAL & UJIAN ONLINE                         -->
+            <!-- ======================================================= -->
+            <div id="tab-content-kuis" class="space-y-6 hidden">
+                <div class="bg-amber-300 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h3 class="text-3xl font-black text-black uppercase tracking-tight">Bank Soal & Ujian Online</h3>
+                            <p class="text-black font-bold text-xs md:text-sm mt-0.5">Buat kuis interaktif Pilihan Ganda & Esai. Otomatis dikoreksi sistem & AI.</p>
+                        </div>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button onclick="openAiQuizModal()" class="flex-1 sm:flex-none bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black px-4 py-2.5 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5">
+                                ✨ AI Generator Soal
+                            </button>
+                            <button onclick="openQuizModal()" class="flex-1 sm:flex-none bg-black hover:bg-slate-800 text-white font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5">
+                                + Buat Kuis Baru
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="quizzes-container" class="space-y-4">
+                        <!-- Kartu Kuis akan dirender via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================================= -->
+            <!-- TAB 4: PENGATURAN KELAS, MAPEL & KUNCI AI               -->
+            <!-- ======================================================= -->
+            <div id="tab-content-setting" class="space-y-6 hidden">
+                
+                <!-- Card AI API Key -->
+                <div class="bg-purple-300 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-2xl">🤖</span>
+                        <h3 class="text-2xl font-black text-black uppercase tracking-tight">Koneksi AI (Google Gemini Flash)</h3>
+                    </div>
+                    <p class="text-black font-bold text-xs md:text-sm mb-4">
+                        Fitur Generator Soal, Pembuat Materi, dan Auto-Koreksi Esai menggunakan Google Gemini AI (Gratis). 
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-2 max-w-2xl">
+                        <input type="password" id="gemini-api-key-input" placeholder="Masukkan Google Gemini API Key (AI Studio)..." class="w-full h-12 px-4 rounded-xl border-[3px] border-black font-bold focus:outline-none text-xs bg-white">
+                        <button onclick="saveGeminiKey()" class="bg-black hover:bg-slate-800 text-white font-black px-6 h-12 rounded-xl text-xs uppercase tracking-wider whitespace-nowrap">
+                            SIMPAN KUNCI AI
+                        </button>
+                    </div>
+                    <p id="gemini-status-text" class="text-xs font-black text-purple-900 mt-2"></p>
+                </div>
+
+                <!-- Card Opsi Kelas & Tugas -->
+                <div class="bg-white border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+                    <h3 class="text-2xl font-black text-black mb-2 uppercase tracking-tight">Daftar Kelas & Materi Tugas</h3>
+                    <p class="text-slate-600 font-bold mb-6 text-xs md:text-sm">Kelola daftar pilihan Kelas dan Materi yang muncul di form pengumpulan siswa.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Kelas -->
+                        <div class="bg-slate-50 border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                            <h4 class="font-black text-base mb-3 uppercase">Daftar Kelas (SMPN 58)</h4>
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" id="input-kelas" placeholder="Misal: VII.1" class="w-full h-10 px-3 rounded-lg border-2 border-black font-bold focus:outline-none text-xs bg-white">
+                                <button onclick="addKelas()" class="bg-black text-white px-4 rounded-lg font-black text-xs hover:bg-slate-800 transition">TAMBAH</button>
+                            </div>
+                            <div id="kelas-list" class="max-h-52 overflow-y-auto space-y-1.5 pr-1"></div>
+                        </div>
+
+                        <!-- Materi -->
+                        <div class="bg-slate-50 border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                            <h4 class="font-black text-base mb-3 uppercase">Daftar Judul Tugas</h4>
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" id="input-materi" placeholder="Misal: Tugas 1 Perangkat Keras" class="w-full h-10 px-3 rounded-lg border-2 border-black font-bold focus:outline-none text-xs bg-white">
+                                <button onclick="addMateri()" class="bg-black text-white px-4 rounded-lg font-black text-xs hover:bg-slate-800 transition">TAMBAH</button>
+                            </div>
+                            <div id="materi-list" class="max-h-52 overflow-y-auto space-y-1.5 pr-1"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex flex-col md:flex-row items-center gap-3">
+                        <button id="save-options-btn" onclick="saveOptionsSettings()" class="bg-black hover:bg-slate-800 text-white font-black py-3 px-6 rounded-xl transition text-xs uppercase tracking-widest">
+                            SIMPAN PILIHAN KELAS & TUGAS
+                        </button>
+                        <span id="options-status" class="text-xs font-black bg-emerald-100 text-emerald-900 px-3 py-1.5 rounded-lg border border-emerald-400 empty:hidden"></span>
                     </div>
                 </div>
 
-                <!-- Responsive Table Wrapper -->
-                <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-2 px-1">
-                    <span>Tabel Tugas</span>
-                    <span class="md:hidden text-indigo-600 font-extrabold flex items-center gap-1">👉 Geser tabel ke kanan untuk melihat lengkap</span>
-                </div>
-                <div class="border-[3px] border-black rounded-2xl overflow-x-auto shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
-                    <table class="w-full min-w-[760px] divide-y-2 divide-black border-collapse text-left">
-                        <thead class="bg-slate-100">
-                            <tr>
-                                <th class="w-24 px-4 py-3.5 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Kelas</th>
-                                <th class="w-36 px-4 py-3.5 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Materi</th>
-                                <th class="w-48 px-4 py-3.5 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Siswa</th>
-                                <th class="px-4 py-3.5 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2 min-w-[240px]">Tipe & Rincian Tugas</th>
-                                <th class="w-44 px-4 py-3.5 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="files-tbody" class="bg-white divide-y-2 divide-black">
-                            <!-- Rows will be populated via JS -->
-                        </tbody>
-                    </table>
-                </div>
             </div>
 
         </div>
     </div>
 
+    <!-- ======================================================= -->
+    <!-- MODAL 1: KOREKSI TUGAS & AI GRADING                     -->
+    <!-- ======================================================= -->
+    <div id="grade-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 my-8">
+            <div class="flex justify-between items-start border-b-2 border-black pb-3">
+                <div>
+                    <span class="text-[10px] bg-indigo-100 text-indigo-900 font-black px-2 py-0.5 rounded border border-indigo-300 uppercase">Koreksi Tugas</span>
+                    <h3 id="grade-modal-student" class="text-2xl font-black text-black uppercase mt-1">Nama Siswa</h3>
+                    <p id="grade-modal-meta" class="text-xs font-bold text-slate-500">Kelas VII.1 • Materi</p>
+                </div>
+                <button onclick="closeGradeModal()" class="text-2xl font-black hover:text-red-600">&times;</button>
+            </div>
 
+            <!-- Preview Ringkas / Link -->
+            <div id="grade-modal-preview-box" class="bg-slate-50 border-2 border-black rounded-xl p-3.5 text-xs font-medium"></div>
+
+            <!-- Tombol Bantuan Koreksi AI -->
+            <div class="bg-purple-100 border-2 border-purple-400 rounded-xl p-3 flex items-center justify-between gap-3">
+                <div>
+                    <span class="font-black text-purple-950 text-xs block">✨ Asisten Koreksi AI (Gemini)</span>
+                    <span class="text-[11px] text-purple-800">Evaluasi otomatis kecocokan tugas & buat saran masukan.</span>
+                </div>
+                <button id="btn-run-ai-grade" onclick="runAiGrade()" class="bg-purple-600 hover:bg-purple-700 text-white font-black px-3.5 py-2 rounded-lg text-xs uppercase tracking-wider shrink-0 transition">
+                    Koreksi AI
+                </button>
+            </div>
+
+            <!-- Form Nilai Guru -->
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-black uppercase text-black mb-1">Nilai Angka (0 - 100)</label>
+                    <input type="number" id="grade-input-score" min="0" max="100" placeholder="Contoh: 85" class="w-full h-11 px-3 border-2 border-black rounded-xl font-black text-lg focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-black uppercase text-black mb-1">Catatan Ulasan / Feedback Guru</label>
+                    <textarea id="grade-input-feedback" rows="3" placeholder="Tuliskan catatan evaluasi untuk siswa..." class="w-full p-3 border-2 border-black rounded-xl font-bold text-xs focus:outline-none"></textarea>
+                </div>
+            </div>
+
+            <div class="flex gap-2 justify-end pt-3 border-t-2 border-black">
+                <button onclick="closeGradeModal()" class="px-4 py-2.5 bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase hover:bg-slate-200">
+                    Batal
+                </button>
+                <button onclick="saveGrade()" id="btn-save-grade" class="px-5 py-2.5 bg-emerald-400 hover:bg-emerald-500 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    Simpan Nilai
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- MODAL 2: BUAT MATERI BELAJAR                            -->
+    <!-- ======================================================= -->
+    <div id="material-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 my-8">
+            <div class="flex justify-between items-center border-b-2 border-black pb-3">
+                <h3 class="text-2xl font-black text-black uppercase">Buat Materi Baru</h3>
+                <button onclick="closeMaterialModal()" class="text-2xl font-black hover:text-red-600">&times;</button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Target Kelas</label>
+                    <select id="mat-kelas" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Judul Materi</label>
+                    <input type="text" id="mat-judul" placeholder="Contoh: Pengenalan Algoritma & Flowchart" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Isi / Rangkuman Materi</label>
+                    <textarea id="mat-konten" rows="6" placeholder="Tuliskan materi pembelajaran atau gunakan tombol AI..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Link Video / Bahan Tambahan (Opsional)</label>
+                    <input type="text" id="mat-video" placeholder="https://youtube.com/..." class="w-full h-10 px-3 border-2 border-black rounded-xl font-medium text-xs">
+                </div>
+            </div>
+
+            <div class="flex gap-2 justify-end pt-3 border-t-2 border-black">
+                <button onclick="closeMaterialModal()" class="px-4 py-2.5 bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase">Batal</button>
+                <button onclick="saveMaterial()" class="px-5 py-2.5 bg-indigo-600 text-white border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Simpan Materi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- MODAL 3: AI BUAT MATERI                                 -->
+    <!-- ======================================================= -->
+    <div id="ai-material-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-yellow-300 border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-lg w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4">
+            <div class="flex justify-between items-center border-b-2 border-black pb-3">
+                <h3 class="text-2xl font-black text-black uppercase">✨ AI Pembuat Materi</h3>
+                <button onclick="closeAiMaterialModal()" class="text-2xl font-black">&times;</button>
+            </div>
+            <p class="text-black font-bold text-xs">Sebutkan topik yang ingin dibuat, Gemini AI akan menyusun ringkasan lengkap untuk siswa SMP.</p>
+            
+            <div>
+                <label class="block text-xs font-black uppercase mb-1">Topik / Bab Materi</label>
+                <input type="text" id="ai-mat-topik" placeholder="Contoh: Berpikir Komputasional dan Dekomposisi" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+            </div>
+
+            <button onclick="runAiGenerateMaterial()" id="btn-run-ai-mat" class="bg-black text-white hover:bg-slate-800 font-black py-3 rounded-xl uppercase text-xs tracking-wider transition">
+                🚀 GENERATE MATERI SEKARANG
+            </button>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- MODAL 4: AI GENERATOR BANK SOAL                         -->
+    <!-- ======================================================= -->
+    <div id="ai-quiz-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-emerald-300 border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-lg w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4">
+            <div class="flex justify-between items-center border-b-2 border-black pb-3">
+                <h3 class="text-2xl font-black text-black uppercase">✨ AI Generator Bank Soal</h3>
+                <button onclick="closeAiQuizModal()" class="text-2xl font-black">&times;</button>
+            </div>
+            <p class="text-black font-bold text-xs">Gemini AI akan membuat soal Pilihan Ganda beserta kunci jawaban dan soal Esai beserta rubrik evaluasinya.</p>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Judul Ujian / Kuis</label>
+                    <input type="text" id="ai-quiz-judul" placeholder="Contoh: Penilaian Harian 1 Informatika" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Topik Materi</label>
+                    <input type="text" id="ai-quiz-topik" placeholder="Contoh: Jaringan Komputer dan Internet" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1">Jml Pilihan Ganda</label>
+                        <input type="number" id="ai-quiz-count-pg" value="5" min="1" max="20" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black uppercase mb-1">Jml Esai</label>
+                        <input type="number" id="ai-quiz-count-esai" value="2" min="0" max="5" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="runAiGenerateQuiz()" id="btn-run-ai-quiz" class="bg-black text-white hover:bg-slate-800 font-black py-3 rounded-xl uppercase text-xs tracking-wider transition">
+                🚀 GENERATE BANK SOAL
+            </button>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- MODAL 5: PROFIL GURU & MAPEL                            -->
+    <!-- ======================================================= -->
+    <div id="profile-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-md w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4">
+            <h3 class="text-2xl font-black text-black uppercase">Atur Profil Guru</h3>
+            <p class="text-xs font-bold text-slate-500">Sesuaikan nama lengkap Anda dan mata pelajaran yang diampu di SMPN 58.</p>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Nama Lengkap & Gelar</label>
+                    <input type="text" id="prof-nama" placeholder="Contoh: Bpk. Aris Bermansyah, S.Kom." class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50">
+                </div>
+                <div>
+                    <label class="block text-xs font-black uppercase mb-1">Mata Pelajaran (Mapel)</label>
+                    <input type="text" id="prof-mapel" placeholder="Contoh: Informatika / IPA / Matematika" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50">
+                </div>
+            </div>
+
+            <div class="flex gap-2 justify-end pt-3 border-t-2 border-black">
+                <button onclick="closeProfileModal()" class="px-4 py-2 bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase">Tutup</button>
+                <button onclick="saveTeacherProfile()" class="px-5 py-2 bg-emerald-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal Standard Alert/Confirm -->
+    <div id="custom-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border-[3px] border-black rounded-[32px] p-8 max-w-md w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4">
+            <h3 id="custom-modal-title" class="text-2xl font-black text-black uppercase tracking-tight">Perhatian</h3>
+            <p id="custom-modal-message" class="text-black font-bold text-sm leading-relaxed"></p>
+            <div id="custom-modal-actions" class="flex gap-3 justify-end mt-2"></div>
+        </div>
+    </div>
 
     <!-- Footer -->
-    <footer class="mt-12 py-6 text-center border-t-2 border-black bg-white">
-        <p class="text-black font-bold uppercase tracking-widest text-sm">
-            &copy; 2026 <a href="#" onclick="window.showAboutCreator(); return false;" class="hover:underline hover:text-blue-600 transition-colors">Aris Bermansyah</a>. All rights reserved.
+    <footer class="mt-12 py-6 text-center border-t-2 border-black bg-white w-full">
+        <p class="text-black font-bold uppercase tracking-widest text-xs">
+            &copy; 2026 LMS SMP Negeri 58 Palembang &bull; Dikembangkan oleh <a href="#" onclick="window.showAboutCreator(); return false;" class="hover:underline hover:text-indigo-600 transition-colors font-black">Aris Bermansyah</a>.
         </p>
     </footer>
-    <!-- Custom Modal -->
-    <div id="custom-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white border-[3px] border-black rounded-[40px] p-8 max-w-md w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-6">
-            <h3 id="custom-modal-title" class="text-2xl font-black text-black uppercase tracking-tighter">Perhatian</h3>
-            <p id="custom-modal-message" class="text-black font-bold text-lg"></p>
-            <div id="custom-modal-actions" class="flex gap-4 justify-end mt-4">
-                <!-- Buttons will be injected here -->
-            </div>
-        </div>
-    </div>
 
     <script type="module" src="/src/mountReact.tsx"></script>
 </body>

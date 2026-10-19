@@ -1,22 +1,46 @@
 import { supabase } from './supabase.js';
 
+let allMaterials = [];
+let activeQuizData = null;
+let quizTimerInterval = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
-    // Mode Switcher Elements
+    // Portal View Switcher
+    window.switchStudentPortal = (viewName) => {
+        const views = ['kumpul', 'materi', 'ujian', 'nilai'];
+        views.forEach(v => {
+            const btn = document.getElementById(`nav-btn-${v}`);
+            const content = document.getElementById(`view-${v}`);
+            if (v === viewName) {
+                btn.className = "portal-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
+                if (content) content.classList.remove('hidden');
+            } else {
+                btn.className = "portal-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100";
+                if (content) content.classList.add('hidden');
+            }
+        });
+
+        if (viewName === 'materi') loadStudentMaterials();
+        if (viewName === 'ujian') loadStudentQuizzes();
+    };
+
+    // ==========================================
+    // 1. KUMPUL TUGAS (FILE / LINK)
+    // ==========================================
     const tabModeFile = document.getElementById('tabModeFile');
     const tabModeLink = document.getElementById('tabModeLink');
     const sectionFile = document.getElementById('sectionFile');
     const sectionLink = document.getElementById('sectionLink');
-    let currentMode = 'file'; // 'file' or 'link'
+    let currentMode = 'file';
 
-    // Form Elements
     const form = document.getElementById('uploadForm');
     const namaInput = document.getElementById('nama');
     const kelasSelect = document.getElementById('kelas');
+    const mapelSelect = document.getElementById('mapel');
     const materiSelect = document.getElementById('materi');
     const rememberBadge = document.getElementById('rememberBadge');
     const submitBtn = document.getElementById('submitBtn');
 
-    // File UI Elements
     const dropzone = document.getElementById('dropzone');
     const fileInfo = document.getElementById('file-info');
     const fileSelected = document.getElementById('file-selected');
@@ -24,13 +48,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const clearFileBtn = document.getElementById('clearFileBtn');
     const fileInput = document.getElementById('file');
 
-    // Link UI Elements
     const linkUrlInput = document.getElementById('linkUrl');
     const linkNoteInput = document.getElementById('linkNote');
     const platformBadge = document.getElementById('platformBadge');
     const linkAlertText = document.getElementById('linkAlertText');
 
-    // Status Card Elements
     const statusIcon = document.getElementById('statusIcon');
     const statusTitle = document.getElementById('statusTitle');
     const statusInfo = document.getElementById('statusInfo');
@@ -38,9 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let lastUploadName = localStorage.getItem('lastUpload');
 
-    // ==========================================
-    // 1. Auto-Remember Data Diri (Local Storage)
-    // ==========================================
+    // Auto-Remember Data Diri
     const savedNama = localStorage.getItem('student_nama');
     const savedKelas = localStorage.getItem('student_kelas');
 
@@ -57,25 +77,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // ==========================================
-    // 2. Status Card Handler
-    // ==========================================
     function setStatus(state, text) {
+        if (!statusCard) return;
         if (state === 'waiting') {
-            statusCard.className = "md:col-span-5 md:row-span-2 bg-slate-200 border-[3px] border-black rounded-[40px] p-6 lg:p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-center relative transition-colors duration-300";
-            statusTitle.textContent = "Status";
-            statusIcon.innerHTML = `<svg class="w-7 h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            statusCard.className = "bg-slate-200 border-[3px] border-black rounded-[36px] p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4 transition-colors";
+            statusTitle.textContent = "Status:";
+            statusIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>`;
+            statusIcon.className = "w-6 h-6 text-slate-500";
             statusInfo.textContent = text;
         } else if (state === 'ready') {
-            statusCard.className = "md:col-span-5 md:row-span-2 bg-amber-400 border-[3px] border-black rounded-[40px] p-6 lg:p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-center relative transition-colors duration-300";
-            statusTitle.textContent = "Siap Kirim";
-            statusIcon.innerHTML = `<svg class="w-7 h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 text-amber-900 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`;
+            statusCard.className = "bg-amber-300 border-[3px] border-black rounded-[36px] p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4 transition-colors";
+            statusTitle.textContent = "Siap Kirim:";
+            statusIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 10V3L4 14h7v7l9-11h-7z"></path>`;
+            statusIcon.className = "w-6 h-6 text-amber-900 animate-pulse";
             statusInfo.textContent = text;
         } else if (state === 'last') {
-            statusCard.className = "md:col-span-5 md:row-span-2 bg-emerald-400 border-[3px] border-black rounded-[40px] p-6 lg:p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-center relative transition-colors duration-300";
-            statusTitle.textContent = "Terakhir Dikirim";
-            statusIcon.innerHTML = `<svg class="w-7 h-7 md:w-8 md:h-8 lg:w-10 lg:h-10 text-emerald-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
-            statusInfo.innerHTML = `<strong>${text}</strong>`;
+            statusCard.className = "bg-emerald-300 border-[3px] border-black rounded-[36px] p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4 transition-colors";
+            statusTitle.textContent = "Terakhir Dikirim:";
+            statusIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>`;
+            statusIcon.className = "w-6 h-6 text-emerald-950";
+            statusInfo.textContent = text;
         }
     }
 
@@ -85,27 +106,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         setStatus('waiting', 'Menunggu Input...');
     }
 
-    // ==========================================
-    // 3. Switcher Mode Pengumpulan (File vs Link)
-    // ==========================================
+    // Switcher Mode File vs Link
     function switchMode(mode) {
         currentMode = mode;
         if (mode === 'file') {
-            tabModeFile.className = "py-3 px-3 rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-            tabModeLink.className = "py-3 px-3 rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-black";
+            tabModeFile.className = "py-2.5 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+            tabModeLink.className = "py-2.5 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-slate-500 hover:text-black";
             sectionFile.classList.remove('hidden');
             sectionLink.classList.add('hidden');
             fileInput.required = true;
             linkUrlInput.required = false;
 
             if (fileInput.files.length > 0) {
-                setStatus('ready', `${fileInput.files.length} file dipilih`);
+                setStatus('ready', `${fileInput.files.length} berkas dipilih`);
             } else {
-                setStatus('waiting', 'Pilih file tugas...');
+                setStatus('waiting', 'Pilih berkas tugas...');
             }
         } else {
-            tabModeLink.className = "py-3 px-3 rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-            tabModeFile.className = "py-3 px-3 rounded-xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-black";
+            tabModeLink.className = "py-2.5 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+            tabModeFile.className = "py-2.5 px-3 rounded-lg font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-slate-500 hover:text-black";
             sectionLink.classList.remove('hidden');
             sectionFile.classList.add('hidden');
             fileInput.required = false;
@@ -119,126 +138,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    tabModeFile.addEventListener('click', () => switchMode('file'));
-    tabModeLink.addEventListener('click', () => switchMode('link'));
+    if (tabModeFile) tabModeFile.addEventListener('click', () => switchMode('file'));
+    if (tabModeLink) tabModeLink.addEventListener('click', () => switchMode('link'));
 
-    // ==========================================
-    // 4. Deteksi Pintar Platform Tautan / Link
-    // ==========================================
+    // Deteksi Platform Link
     function detectPlatform(url) {
         const u = url.toLowerCase();
-        if (u.includes('canva.com')) {
-            return {
-                name: 'Canva',
-                color: 'bg-cyan-100 text-cyan-800 border-cyan-400',
-                tip: '🎨 <strong>Canva:</strong> Pastikan Anda klik <u>Bagikan &gt; Siapa saja yang memiliki tautan dapat melihat</u>.'
-            };
-        } else if (u.includes('docs.google.com') || u.includes('drive.google.com')) {
-            return {
-                name: 'Google Docs / Drive',
-                color: 'bg-blue-100 text-blue-800 border-blue-400',
-                tip: '📂 <strong>Google:</strong> Ubah akses dari <u>Dibatasi</u> menjadi <u>Siapa saja yang memiliki tautan dapat melihat</u>.'
-            };
-        } else if (u.includes('scratch.mit.edu')) {
-            return {
-                name: 'Scratch',
-                color: 'bg-amber-100 text-amber-800 border-amber-400',
-                tip: '🐱 <strong>Scratch:</strong> Pastikan tombol oranye <u>Bagikan / Share</u> di proyek Scratch sudah ditekan.'
-            };
-        } else if (u.includes('figma.com')) {
-            return {
-                name: 'Figma',
-                color: 'bg-pink-100 text-pink-800 border-pink-400',
-                tip: '🎨 <strong>Figma:</strong> Pastikan link share diatur ke <u>Anyone with the link can view</u>.'
-            };
-        } else if (u.includes('youtube.com') || u.includes('youtu.be')) {
-            return {
-                name: 'YouTube',
-                color: 'bg-red-100 text-red-800 border-red-400',
-                tip: '▶️ <strong>YouTube:</strong> Pastikan video disetel ke <u>Publik</u> atau <u>Tidak Publik (Unlisted)</u>.'
-            };
-        } else if (u.includes('instagram.com') || u.includes('ig.me')) {
-            return {
-                name: 'Instagram Video',
-                color: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-400',
-                tip: '📸 <strong>Instagram:</strong> Pastikan akun Instagram kamu <u>TIDAK DI-PRIVATE (harus akun Publik)</u> agar video Reels/Postingan bisa ditonton dan dinilai oleh guru!'
-            };
-        } else if (u.includes('tiktok.com')) {
-            return {
-                name: 'TikTok Video',
-                color: 'bg-slate-900 text-white border-black',
-                tip: '🎵 <strong>TikTok:</strong> Pastikan video disetel ke <u>Publik</u> dan akun tidak dikunci/private agar guru bisa menonton.'
-            };
-        } else if (u.includes('capcut.com')) {
-            return {
-                name: 'CapCut',
-                color: 'bg-cyan-100 text-cyan-900 border-cyan-400',
-                tip: '🎬 <strong>CapCut:</strong> Pastikan link proyek / video CapCut dibagikan secara publik.'
-            };
-        } else if (u.includes('github.com')) {
-            return {
-                name: 'GitHub',
-                color: 'bg-slate-200 text-slate-800 border-slate-400',
-                tip: '🐙 <strong>GitHub:</strong> Pastikan repository tugas sudah disetel <u>Public</u>.'
-            };
-        }
-        return {
-            name: 'Tautan Web',
-            color: 'bg-indigo-100 text-indigo-800 border-indigo-400',
-            tip: '💡 Pastikan tautan web ini bisa dibuka oleh guru tanpa perlu login khusus.'
-        };
+        if (u.includes('canva.com')) return { name: 'Canva', bg: 'bg-teal-100 text-teal-800 border-teal-300' };
+        if (u.includes('docs.google.com') || u.includes('drive.google.com')) return { name: 'Google Docs/Drive', bg: 'bg-blue-100 text-blue-800 border-blue-300' };
+        if (u.includes('instagram.com')) return { name: 'Instagram', bg: 'bg-pink-100 text-pink-800 border-pink-300' };
+        if (u.includes('tiktok.com')) return { name: 'TikTok', bg: 'bg-stone-200 text-stone-900 border-stone-400' };
+        if (u.includes('scratch.mit.edu')) return { name: 'Scratch', bg: 'bg-amber-100 text-amber-800 border-amber-300' };
+        if (u.includes('youtube.com') || u.includes('youtu.be')) return { name: 'YouTube', bg: 'bg-red-100 text-red-800 border-red-300' };
+        return { name: 'Web Link', bg: 'bg-purple-100 text-purple-800 border-purple-300' };
     }
 
-    linkUrlInput.addEventListener('input', () => {
-        const val = linkUrlInput.value.trim();
-        if (val.length > 5) {
-            const detected = detectPlatform(val);
-            platformBadge.textContent = detected.name;
-            platformBadge.className = `inline-flex text-[11px] font-black px-2.5 py-0.5 rounded-full border ${detected.color}`;
-            platformBadge.classList.remove('hidden');
-            linkAlertText.innerHTML = detected.tip;
-            setStatus('ready', `Tautan ${detected.name} siap`);
-        } else {
-            platformBadge.classList.add('hidden');
-            linkAlertText.innerHTML = 'Pastikan link tugas Anda sudah diatur ke <strong>"Siapa saja yang memiliki tautan dapat melihat"</strong> agar guru bisa membuka dan menilai tugas Anda.';
-            setStatus('waiting', 'Masukkan URL tugas...');
-        }
-    });
-
-    // ==========================================
-    // 5. Drag & Drop File Handling
-    // ==========================================
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropzone.addEventListener(eventName, preventDefaults, false);
-    });
-
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
+    if (linkUrlInput) {
+        linkUrlInput.addEventListener('input', () => {
+            const val = linkUrlInput.value.trim();
+            if (val.length > 5) {
+                const detected = detectPlatform(val);
+                platformBadge.textContent = detected.name;
+                platformBadge.className = `text-[10px] font-black px-2 py-0.5 rounded-full border ${detected.bg}`;
+                platformBadge.classList.remove('hidden');
+                setStatus('ready', `Tautan ${detected.name} siap`);
+            } else {
+                platformBadge.classList.add('hidden');
+                setStatus('waiting', 'Masukkan URL tugas...');
+            }
+        });
     }
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropzone.addEventListener(eventName, () => {
-            dropzone.classList.add('border-indigo-400', 'bg-indigo-50');
-        }, false);
-    });
+    // Drag and drop berkas
+    if (dropzone) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+            dropzone.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
+        });
 
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropzone.addEventListener(eventName, () => {
-            dropzone.classList.remove('border-indigo-400', 'bg-indigo-50');
-        }, false);
-    });
+        dropzone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
 
-    dropzone.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        if (files.length) {
-            fileInput.files = files;
-            handleFileSelect();
-        }
-    });
-
-    fileInput.addEventListener('change', handleFileSelect);
+        fileInput.addEventListener('change', handleFileSelect);
+    }
 
     function handleFileSelect() {
         if (fileInput.files.length > 0) {
@@ -246,19 +192,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             for (let i = 0; i < fileInput.files.length; i++) {
                 const file = fileInput.files[i];
                 if (file.size > 10 * 1024 * 1024) {
-                    alert('Ukuran salah satu file melebihi batas maksimal 10MB.');
+                    alert('Ukuran berkas melebihi batas 10MB.');
                     resetFileInput();
                     return;
                 }
                 names.push(file.name);
             }
-            let displayNames = names.join(', ');
-            setStatus('ready', `${fileInput.files.length} file dipilih`);
+            setStatus('ready', `${fileInput.files.length} berkas dipilih`);
             fileInfo.classList.add('hidden');
-            fileInfo.classList.remove('flex');
             fileSelected.classList.remove('hidden');
             fileSelected.classList.add('flex');
-            filenameDisplay.textContent = `${fileInput.files.length} File Dipilih: ${displayNames}`;
+            filenameDisplay.textContent = names.join(', ');
         } else {
             resetFileInput();
         }
@@ -267,31 +211,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     function resetFileInput() {
         fileInput.value = '';
         fileInfo.classList.remove('hidden');
-        fileInfo.classList.add('flex');
         fileSelected.classList.add('hidden');
         fileSelected.classList.remove('flex');
-        if (lastUploadName) {
-            setStatus('last', lastUploadName);
-        } else {
-            setStatus('waiting', 'Menunggu Input...');
-        }
+        setStatus('waiting', 'Pilih berkas tugas...');
     }
 
-    clearFileBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        resetFileInput();
-    });
+    if (clearFileBtn) clearFileBtn.addEventListener('click', resetFileInput);
 
-    // ==========================================
-    // 6. Memuat Opsi Kelas & Materi dari Supabase
-    // ==========================================
+    // Muat Opsi Kelas & Judul Tugas dari Supabase
     async function loadOptions() {
         try {
             const { data, error } = await supabase.from('options').select('*');
             if (error) throw error;
             
             kelasSelect.innerHTML = '<option value="" disabled selected>Pilih Kelas</option>';
-            materiSelect.innerHTML = '<option value="" disabled selected>Pilih Materi / Tugas</option>';
+            materiSelect.innerHTML = '<option value="" disabled selected>Pilih Tugas</option>';
             
             data.forEach(opt => {
                 const el = document.createElement('option');
@@ -304,7 +238,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
-            // Set auto-remembered kelas jika ada
             if (savedKelas) {
                 kelasSelect.value = savedKelas;
             }
@@ -312,55 +245,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Failed to load options from Supabase', e);
         }
     }
-    
     loadOptions();
 
-    // ==========================================
-    // 7. Pengiriman Form & Bukti Resi Pengumpulan
-    // ==========================================
+    // Submit Pengumpulan Tugas
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const nama = namaInput.value.trim();
         const kelas = kelasSelect.value;
+        const mapel = mapelSelect.value;
         const materi = materiSelect.value;
 
         if (!nama || !kelas || !materi) {
-            alert('Silakan lengkapi Nama, Kelas, dan Tugas!');
+            alert('Silakan lengkapi Nama Lengkap, Kelas, dan Judul Tugas!');
             return;
         }
 
-        // Simpan nama & kelas ke LocalStorage agar siswa tidak perlu ngetik ulang
         localStorage.setItem('student_nama', nama);
         localStorage.setItem('student_kelas', kelas);
 
         if (currentMode === 'file') {
             if (!fileInput.files || fileInput.files.length === 0) {
-                alert('Silakan pilih setidaknya 1 file tugas.');
+                alert('Silakan pilih setidaknya 1 berkas tugas.');
                 return;
             }
         } else {
             const linkUrl = linkUrlInput.value.trim();
-            if (!linkUrl) {
-                alert('Silakan masukkan tautan / link tugas.');
-                return;
-            }
-            if (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {
-                alert('Format tautan tidak valid! Tautan harus diawali dengan http:// atau https://');
+            if (!linkUrl || (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://'))) {
+                alert('Tautan tidak valid! Awali dengan http:// atau https://');
                 return;
             }
         }
 
-        submitBtn.innerHTML = `
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Mengirim...
-        `;
+        submitBtn.innerText = 'Mengirim ke LMS...';
         submitBtn.style.pointerEvents = 'none';
-        submitBtn.classList.add('opacity-80');
-        
+
         const loadingPopup = document.getElementById('loadingPopup');
         if (loadingPopup) {
             loadingPopup.classList.remove('hidden');
@@ -371,7 +290,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             let submittedDetail = '';
 
             if (currentMode === 'file') {
-                // Upload File Mode
                 let fileNames = [];
                 for (let i = 0; i < fileInput.files.length; i++) {
                     const file = fileInput.files[i];
@@ -384,60 +302,45 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     if (uploadError) throw uploadError;
 
-                    // Simpan metadata ke Supabase DB
-                    let basePayload = {
+                    const payload = {
                         nama,
                         kelas,
                         materi,
+                        mapel,
                         filename: file.name,
-                        storage_path: uploadData.path
+                        storage_path: uploadData.path,
+                        tipe: 'file',
+                        status_koreksi: 'belum_dikoreksi'
                     };
 
-                    // Coba insert dengan tipe 'file' jika skema mendukung
-                    let { error: dbError } = await supabase.from('files').insert([{
-                        ...basePayload,
-                        tipe: 'file'
-                    }]);
-
-                    if (dbError && (dbError.message.includes('tipe') || dbError.code === 'PGRST204')) {
-                        const fallback = await supabase.from('files').insert([basePayload]);
-                        dbError = fallback.error;
-                    }
-
+                    const { error: dbError } = await supabase.from('files').insert([payload]);
                     if (dbError) throw dbError;
                     fileNames.push(file.name);
                 }
 
                 submittedDetail = fileNames.join(', ');
                 const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                localStorage.setItem('lastUpload', `${fileInput.files.length} file (${timestamp})`);
+                localStorage.setItem('lastUpload', `${fileInput.files.length} berkas (${timestamp})`);
 
             } else {
-                // Upload Link Mode
                 const linkUrl = linkUrlInput.value.trim();
                 const linkNote = linkNoteInput.value.trim();
                 const platform = detectPlatform(linkUrl);
                 const displayFilename = linkNote ? `[${platform.name}] ${linkNote}` : `[${platform.name}] Tautan Tugas`;
 
-                let basePayload = {
+                const payload = {
                     nama,
                     kelas,
                     materi,
+                    mapel,
                     filename: displayFilename,
-                    storage_path: `LINK:${linkUrl}`
+                    storage_path: `LINK:${linkUrl}`,
+                    link_url: linkUrl,
+                    tipe: 'link',
+                    status_koreksi: 'belum_dikoreksi'
                 };
 
-                let { error: dbError } = await supabase.from('files').insert([{
-                    ...basePayload,
-                    tipe: 'link',
-                    link_url: linkUrl
-                }]);
-
-                if (dbError && (dbError.message.includes('tipe') || dbError.message.includes('link_url') || dbError.code === 'PGRST204')) {
-                    const fallback = await supabase.from('files').insert([basePayload]);
-                    dbError = fallback.error;
-                }
-
+                const { error: dbError } = await supabase.from('files').insert([payload]);
                 if (dbError) throw dbError;
 
                 submittedDetail = linkUrl;
@@ -445,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('lastUpload', `Tautan ${platform.name} (${timestamp})`);
             }
 
-            // Tampilkan Bukti Resi Pengumpulan Digital
+            // Tampilkan Bukti Resi Pengumpulan Digital Neobrutalisme
             const receiptId = 'TGS-' + Math.floor(100000 + Math.random() * 900000);
             const now = new Date();
             const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -454,7 +357,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.body.innerHTML = `
                 <div class="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4">
                     <div class="bg-white border-[3px] border-black rounded-[40px] p-6 md:p-10 max-w-lg w-full text-center shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                        
                         <div class="w-16 h-16 bg-emerald-400 border-2 border-black rounded-full flex items-center justify-center mx-auto mb-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
                             <svg class="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path>
@@ -462,54 +364,47 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
 
                         <h2 class="text-2xl md:text-3xl font-black uppercase tracking-tight text-slate-900 mb-1">TUGAS BERHASIL TERKIRIM!</h2>
-                        <p class="text-slate-500 font-bold text-xs uppercase tracking-widest mb-6">Tanda Bukti Pengumpulan Tugas Siswa</p>
+                        <p class="text-slate-500 font-bold text-xs uppercase tracking-widest mb-6">Bukti Resmi Pengumpulan LMS SMPN 58</p>
 
-                        <!-- Kotak Resi Bukti Pengumpulan -->
-                        <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-3xl p-5 text-left space-y-2.5 mb-6 shadow-inner font-mono text-xs">
-                            <div class="flex justify-between border-b border-slate-200 pb-2">
-                                <span class="text-slate-500 font-medium">NO. RESI</span>
+                        <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-4 text-left space-y-2 mb-6 font-mono text-xs">
+                            <div class="flex justify-between border-b border-slate-200 pb-1.5">
+                                <span class="text-slate-500">NO. RESI</span>
                                 <span class="font-black text-black">${receiptId}</span>
                             </div>
-                            <div class="flex justify-between border-b border-slate-200 pb-2">
-                                <span class="text-slate-500 font-medium">WAKTU</span>
+                            <div class="flex justify-between border-b border-slate-200 pb-1.5">
+                                <span class="text-slate-500">WAKTU</span>
                                 <span class="font-bold text-black">${dateStr}, ${timeStr}</span>
                             </div>
-                            <div class="flex justify-between border-b border-slate-200 pb-2">
-                                <span class="text-slate-500 font-medium">NAMA LENGKAP</span>
+                            <div class="flex justify-between border-b border-slate-200 pb-1.5">
+                                <span class="text-slate-500">NAMA SISWA</span>
                                 <span class="font-black text-black uppercase">${nama}</span>
                             </div>
-                            <div class="flex justify-between border-b border-slate-200 pb-2">
-                                <span class="text-slate-500 font-medium">KELAS</span>
-                                <span class="font-black text-black">${kelas}</span>
+                            <div class="flex justify-between border-b border-slate-200 pb-1.5">
+                                <span class="text-slate-500">KELAS & MAPEL</span>
+                                <span class="font-black text-black">${kelas} &bull; ${mapel}</span>
                             </div>
-                            <div class="flex justify-between border-b border-slate-200 pb-2">
-                                <span class="text-slate-500 font-medium">TUGAS / MATERI</span>
+                            <div class="flex justify-between border-b border-slate-200 pb-1.5">
+                                <span class="text-slate-500">TUGAS</span>
                                 <span class="font-black text-black">${materi}</span>
                             </div>
-                            <div class="flex justify-between border-b border-slate-200 pb-2">
-                                <span class="text-slate-500 font-medium">METODE</span>
-                                <span class="font-black ${currentMode === 'link' ? 'text-purple-700' : 'text-blue-700'} uppercase">
-                                    ${currentMode === 'link' ? '🔗 Tautan / Link' : '📁 File Unggahan'}
-                                </span>
-                            </div>
                             <div class="pt-1">
-                                <span class="text-slate-500 font-medium block mb-1">DETAIL TUGAS:</span>
-                                <div class="font-bold text-slate-800 break-all bg-white p-2.5 rounded-xl border border-slate-200">
+                                <span class="text-slate-500 block mb-1">DETAIL PENGUMPULAN:</span>
+                                <div class="font-bold text-slate-800 break-all bg-white p-2 rounded border border-slate-200">
                                     ${submittedDetail}
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-yellow-100 border border-yellow-300 rounded-2xl p-3 text-xs text-yellow-900 font-bold mb-6 text-center">
-                            📸 <span>Screenshot (tangkap layar) halaman ini sebagai bukti Anda sudah mengumpulkan tugas ke guru.</span>
+                        <div class="bg-yellow-100 border border-yellow-300 rounded-xl p-2.5 text-xs text-yellow-900 font-bold mb-6 text-center">
+                            📸 <span>Screenshot layar ini sebagai bukti Anda sudah mengumpulkan tugas.</span>
                         </div>
 
-                        <div class="flex flex-col gap-3">
-                            <button onclick="window.print()" class="w-full h-14 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1">
+                        <div class="flex flex-col gap-2.5">
+                            <button onclick="window.print()" class="w-full h-12 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                                 Cetak / Simpan Resi
                             </button>
-                            <a href="/" class="w-full h-14 leading-[3.5rem] bg-indigo-600 hover:bg-black text-white rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-[4px_4px_0px_0px_rgba(49,46,129,1)] active:shadow-none active:translate-y-1">
-                                Kirim Tugas Lain
+                            <a href="/" class="w-full h-12 leading-[3rem] bg-indigo-600 hover:bg-black text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                Kembali ke Portal Belajar
                             </a>
                         </div>
                     </div>
@@ -522,9 +417,321 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loadingPopup.classList.remove('flex');
             }
             alert('Gagal mengirim tugas: ' + e.message);
-            submitBtn.innerHTML = 'Kirim Tugas';
+            submitBtn.innerText = 'KIRIM TUGAS SEKARANG';
             submitBtn.style.pointerEvents = 'auto';
-            submitBtn.classList.remove('opacity-80');
         }
     });
+
+    // ==========================================
+    // 2. MATERI BELAJAR SISWA
+    // ==========================================
+    async function loadStudentMaterials() {
+        const container = document.getElementById('student-materials-list');
+        const filterSelect = document.getElementById('filter-materi-mapel');
+        container.innerHTML = '<div class="col-span-2 text-center py-8 font-bold text-slate-400 uppercase">Memuat materi belajar...</div>';
+
+        try {
+            const { data, error } = await supabase.from('materials').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            allMaterials = data || [];
+
+            // Isi filter mapel
+            const mapelSet = new Set(allMaterials.map(m => m.mapel));
+            filterSelect.innerHTML = '<option value="">Semua Mapel</option>';
+            mapelSet.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m; opt.textContent = m;
+                filterSelect.appendChild(opt);
+            });
+
+            renderStudentMaterials(allMaterials);
+        } catch (e) {
+            container.innerHTML = `<div class="col-span-2 text-center text-red-500 font-bold">Gagal memuat materi: ${e.message}</div>`;
+        }
+    }
+
+    function renderStudentMaterials(list) {
+        const container = document.getElementById('student-materials-list');
+        container.innerHTML = '';
+
+        if (list.length === 0) {
+            container.innerHTML = '<div class="col-span-2 text-center py-8 text-slate-500 font-bold uppercase">Belum ada materi untuk mata pelajaran ini.</div>';
+            return;
+        }
+
+        list.forEach(m => {
+            const card = document.createElement('div');
+            card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
+            card.innerHTML = `
+                <div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            ${m.mapel} &bull; Kelas ${m.kelas}
+                        </span>
+                    </div>
+                    <h4 class="font-black text-lg text-black mb-2">${m.judul}</h4>
+                    <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line">${m.konten}</p>
+                </div>
+                ${m.link_video ? `<a href="${m.link_video}" target="_blank" class="text-xs font-bold text-indigo-600 underline">Tonton Video Pembelajaran ↗</a>` : ''}
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    window.filterStudentMaterials = () => {
+        const filterVal = document.getElementById('filter-materi-mapel').value;
+        const filtered = filterVal ? allMaterials.filter(m => m.mapel === filterVal) : allMaterials;
+        renderStudentMaterials(filtered);
+    };
+
+    // ==========================================
+    // 3. UJIAN & KUIS ONLINE SISWA
+    // ==========================================
+    async function loadStudentQuizzes() {
+        const container = document.getElementById('student-quizzes-list');
+        container.innerHTML = '<div class="bg-white border-2 border-black rounded-2xl p-6 text-center font-bold text-slate-500 uppercase">Memuat daftar ujian aktif...</div>';
+
+        try {
+            const { data, error } = await supabase.from('quizzes').select('*, quiz_questions(*)').eq('status', 'aktif').order('created_at', { ascending: false });
+            if (error) throw error;
+
+            container.innerHTML = '';
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="bg-white border-2 border-black rounded-2xl p-6 text-center font-bold text-slate-500 uppercase">Saat ini tidak ada ujian aktif.</div>';
+                return;
+            }
+
+            data.forEach(q => {
+                const questions = q.quiz_questions || [];
+                const card = document.createElement('div');
+                card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                ${q.mapel} &bull; Kelas ${q.kelas}
+                            </span>
+                            <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                Durasi: ${q.durasi_menit} Menit
+                            </span>
+                        </div>
+                        <h4 class="font-black text-xl text-black">${q.judul_kuis}</h4>
+                        <p class="text-xs text-slate-600 font-bold mt-0.5">${q.petunjuk || 'Kerjakan dengan teliti.'}</p>
+                    </div>
+                    <button onclick="startExam('${q.id}')" class="px-5 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                        Mulai Ujian ✍️
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        } catch (e) {
+            container.innerHTML = `<div class="bg-white border-2 border-black rounded-2xl p-6 text-center text-red-600 font-bold">Gagal memuat ujian: ${e.message}</div>`;
+        }
+    }
+
+    window.startExam = async (quizId) => {
+        const studentName = namaInput.value.trim() || prompt("Masukkan nama lengkap Anda untuk memulai ujian:");
+        if (!studentName) {
+            alert("Nama lengkap wajib diisi sebelum ujian.");
+            return;
+        }
+
+        try {
+            const { data, error } = await supabase.from('quizzes').select('*, quiz_questions(*)').eq('id', quizId).single();
+            if (error) throw error;
+            activeQuizData = { ...data, studentName };
+
+            // Render ke Quiz Room
+            document.getElementById('view-ujian').querySelector('.bg-amber-300').classList.add('hidden');
+            const room = document.getElementById('quiz-room-container');
+            room.classList.remove('hidden');
+
+            document.getElementById('quiz-room-mapel').textContent = `${data.mapel} • Kelas ${data.kelas}`;
+            document.getElementById('quiz-room-title').textContent = data.judul_kuis;
+
+            const qList = document.getElementById('quiz-questions-list');
+            qList.innerHTML = '';
+
+            const questions = data.quiz_questions || [];
+            questions.sort((a, b) => a.nomor - b.nomor);
+
+            questions.forEach((q, idx) => {
+                const qBox = document.createElement('div');
+                qBox.className = "bg-slate-50 border-2 border-black rounded-2xl p-4 md:p-5 space-y-3";
+                
+                if (q.tipe === 'pg') {
+                    qBox.innerHTML = `
+                        <div class="flex items-start gap-2">
+                            <span class="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
+                            <p class="font-bold text-sm text-black leading-relaxed">${q.pertanyaan}</p>
+                        </div>
+                        <div class="space-y-2 pl-8">
+                            ${['A', 'B', 'C', 'D'].map(opt => {
+                                const optKey = `opsi_${opt.toLowerCase()}`;
+                                const optText = q[optKey];
+                                if (!optText) return '';
+                                return `
+                                    <label class="flex items-center gap-2.5 p-2 bg-white border border-slate-300 rounded-xl cursor-pointer hover:bg-indigo-50 transition text-xs font-bold text-slate-800">
+                                        <input type="radio" name="question_${q.id}" value="${opt}" class="w-4 h-4 text-indigo-600">
+                                        <span><strong>${opt}.</strong> ${optText}</span>
+                                    </label>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                } else {
+                    qBox.innerHTML = `
+                        <div class="flex items-start gap-2">
+                            <span class="w-6 h-6 bg-purple-700 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
+                            <div>
+                                <span class="text-[10px] bg-purple-100 text-purple-900 font-black px-1.5 py-0.5 rounded border border-purple-300 uppercase">Soal Esai</span>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${q.pertanyaan}</p>
+                            </div>
+                        </div>
+                        <div class="pl-8">
+                            <textarea name="question_${q.id}" rows="3" placeholder="Tuliskan jawaban Anda di sini..." class="w-full p-3 border-2 border-black rounded-xl font-medium text-xs focus:outline-none bg-white"></textarea>
+                        </div>
+                    `;
+                }
+                qList.appendChild(qBox);
+            });
+
+            // Countdown Timer
+            let remainingSeconds = (data.durasi_menit || 45) * 60;
+            const timerEl = document.getElementById('quiz-timer');
+            if (quizTimerInterval) clearInterval(quizTimerInterval);
+
+            quizTimerInterval = setInterval(() => {
+                remainingSeconds--;
+                const m = Math.floor(remainingSeconds / 60);
+                const s = remainingSeconds % 60;
+                timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(quizTimerInterval);
+                    alert("Waktu ujian telah habis! Jawaban Anda akan dikirim secara otomatis.");
+                    submitExamAnswers();
+                }
+            }, 1000);
+
+            window.scrollTo({ top: room.offsetTop - 50, behavior: 'smooth' });
+
+        } catch (e) {
+            alert("Gagal memulai ujian: " + e.message);
+        }
+    };
+
+    window.submitExamAnswers = async () => {
+        if (!activeQuizData) return;
+        const confirmSubmit = confirm("Apakah Anda yakin ingin menyelesaikan dan mengirim jawaban ujian ini?");
+        if (!confirmSubmit) return;
+
+        if (quizTimerInterval) clearInterval(quizTimerInterval);
+
+        const btn = document.getElementById('btn-submit-exam');
+        btn.disabled = true;
+        btn.innerText = "Mengirim Jawaban...";
+
+        try {
+            const questions = activeQuizData.quiz_questions || [];
+            let answers = {};
+            let pgScoreTotal = 0;
+            let pgMaxScore = 0;
+
+            questions.forEach(q => {
+                if (q.tipe === 'pg') {
+                    const selected = document.querySelector(`input[name="question_${q.id}"]:checked`);
+                    const val = selected ? selected.value : '';
+                    answers[q.id] = val;
+                    pgMaxScore += (q.bobot || 10);
+                    if (val && val.toUpperCase() === (q.kunci_pg || '').toUpperCase()) {
+                        pgScoreTotal += (q.bobot || 10);
+                    }
+                } else {
+                    const textEl = document.querySelector(`textarea[name="question_${q.id}"]`);
+                    answers[q.id] = textEl ? textEl.value.trim() : '';
+                }
+            });
+
+            // Simpan ke Supabase quiz_submissions
+            const { error } = await supabase.from('quiz_submissions').insert([{
+                quiz_id: activeQuizData.id,
+                nama_siswa: activeQuizData.studentName,
+                kelas: activeQuizData.kelas,
+                jawaban_siswa: answers,
+                skor_pg: pgScoreTotal,
+                skor_esai: 0,
+                total_nilai: pgScoreTotal,
+                status_koreksi: 'selesai'
+            }]);
+
+            if (error) throw error;
+
+            alert(`Ujian berhasil dikumpulkan! Nilai Pilihan Ganda Anda: ${pgScoreTotal} poin.`);
+            window.location.reload();
+        } catch (e) {
+            alert("Gagal mengirim jawaban: " + e.message);
+            btn.disabled = false;
+            btn.innerText = "SELESAI & KIRIM JAWABAN";
+        }
+    };
+
+    // ==========================================
+    // 4. CEK NILAI TUGAS & UJIAN SISWA
+    // ==========================================
+    window.checkStudentGrades = async () => {
+        const nameVal = document.getElementById('check-name-input').value.trim();
+        const resultContainer = document.getElementById('student-grades-result');
+
+        if (!nameVal) {
+            alert("Silakan masukkan nama Anda!");
+            return;
+        }
+
+        resultContainer.innerHTML = '<div class="text-center py-6 text-slate-500 font-bold text-xs uppercase animate-pulse">Mencari riwayat nilai...</div>';
+
+        try {
+            const { data: fileGrades, error } = await supabase
+                .from('files')
+                .select('*')
+                .ilike('nama', `%${nameVal}%`)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            resultContainer.innerHTML = '';
+            if (!fileGrades || fileGrades.length === 0) {
+                resultContainer.innerHTML = '<div class="bg-slate-50 border-2 border-black rounded-xl p-6 text-center text-slate-500 font-bold uppercase text-xs">Belum ada data tugas yang ditemukan atas nama tersebut.</div>';
+                return;
+            }
+
+            fileGrades.forEach(g => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border-2 border-black rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3";
+                
+                const hasGrade = g.nilai !== null && g.nilai !== undefined && g.nilai !== '';
+                const gradeBadge = hasGrade 
+                    ? `<span class="bg-emerald-400 text-black font-black text-xl px-3 py-1.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${g.nilai}</span>`
+                    : `<span class="bg-amber-200 text-amber-900 font-bold text-xs px-2.5 py-1 rounded-lg border border-amber-400">Sedang Dikoreksi</span>`;
+
+                card.innerHTML = `
+                    <div>
+                        <span class="text-[10px] bg-indigo-100 text-indigo-900 font-black px-2 py-0.5 rounded border border-indigo-300 uppercase">
+                            ${g.mapel || 'Informatika'} &bull; ${g.kelas}
+                        </span>
+                        <h4 class="font-black text-base text-black mt-1">${g.materi}</h4>
+                        <p class="text-xs text-slate-600 font-bold mt-0.5">Nama: ${g.nama} &bull; ${new Date(g.created_at).toLocaleDateString('id-ID')}</p>
+                        ${g.catatan_guru ? `<p class="mt-2 text-xs bg-white p-2 rounded-lg border border-slate-300 font-medium text-slate-800">💬 <strong>Catatan Guru:</strong> ${g.catatan_guru}</p>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2 self-end md:self-center">
+                        ${gradeBadge}
+                    </div>
+                `;
+                resultContainer.appendChild(card);
+            });
+        } catch (e) {
+            resultContainer.innerHTML = `<div class="text-center text-red-600 font-bold text-xs">Gagal mencari nilai: ${e.message}</div>`;
+        }
+    };
+
 });
