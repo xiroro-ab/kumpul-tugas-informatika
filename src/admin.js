@@ -1479,17 +1479,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="text-xs font-black text-slate-800 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-xl">
                             ${matchingSubs.length} Siswa (${gradedCount} Dinilai)
                         </span>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <button onclick="editAssignment('${a.id}')" class="px-3 py-2 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                            <button type="button" onclick="editAssignment('${a.id}')" class="h-9 px-3 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
                                 Edit Soal
                             </button>
-                            <button onclick="addQuestionToExistingAssignment('${a.id}')" class="px-3 py-2 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                            <button type="button" onclick="addQuestionToExistingAssignment('${a.id}')" class="h-9 px-3 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
                                 Tambah Soal
                             </button>
-                            <button onclick="openAssignmentSubmissionsModal('${a.id}')" class="px-3.5 py-2 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5">
-                                Periksa & Koreksi (${matchingSubs.length})
+                            <button type="button" onclick="openAssignmentSubmissionsModal('${a.id}')" class="h-9 px-3.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center col-span-2 sm:col-span-1">
+                                Periksa (${matchingSubs.length})
                             </button>
-                            <button onclick="deleteAssignment('${a.id}')" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-300 rounded-xl font-black text-xs uppercase transition">
+                            <button type="button" onclick="deleteAssignment('${a.id}')" class="h-9 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center col-span-2 sm:col-span-1">
                                 Hapus
                             </button>
                         </div>
@@ -2647,8 +2647,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             quizzesList.forEach(q => {
                 const questions = q.quiz_questions || [];
-                const pgCount = questions.filter(item => item.tipe === 'pg').length;
-                const esaiCount = questions.filter(item => item.tipe === 'esai').length;
+                const typeBreakdown = [];
+                const typeDefs = [
+                    { key: 'pg', label: 'PG' },
+                    { key: 'pg_kompleks', label: 'PG Kompleks' },
+                    { key: 'benar_salah', label: 'Benar/Salah' },
+                    { key: 'singkat', label: 'Isian' },
+                    { key: 'menjodohkan', label: 'Menjodohkan' },
+                    { key: 'upload_foto', label: 'Upload' },
+                    { key: 'esai', label: 'Esai' }
+                ];
+                typeDefs.forEach(t => {
+                    const cnt = questions.filter(item => item.tipe === t.key).length;
+                    if (cnt > 0) typeBreakdown.push(`${cnt} ${t.label}`);
+                });
+                const summaryText = typeBreakdown.length > 0 ? `(${typeBreakdown.join(' • ')})` : '';
+
                 const { config: qCfg } = parseQuizConfig(q.petunjuk || '', q);
                 const quizToken = qCfg.token || (q.token || '').trim().toUpperCase();
 
@@ -2672,9 +2686,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const card = document.createElement('div');
-                card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4";
+                card.className = "bg-white border-[3px] border-black rounded-2xl p-4 sm:p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4";
                 card.innerHTML = `
-                    <div>
+                    <div class="w-full md:w-auto">
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                                 ${q.mapel} &bull; Kelas ${q.kelas}
@@ -2684,22 +2698,22 @@ document.addEventListener('DOMContentLoaded', () => {
                             </span>
                             ${tokenBadgeHtml}
                         </div>
-                        <h4 class="font-black text-xl text-black">${q.judul_kuis}</h4>
+                        <h4 class="font-black text-lg sm:text-xl text-black">${q.judul_kuis}</h4>
                         <p class="text-xs text-slate-600 font-bold mt-1">
-                            ${questions.length} Soal (${pgCount} Pilihan Ganda &bull; ${esaiCount} Esai)
+                            ${questions.length} Soal ${summaryText}
                         </p>
                     </div>
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <button onclick="openQuizResultsModal('${q.id}')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                    <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto shrink-0 mt-2 md:mt-0">
+                        <button type="button" onclick="openQuizResultsModal('${q.id}')" class="h-9 px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
                             Hasil & Koreksi
                         </button>
-                        <button onclick="openEditQuizModal('${q.id}')" class="px-3.5 py-2 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                        <button type="button" onclick="openEditQuizModal('${q.id}')" class="h-9 px-3.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
                             Edit Kuis
                         </button>
-                        <button onclick="addQuestionToExistingQuiz('${q.id}')" class="px-3.5 py-2 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1">
+                        <button type="button" onclick="addQuestionToExistingQuiz('${q.id}')" class="h-9 px-3.5 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
                             Tambah Soal
                         </button>
-                        <button onclick="deleteQuiz('${q.id}')" class="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 rounded-xl text-xs font-black uppercase">
+                        <button type="button" onclick="deleteQuiz('${q.id}')" class="h-9 px-3.5 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
                             Hapus
                         </button>
                     </div>
