@@ -1598,20 +1598,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.innerHTML = '<div class="bg-white border-2 border-black rounded-2xl p-6 text-center font-bold text-slate-500 uppercase animate-pulse">Memuat daftar ujian aktif...</div>';
 
         try {
+            let quizList = [];
             const { data, error } = await supabase.rpc('list_student_quizzes');
-            if (error) throw error;
-            allQuizzes = Array.isArray(data) ? data : [];
+            if (error) {
+                console.warn('RPC list_student_quizzes tidak ditemukan / error (404), fallback ke tabel quizzes:', error);
+                const { data: directData, error: dirErr } = await supabase
+                    .from('quizzes')
+                    .select('*')
+                    .eq('status', 'aktif')
+                    .order('created_at', { ascending: false });
+                if (dirErr) throw error;
+                quizList = (directData || []).map(q => ({
+                    ...q,
+                    petunjuk: (q.petunjuk || '').replace(/\[CONFIG:[^]]*\]/g, ''),
+                    token_required: (q.token_required ?? (!!q.token && q.token.trim() !== '')) && !!q.token
+                }));
+            } else {
+                quizList = Array.isArray(data) ? data : [];
+            }
+            allQuizzes = quizList;
 
             // Riwayat submit kuis siswa aktif (data aman, tanpa kunci jawaban)
             const studentName = globalNameInput?.value?.trim();
             if (studentName) {
-                const { data: mySubs, error: subErr } = await supabase.rpc('get_student_exam_submissions', {
+                let mySubs = [];
+                const { data: rpcSubs, error: subErr } = await supabase.rpc('get_student_exam_submissions', {
                     p_student_id: '',
                     p_student_name: studentName,
                     p_kelas: globalKelasSelect?.value?.trim() || ''
                 });
-                if (subErr) throw subErr;
-                studentQuizSubmissions = Array.isArray(mySubs) ? mySubs : [];
+                if (subErr) {
+                    console.warn('RPC get_student_exam_submissions fallback:', subErr);
+                    const { data: dirSubs } = await supabase
+                        .from('quiz_submissions')
+                        .select('id, quiz_id, student_id, nama_siswa, kelas, status_koreksi, skor_pg, skor_esai, total_nilai, created_at')
+                        .ilike('nama_siswa', studentName)
+                        .order('created_at', { ascending: false });
+                    mySubs = dirSubs || [];
+                } else {
+                    mySubs = Array.isArray(rpcSubs) ? rpcSubs : [];
+                }
+                studentQuizSubmissions = mySubs;
             } else {
                 studentQuizSubmissions = [];
             }

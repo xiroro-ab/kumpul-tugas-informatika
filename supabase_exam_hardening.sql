@@ -2,6 +2,23 @@
 -- HARDENING EXAM: RPC server-side + RLS + unique index
 -- Jalankan di SQL Editor Supabase setelah schema dasar
 -- =====================================================
+-- 0) Pastikan kolom wajib sudah ada sebelum deduplikasi dan fungsi dibuat
+ALTER TABLE public.quizzes ADD COLUMN IF NOT EXISTS petunjuk text default '';
+ALTER TABLE public.quizzes ADD COLUMN IF NOT EXISTS durasi_menit integer default 45;
+ALTER TABLE public.quizzes ADD COLUMN IF NOT EXISTS status text default 'aktif';
+ALTER TABLE public.quizzes ADD COLUMN IF NOT EXISTS token text default '';
+ALTER TABLE public.quizzes ADD COLUMN IF NOT EXISTS token_required boolean default true;
+
+ALTER TABLE public.quiz_questions ADD COLUMN IF NOT EXISTS rubrik_esai text default '';
+ALTER TABLE public.quiz_questions ADD COLUMN IF NOT EXISTS kunci_pg text default '';
+ALTER TABLE public.quiz_questions ADD COLUMN IF NOT EXISTS bobot integer default 10;
+
+ALTER TABLE public.quiz_submissions ADD COLUMN IF NOT EXISTS student_id text default '';
+ALTER TABLE public.quiz_submissions ADD COLUMN IF NOT EXISTS jawaban_siswa jsonb default '{}'::jsonb;
+ALTER TABLE public.quiz_submissions ADD COLUMN IF NOT EXISTS skor_pg integer default 0;
+ALTER TABLE public.quiz_submissions ADD COLUMN IF NOT EXISTS skor_esai integer default 0;
+ALTER TABLE public.quiz_submissions ADD COLUMN IF NOT EXISTS total_nilai integer default 0;
+ALTER TABLE public.quiz_submissions ADD COLUMN IF NOT EXISTS status_koreksi text default 'sedang_ujian';
 
 -- 1) Deduplikasi quiz_submissions: pertahankan yang terbaru
 WITH ranked AS (
@@ -548,6 +565,8 @@ SELECT coalesce(jsonb_agg(jsonb_build_object(
 $$;
 
 -- 8) Grants
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+
 GRANT EXECUTE ON FUNCTION public.list_student_quizzes() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.start_exam_session(BIGINT,TEXT,TEXT,TEXT,TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.resume_exam_session(BIGINT,TEXT,TEXT,TEXT) TO anon, authenticated;
@@ -566,3 +585,9 @@ REVOKE EXECUTE ON FUNCTION public.score_exam_submission(BIGINT,JSONB) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.sanitized_questions(BIGINT) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.exam_config(TEXT,BOOLEAN) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.sanitize_question(public.quiz_questions) FROM anon;
+
+-- 9) Reload PostgREST schema cache
+SELECT pg_notify('pgrst', 'reload schema');
+
+SELECT 'SUCCESS: SEMUA RPC UJIAN AKTIF!' AS status, count(*)::text || ' ujian ditemukan' AS keterangan FROM public.quizzes;
+
