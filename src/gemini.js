@@ -604,7 +604,8 @@ Tentukan:
 export async function aiGradeQuizEssay(pertanyaan, rubrik, jawabanSiswa, maxBobot = 20) {
     const system = `Anda adalah penilai ujian esai SMP objektif. Berikan skor dan evaluasi singkat dalam JSON: {"skor": number, "feedback": string}`;
 
-    const prompt = `Soal Esai: ${pertanyaan}
+    const cleanPertanyaan = String(pertanyaan || '').replace(/\n?\[GAMBAR:\s*[^\]]+\]/gi, '').trim();
+    const prompt = `Soal Esai: ${cleanPertanyaan}
 Rubrik Jawaban Guru: ${rubrik}
 Bobot Maksimal: ${maxBobot}
 Jawaban Siswa: ${jawabanSiswa || '(Kosong / Tidak menjawab)'}
@@ -743,9 +744,11 @@ KEMBALIKAN HANYA JSON:
             keyInfo = item.pasangan.map(p => `${p.kiri} -> ${p.kanan}`).join('; ');
         }
 
+        const cleanPertanyaan = String(item.pertanyaan || '').replace(/\n?\[GAMBAR:\s*[^\]]+\]/gi, '').trim();
+
         return `
 Butir #${item.nomor || (idx + 1)} (${String(item.tipe).toUpperCase()} - Bobot Maks: ${item.bobot || 25}):
-Pertanyaan: ${item.pertanyaan}
+Pertanyaan: ${cleanPertanyaan}
 Kunci / Panduan Guru: ${keyInfo}
 Jawaban Siswa: ${studentAns}
 `;

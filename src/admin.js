@@ -124,6 +124,20 @@ export function populateTargetClassSelect(selectElement, selectedValue = 'Semua 
     }
 }
 
+export function splitQuestionImage(text) {
+    if (!text || typeof text !== 'string') {
+        return { text: text || '', gambar_url: '' };
+    }
+    const match = text.match(/\n?\[GAMBAR:\s*([^\]]+)\]/i);
+    if (match) {
+        return {
+            text: text.replace(/\n?\[GAMBAR:\s*([^\]]+)\]/i, '').trim(),
+            gambar_url: match[1].trim()
+        };
+    }
+    return { text, gambar_url: '' };
+}
+
 export function parseAssignmentQuestions(assignment) {
     if (!assignment || !assignment.deskripsi) {
         return { petunjuk: '', questions: [] };
@@ -132,22 +146,38 @@ export function parseAssignmentQuestions(assignment) {
     if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
             const parsed = JSON.parse(raw);
+            let qList = [];
+            let petunjuk = '';
             if (Array.isArray(parsed)) {
-                return { petunjuk: '', questions: parsed };
+                qList = parsed;
+            } else if (parsed.questions && Array.isArray(parsed.questions)) {
+                petunjuk = parsed.petunjuk || '';
+                qList = parsed.questions;
             }
-            if (parsed.questions && Array.isArray(parsed.questions)) {
-                return { petunjuk: parsed.petunjuk || '', questions: parsed.questions };
+            if (qList.length > 0) {
+                qList.forEach(q => {
+                    if (!q.gambar_url && q.pertanyaan) {
+                        const s = splitQuestionImage(q.pertanyaan);
+                        if (s.gambar_url) {
+                            q.pertanyaan = s.text;
+                            q.gambar_url = s.gambar_url;
+                        }
+                    }
+                });
+                return { petunjuk, questions: qList };
             }
         } catch (_) {}
     }
+    const s = splitQuestionImage(raw);
     return {
-        petunjuk: raw,
+        petunjuk: s.text,
         questions: [
             {
                 id: 1,
                 nomor: 1,
                 tipe: 'esai',
-                pertanyaan: raw,
+                pertanyaan: s.text,
+                gambar_url: s.gambar_url,
                 kunci: assignment.rubrik_ai || '',
                 bobot: 100
             }
@@ -843,6 +873,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         answerHtml = `<div class="font-semibold text-black whitespace-pre-line">${escapeHtml(q.jawaban_siswa || '(Tidak dijawab / Kosong)')}</div>`;
                     }
 
+                    const { text: cleanPertanyaan, gambar_url: qImg } = splitQuestionImage(q.pertanyaan || '');
+                    const imgUrl = q.gambar_url || qImg;
+
                     return `
                         <div class="border-2 border-black rounded-2xl p-4 bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] space-y-2.5">
                             <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 flex-wrap gap-1">
@@ -860,7 +893,15 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </span>
                             </div>
 
-                            <p class="font-bold text-xs md:text-sm text-slate-900 leading-relaxed">${escapeHtml(q.pertanyaan)}</p>
+                            <p class="font-bold text-xs md:text-sm text-slate-900 leading-relaxed">${escapeHtml(cleanPertanyaan)}</p>
+                            ${imgUrl ? `
+                                <div class="my-2 p-1.5 border-2 border-black rounded-xl bg-slate-50 max-w-sm">
+                                    <a href="${escapeHtml(imgUrl)}" target="_blank" title="Buka gambar stimulus">
+                                        <img src="${escapeHtml(imgUrl)}" alt="Gambar Soal" class="max-h-48 rounded-lg border border-slate-300 object-contain mx-auto" />
+                                    </a>
+                                    <div class="text-[10px] text-slate-500 font-bold text-center mt-1">📷 Stimulus Gambar Soal (Klik untuk perbesar)</div>
+                                </div>
+                            ` : ''}
 
                             <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 text-xs leading-relaxed">
                                 <span class="font-black uppercase text-amber-950 text-[10px] block mb-1">Jawaban Siswa:</span>
@@ -1707,6 +1748,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         list.innerHTML = formBuilderQuestions.map((q, idx) => {
+            const { text: cleanPertanyaan, gambar_url: parsedImg } = splitQuestionImage(q.pertanyaan || '');
+            if (!q.gambar_url && parsedImg) {
+                q.gambar_url = parsedImg;
+                q.pertanyaan = cleanPertanyaan;
+            }
+
             const tipe = q.tipe || 'esai';
             const isPg = tipe === 'pg';
             const isSingkat = tipe === 'singkat';
@@ -1743,7 +1790,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <div>
                         <label class="block text-[11px] font-black uppercase text-black mb-1">Pertanyaan / Instruksi Soal #${idx + 1}</label>
-                        <textarea rows="2" placeholder="Tuliskan pertanyaan atau instruksi soal di sini..." oninput="window.updateFormQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.pertanyaan || '')}</textarea>
+                        <textarea rows="2" placeholder="Tuliskan pertanyaan atau instruksi soal di sini..." oninput="window.updateFormQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(cleanPertanyaan)}</textarea>
+                    </div>
+
+                    <!-- Lampiran Stimulus Gambar Soal -->
+                    <div class="p-2.5 rounded-xl border border-dashed border-slate-400 bg-slate-50/80 space-y-2">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <span class="text-[11px] font-black uppercase text-slate-700 flex items-center gap-1.5">
+                                <span>📷</span> Lampiran Gambar Soal (Stimulus / Ilustrasi / Diagram)
+                            </span>
+                            ${q.gambar_url ? `
+                                <button type="button" onclick="window.removeQuestionImage(${idx}, 'form')" class="text-[10px] font-black uppercase text-red-600 bg-red-100 hover:bg-red-200 px-2 py-0.5 rounded border border-red-300 transition">
+                                    ❌ Hapus Gambar
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        ${q.gambar_url ? `
+                            <div class="flex items-center gap-3 bg-white p-2 rounded-lg border border-black">
+                                <img src="${escapeHtml(q.gambar_url)}" alt="Preview Gambar Soal" class="h-16 w-20 object-contain rounded border border-slate-300 bg-slate-50 shrink-0" />
+                                <div class="flex-1 min-w-0">
+                                    <a href="${escapeHtml(q.gambar_url)}" target="_blank" class="text-xs font-bold text-indigo-700 hover:underline truncate block">
+                                        ${escapeHtml(q.gambar_url)}
+                                    </a>
+                                    <span class="text-[10px] text-emerald-700 font-bold">✅ Gambar aktif terpasang pada butir soal ini</span>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
+                                <div>
+                                    <input type="file" id="form_img_file_${idx}" accept="image/*" class="hidden" onchange="window.handleQuestionImageUpload(event, ${idx}, 'form')">
+                                    <button type="button" onclick="document.getElementById('form_img_file_${idx}').click()" class="w-full h-8 px-2.5 bg-white hover:bg-slate-100 border border-black rounded-lg text-xs font-black text-slate-800 flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                        📁 Pilih Gambar dari Komputer
+                                    </button>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <input type="url" placeholder="Atau tempel URL gambar (https://...)" value="${escapeHtml(q.gambar_url || '')}" oninput="window.updateQuestionImage(${idx}, this.value, 'form')" class="w-full h-8 px-2.5 border border-black rounded-lg text-xs font-medium bg-white">
+                                </div>
+                            </div>
+                        `}
                     </div>
 
                     ${isPg ? `
@@ -2339,6 +2424,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button onclick="openQuizResultsModal('${q.id}')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
                             📊 Hasil & Koreksi Ujian
                         </button>
+                        <button onclick="openEditQuizModal('${q.id}')" class="px-3.5 py-2 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                            ✏️ Edit Kuis & Soal
+                        </button>
                         <button onclick="deleteQuiz('${q.id}')" class="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 rounded-xl text-xs font-black uppercase">
                             Hapus
                         </button>
@@ -2458,8 +2546,81 @@ document.addEventListener('DOMContentLoaded', () => {
     // BUILDER KUIS INPUT MANUAL (MANDIRI TANPA AI)
     // =========================================================
     let manualQuizQuestions = [];
+    let editingQuizId = null;
+
+    // Helper Unggah & Pasang Gambar Soal (Form Tugas & Kuis)
+    window.handleQuestionImageUpload = async (event, idx, context = 'form') => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            showCustomModal("Berkas yang dipilih harus berupa gambar (JPG, PNG, GIF, WebP)!");
+            return;
+        }
+
+        try {
+            const fileExt = file.name.split('.').pop() || 'png';
+            const safeName = `${Date.now()}_stimulus_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `soal_stimulus/${safeName}`;
+
+            const { error: uploadErr } = await supabase.storage.from('uploads').upload(filePath, file);
+            if (uploadErr) throw uploadErr;
+
+            const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+            const publicUrl = publicUrlData.publicUrl;
+
+            if (context === 'form') {
+                if (formBuilderQuestions[idx]) {
+                    formBuilderQuestions[idx].gambar_url = publicUrl;
+                    renderFormBuilderQuestions();
+                }
+            } else {
+                if (manualQuizQuestions[idx]) {
+                    manualQuizQuestions[idx].gambar_url = publicUrl;
+                    renderManualQuizQuestions();
+                }
+            }
+        } catch (err) {
+            showCustomModal("Gagal mengunggah gambar: " + err.message);
+        }
+    };
+
+    window.updateQuestionImage = (idx, value, context = 'form') => {
+        const trimmed = (value || '').trim();
+        if (context === 'form') {
+            if (formBuilderQuestions[idx]) {
+                formBuilderQuestions[idx].gambar_url = trimmed;
+            }
+        } else {
+            if (manualQuizQuestions[idx]) {
+                manualQuizQuestions[idx].gambar_url = trimmed;
+            }
+        }
+    };
+
+    window.removeQuestionImage = (idx, context = 'form') => {
+        if (context === 'form') {
+            if (formBuilderQuestions[idx]) {
+                delete formBuilderQuestions[idx].gambar_url;
+                renderFormBuilderQuestions();
+            }
+        } else {
+            if (manualQuizQuestions[idx]) {
+                delete manualQuizQuestions[idx].gambar_url;
+                renderManualQuizQuestions();
+            }
+        }
+    };
 
     window.openManualQuizModal = () => {
+        editingQuizId = null;
+        const modalTitle = document.getElementById('manual-quiz-modal-title');
+        const modalSub = document.getElementById('manual-quiz-modal-subtitle');
+        const btnSave = document.getElementById('btn-save-manual-quiz');
+        if (modalTitle) modalTitle.textContent = "Buat Kuis Baru (Input Manual)";
+        if (modalSub) modalSub.textContent = "Susun naskah butir soal secara mandiri untuk siswa";
+        if (btnSave) btnSave.innerText = "💾 SIMPAN & TERBITKAN KUIS";
+
         const kelasSelect = document.getElementById('manual-quiz-kelas');
         populateTargetClassSelect(kelasSelect, 'Semua Kelas');
         const mapelSelect = document.getElementById('manual-quiz-mapel');
@@ -2475,6 +2636,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 id: Date.now(),
                 tipe: 'pg',
                 pertanyaan: '',
+                gambar_url: '',
                 opsi_a: '',
                 opsi_b: '',
                 opsi_c: '',
@@ -2489,7 +2651,87 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('manual-quiz-modal').classList.remove('hidden');
     };
 
+    window.openEditQuizModal = (quizId) => {
+        const quiz = quizzesList.find(q => String(q.id) === String(quizId));
+        if (!quiz) {
+            showCustomModal("Data kuis tidak ditemukan!");
+            return;
+        }
+
+        editingQuizId = quiz.id;
+
+        const modalTitle = document.getElementById('manual-quiz-modal-title');
+        const modalSub = document.getElementById('manual-quiz-modal-subtitle');
+        const btnSave = document.getElementById('btn-save-manual-quiz');
+        if (modalTitle) modalTitle.textContent = "Edit Kuis & Butir Soal";
+        if (modalSub) modalSub.textContent = "Perbarui naskah butir soal, kunci jawaban, dan stimulus gambar";
+        if (btnSave) btnSave.innerText = "💾 SIMPAN PERUBAHAN KUIS";
+
+        const kelasSelect = document.getElementById('manual-quiz-kelas');
+        populateTargetClassSelect(kelasSelect, quiz.kelas || 'Semua Kelas');
+        const mapelSelect = document.getElementById('manual-quiz-mapel');
+        if (mapelSelect) mapelSelect.value = quiz.mapel || 'Informatika';
+
+        document.getElementById('manual-quiz-judul').value = quiz.judul_kuis || '';
+        document.getElementById('manual-quiz-durasi').value = quiz.durasi_menit || '45';
+        document.getElementById('manual-quiz-petunjuk').value = quiz.petunjuk || 'Kerjakan dengan teliti, jujur, dan mandiri.';
+
+        const rawQuestions = Array.isArray(quiz.quiz_questions) ? [...quiz.quiz_questions] : [];
+        rawQuestions.sort((a, b) => (a.nomor || 0) - (b.nomor || 0));
+
+        if (rawQuestions.length > 0) {
+            manualQuizQuestions = rawQuestions.map(item => {
+                const { text: cleanPertanyaan, gambar_url } = splitQuestionImage(item.pertanyaan || '');
+                let pasangan = [];
+                if (item.tipe === 'menjodohkan') {
+                    try {
+                        pasangan = JSON.parse(item.rubrik_esai);
+                    } catch (_) {
+                        pasangan = [
+                            { kiri: '', kanan: '' },
+                            { kiri: '', kanan: '' }
+                        ];
+                    }
+                }
+                return {
+                    id: item.id || Date.now() + Math.random(),
+                    tipe: item.tipe || 'pg',
+                    pertanyaan: cleanPertanyaan,
+                    gambar_url: item.gambar_url || gambar_url,
+                    opsi_a: item.opsi_a || '',
+                    opsi_b: item.opsi_b || '',
+                    opsi_c: item.opsi_c || '',
+                    opsi_d: item.opsi_d || '',
+                    kunci_pg: item.kunci_pg || (item.tipe === 'benar_salah' ? 'Benar' : 'A'),
+                    rubrik_esai: item.tipe === 'menjodohkan' ? '' : (item.rubrik_esai || ''),
+                    pasangan: pasangan,
+                    bobot: item.bobot || 10
+                };
+            });
+        } else {
+            manualQuizQuestions = [
+                {
+                    id: Date.now(),
+                    tipe: 'pg',
+                    pertanyaan: '',
+                    gambar_url: '',
+                    opsi_a: '',
+                    opsi_b: '',
+                    opsi_c: '',
+                    opsi_d: '',
+                    kunci_pg: 'A',
+                    rubrik_esai: '',
+                    bobot: 10
+                }
+            ];
+        }
+
+        renderManualQuizQuestions();
+        document.getElementById('manual-quiz-modal').classList.remove('hidden');
+    };
+
     window.closeManualQuizModal = () => {
+        editingQuizId = null;
         document.getElementById('manual-quiz-modal').classList.add('hidden');
     };
 
@@ -2510,6 +2752,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id: Date.now() + Math.random(),
             tipe: type,
             pertanyaan: '',
+            gambar_url: '',
             opsi_a: '',
             opsi_b: '',
             opsi_c: '',
@@ -2613,6 +2856,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         container.innerHTML = manualQuizQuestions.map((q, idx) => {
+            const { text: cleanPertanyaan, gambar_url: parsedImg } = splitQuestionImage(q.pertanyaan || '');
+            if (!q.gambar_url && parsedImg) {
+                q.gambar_url = parsedImg;
+                q.pertanyaan = cleanPertanyaan;
+            }
             const currentType = q.tipe || 'pg';
             let specificContent = '';
 
@@ -2736,8 +2984,46 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-black uppercase text-black mb-1">Pertanyaan Soal</label>
-                        <textarea rows="2" placeholder="Tuliskan butir soal di sini..." oninput="window.updateManualQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(q.pertanyaan)}</textarea>
+                        <label class="block text-[11px] font-black uppercase text-black mb-1">Pertanyaan Soal #${idx + 1}</label>
+                        <textarea rows="2" placeholder="Tuliskan butir soal di sini..." oninput="window.updateManualQuestionField(${idx}, 'pertanyaan', this.value)" class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white">${escapeHtml(cleanPertanyaan)}</textarea>
+                    </div>
+
+                    <!-- Lampiran Stimulus Gambar Soal -->
+                    <div class="p-2.5 rounded-xl border border-dashed border-slate-400 bg-slate-50/80 space-y-2">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <span class="text-[11px] font-black uppercase text-slate-700 flex items-center gap-1.5">
+                                <span>📷</span> Lampiran Gambar Soal (Stimulus / Ilustrasi / Diagram)
+                            </span>
+                            ${q.gambar_url ? `
+                                <button type="button" onclick="window.removeQuestionImage(${idx}, 'quiz')" class="text-[10px] font-black uppercase text-red-600 bg-red-100 hover:bg-red-200 px-2 py-0.5 rounded border border-red-300 transition">
+                                    ❌ Hapus Gambar
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        ${q.gambar_url ? `
+                            <div class="flex items-center gap-3 bg-white p-2 rounded-lg border border-black">
+                                <img src="${escapeHtml(q.gambar_url)}" alt="Preview Gambar Soal" class="h-16 w-20 object-contain rounded border border-slate-300 bg-slate-50 shrink-0" />
+                                <div class="flex-1 min-w-0">
+                                    <a href="${escapeHtml(q.gambar_url)}" target="_blank" class="text-xs font-bold text-indigo-700 hover:underline truncate block">
+                                        ${escapeHtml(q.gambar_url)}
+                                    </a>
+                                    <span class="text-[10px] text-emerald-700 font-bold">✅ Gambar aktif terpasang pada butir soal ini</span>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
+                                <div>
+                                    <input type="file" id="quiz_img_file_${idx}" accept="image/*" class="hidden" onchange="window.handleQuestionImageUpload(event, ${idx}, 'quiz')">
+                                    <button type="button" onclick="document.getElementById('quiz_img_file_${idx}').click()" class="w-full h-8 px-2.5 bg-white hover:bg-slate-100 border border-black rounded-lg text-xs font-black text-slate-800 flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                                        📁 Pilih Gambar dari Komputer
+                                    </button>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <input type="url" placeholder="Atau tempel URL gambar (https://...)" value="${escapeHtml(q.gambar_url || '')}" oninput="window.updateQuestionImage(${idx}, this.value, 'quiz')" class="w-full h-8 px-2.5 border border-black rounded-lg text-xs font-medium bg-white">
+                                </div>
+                            </div>
+                        `}
                     </div>
 
                     ${specificContent}
@@ -2787,59 +3073,117 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('btn-save-manual-quiz');
         if (btn) {
             btn.disabled = true;
-            btn.innerText = "Menyimpan & Menerbitkan Kuis...";
+            btn.innerText = editingQuizId ? "Menyimpan Perubahan Kuis..." : "Menyimpan & Menerbitkan Kuis...";
         }
 
         try {
-            const { data: quizData, error: quizError } = await supabase.from('quizzes').insert([{
-                teacher_id: currentSession?.user?.id,
-                mapel,
-                kelas,
-                judul_kuis: judul,
-                petunjuk,
-                durasi_menit: durasi,
-                status: 'aktif'
-            }]).select().single();
+            if (editingQuizId) {
+                const { error: quizError } = await supabase.from('quizzes').update({
+                    mapel,
+                    kelas,
+                    judul_kuis: judul,
+                    petunjuk,
+                    durasi_menit: durasi
+                }).eq('id', editingQuizId);
 
-            if (quizError) throw quizError;
+                if (quizError) throw quizError;
 
-            const questionsPayload = manualQuizQuestions.map((q, idx) => {
-                let rubrik = q.rubrik_esai ? q.rubrik_esai.trim() : '';
-                if (q.tipe === 'menjodohkan') {
-                    rubrik = JSON.stringify(q.pasangan || []);
-                }
-                let kunci = q.kunci_pg || '';
-                if (q.tipe === 'benar_salah' && !kunci) kunci = 'Benar';
-                if (q.tipe === 'pg' && !kunci) kunci = 'A';
+                const { error: delError } = await supabase.from('quiz_questions').delete().eq('quiz_id', editingQuizId);
+                if (delError) throw delError;
 
-                return {
-                    quiz_id: quizData.id,
-                    nomor: idx + 1,
-                    tipe: q.tipe || 'pg',
-                    pertanyaan: q.pertanyaan.trim(),
-                    opsi_a: q.opsi_a ? q.opsi_a.trim() : '',
-                    opsi_b: q.opsi_b ? q.opsi_b.trim() : '',
-                    opsi_c: q.opsi_c ? q.opsi_c.trim() : '',
-                    opsi_d: q.opsi_d ? q.opsi_d.trim() : '',
-                    kunci_pg: kunci,
-                    rubrik_esai: rubrik,
-                    bobot: parseInt(q.bobot, 10) || 10
-                };
-            });
+                const questionsPayload = manualQuizQuestions.map((q, idx) => {
+                    let rubrik = q.rubrik_esai ? q.rubrik_esai.trim() : '';
+                    if (q.tipe === 'menjodohkan') {
+                        rubrik = JSON.stringify(q.pasangan || []);
+                    }
+                    let kunci = q.kunci_pg || '';
+                    if (q.tipe === 'benar_salah' && !kunci) kunci = 'Benar';
+                    if (q.tipe === 'pg' && !kunci) kunci = 'A';
 
-            const { error: qError } = await supabase.from('quiz_questions').insert(questionsPayload);
-            if (qError) throw qError;
+                    let cleanText = splitQuestionImage(q.pertanyaan || '').text.trim();
+                    if (q.gambar_url && q.gambar_url.trim()) {
+                        cleanText += `\n[GAMBAR: ${q.gambar_url.trim()}]`;
+                    }
 
-            closeManualQuizModal();
-            loadQuizzes();
-            const typesSummary = [...new Set(manualQuizQuestions.map(q => q.tipe || 'pg'))].join(', ');
-            showCustomModal(`✅ Berhasil! Kuis manual "${judul}" (${manualQuizQuestions.length} butir soal: ${typesSummary}) telah berhasil diterbitkan untuk ${kelas}!`);
+                    return {
+                        quiz_id: editingQuizId,
+                        nomor: idx + 1,
+                        tipe: q.tipe || 'pg',
+                        pertanyaan: cleanText,
+                        opsi_a: q.opsi_a ? q.opsi_a.trim() : '',
+                        opsi_b: q.opsi_b ? q.opsi_b.trim() : '',
+                        opsi_c: q.opsi_c ? q.opsi_c.trim() : '',
+                        opsi_d: q.opsi_d ? q.opsi_d.trim() : '',
+                        kunci_pg: kunci,
+                        rubrik_esai: rubrik,
+                        bobot: parseInt(q.bobot, 10) || 10
+                    };
+                });
+
+                const { error: qError } = await supabase.from('quiz_questions').insert(questionsPayload);
+                if (qError) throw qError;
+
+                editingQuizId = null;
+                closeManualQuizModal();
+                loadQuizzes();
+                const typesSummary = [...new Set(manualQuizQuestions.map(q => q.tipe || 'pg'))].join(', ');
+                showCustomModal(`✅ Berhasil! Perubahan kuis "${judul}" (${manualQuizQuestions.length} butir soal: ${typesSummary}) telah disimpan!`);
+            } else {
+                const { data: quizData, error: quizError } = await supabase.from('quizzes').insert([{
+                    teacher_id: currentSession?.user?.id,
+                    mapel,
+                    kelas,
+                    judul_kuis: judul,
+                    petunjuk,
+                    durasi_menit: durasi,
+                    status: 'aktif'
+                }]).select().single();
+
+                if (quizError) throw quizError;
+
+                const questionsPayload = manualQuizQuestions.map((q, idx) => {
+                    let rubrik = q.rubrik_esai ? q.rubrik_esai.trim() : '';
+                    if (q.tipe === 'menjodohkan') {
+                        rubrik = JSON.stringify(q.pasangan || []);
+                    }
+                    let kunci = q.kunci_pg || '';
+                    if (q.tipe === 'benar_salah' && !kunci) kunci = 'Benar';
+                    if (q.tipe === 'pg' && !kunci) kunci = 'A';
+
+                    let cleanText = splitQuestionImage(q.pertanyaan || '').text.trim();
+                    if (q.gambar_url && q.gambar_url.trim()) {
+                        cleanText += `\n[GAMBAR: ${q.gambar_url.trim()}]`;
+                    }
+
+                    return {
+                        quiz_id: quizData.id,
+                        nomor: idx + 1,
+                        tipe: q.tipe || 'pg',
+                        pertanyaan: cleanText,
+                        opsi_a: q.opsi_a ? q.opsi_a.trim() : '',
+                        opsi_b: q.opsi_b ? q.opsi_b.trim() : '',
+                        opsi_c: q.opsi_c ? q.opsi_c.trim() : '',
+                        opsi_d: q.opsi_d ? q.opsi_d.trim() : '',
+                        kunci_pg: kunci,
+                        rubrik_esai: rubrik,
+                        bobot: parseInt(q.bobot, 10) || 10
+                    };
+                });
+
+                const { error: qError } = await supabase.from('quiz_questions').insert(questionsPayload);
+                if (qError) throw qError;
+
+                closeManualQuizModal();
+                loadQuizzes();
+                const typesSummary = [...new Set(manualQuizQuestions.map(q => q.tipe || 'pg'))].join(', ');
+                showCustomModal(`✅ Berhasil! Kuis manual "${judul}" (${manualQuizQuestions.length} butir soal: ${typesSummary}) telah berhasil diterbitkan untuk ${kelas}!`);
+            }
         } catch (e) {
             showCustomModal("Gagal menyimpan kuis manual: " + e.message);
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = "💾 SIMPAN & TERBITKAN KUIS";
+                btn.innerText = editingQuizId ? "💾 SIMPAN PERUBAHAN KUIS" : "💾 SIMPAN & TERBITKAN KUIS";
             }
         }
     };
@@ -3079,6 +3423,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = "bg-slate-50 border-2 border-black rounded-xl p-4 space-y-2";
 
+            const { text: cleanPertanyaan, gambar_url: qImg } = splitQuestionImage(q.pertanyaan || '');
+            const imgUrl = q.gambar_url || qImg;
+            const imgStimulusHtml = imgUrl ? `
+                <div class="my-1.5 p-1.5 border-2 border-black rounded-xl bg-white max-w-xs shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                    <a href="${escapeHtml(imgUrl)}" target="_blank" title="Buka gambar stimulus">
+                        <img src="${escapeHtml(imgUrl)}" alt="Gambar Soal" class="max-h-36 rounded-lg border border-slate-300 object-contain mx-auto" />
+                    </a>
+                    <div class="text-[9px] text-slate-500 font-bold text-center mt-0.5">📷 Stimulus Soal (Klik untuk perbesar)</div>
+                </div>
+            ` : '';
+
             if (q.tipe === 'pg') {
                 const studentAns = answers[q.id] || '(Tidak dijawab)';
                 const isCorrect = studentAns.toUpperCase() === (q.kunci_pg || '').toUpperCase();
@@ -3089,7 +3444,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${isCorrect ? `✅ Benar (+${q.bobot || 10})` : '❌ Salah (0)'}
                         </span>
                     </div>
-                    <p class="font-bold text-xs text-slate-800">${escapeHtml(q.pertanyaan)}</p>
+                    <p class="font-bold text-xs text-slate-800">${escapeHtml(cleanPertanyaan)}</p>
+                    ${imgStimulusHtml}
                     <div class="text-[11px] font-bold text-slate-600 flex gap-4">
                         <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(studentAns)}</strong></span>
                         <span>Kunci: <strong class="text-black">${escapeHtml(q.kunci_pg)}</strong></span>
@@ -3105,7 +3461,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${isCorrect ? `✅ Benar (+${q.bobot || 10})` : '❌ Salah (0)'}
                         </span>
                     </div>
-                    <p class="font-bold text-xs text-slate-800">${escapeHtml(q.pertanyaan)}</p>
+                    <p class="font-bold text-xs text-slate-800">${escapeHtml(cleanPertanyaan)}</p>
+                    ${imgStimulusHtml}
                     <div class="text-[11px] font-bold text-slate-600 flex gap-4">
                         <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(studentAns)}</strong></span>
                         <span>Kunci Kebenaran: <strong class="text-black">${escapeHtml(q.kunci_pg)}</strong></span>
@@ -3123,7 +3480,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${isCorrect ? `✅ Cocok Otomatis (+${q.bobot || 10})` : 'Perlu Evaluasi Guru/AI'}
                         </span>
                     </div>
-                    <p class="font-bold text-xs text-black">${escapeHtml(q.pertanyaan)}</p>
+                    <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
+                    ${imgStimulusHtml}
                     <div class="bg-white p-2.5 rounded-lg border border-slate-300 text-xs">
                         <div class="font-bold text-slate-600">Jawaban Siswa: <strong class="text-black text-sm">${escapeHtml(studentAns)}</strong></div>
                         <div class="text-[11px] font-bold text-emerald-700 mt-0.5">Kunci Kata Jawaban: ${escapeHtml(q.kunci_pg || '-')}</div>
@@ -3167,7 +3525,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="font-black text-xs text-teal-900 bg-teal-100 px-2 py-0.5 rounded border border-teal-300 uppercase">No. ${idx + 1} (🔀 Menjodohkan)</span>
                         <span class="text-xs font-bold text-slate-500">Kesesuaian: ${correctMatches}/${pairs.length} Pasangan</span>
                     </div>
-                    <p class="font-bold text-xs text-black">${escapeHtml(q.pertanyaan)}</p>
+                    <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
+                    ${imgStimulusHtml}
                     <div class="overflow-x-auto bg-white rounded-xl border border-slate-300">
                         <table class="w-full text-left text-xs">
                             <thead class="bg-slate-100 border-b border-slate-300 font-black text-slate-700 uppercase text-[10px]">
@@ -3202,7 +3561,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="font-black text-xs text-pink-900 bg-pink-100 px-2 py-0.5 rounded border border-pink-300 uppercase">No. ${idx + 1} (📷 Upload Foto / Berkas)</span>
                         <span class="text-xs font-bold text-slate-500">Bobot Maks: ${q.bobot || 20}</span>
                     </div>
-                    <p class="font-bold text-xs text-black">${escapeHtml(q.pertanyaan)}</p>
+                    <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
+                    ${imgStimulusHtml}
                     ${q.rubrik_esai ? `<div class="bg-yellow-50 p-2 rounded border border-yellow-200 text-[11px] font-bold text-yellow-900"><strong>Rubrik Kunci Guru:</strong> ${escapeHtml(q.rubrik_esai)}</div>` : ''}
                     <div class="bg-white p-3 rounded-xl border border-slate-300 space-y-2">
                         <span class="text-[10px] font-black text-slate-400 block uppercase">Berkas Lampiran Hasil Pengerjaan Siswa:</span>
@@ -3236,7 +3596,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 uppercase">No. ${idx + 1} (📝 Soal Esai)</span>
                         <span class="text-xs font-bold text-slate-500">Bobot Maks: ${q.bobot || 20}</span>
                     </div>
-                    <p class="font-bold text-xs text-black">${escapeHtml(q.pertanyaan)}</p>
+                    <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
+                    ${imgStimulusHtml}
                     ${q.rubrik_esai ? `<div class="bg-yellow-50 p-2 rounded border border-yellow-200 text-[11px] font-bold text-yellow-900"><strong>Rubrik Kunci Guru:</strong> ${escapeHtml(q.rubrik_esai)}</div>` : ''}
                     <div class="bg-white p-2.5 rounded-lg border border-slate-300">
                         <span class="text-[10px] font-black text-slate-400 block uppercase mb-1">Jawaban Siswa:</span>

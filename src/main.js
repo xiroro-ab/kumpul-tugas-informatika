@@ -22,6 +22,20 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
+export function splitQuestionImage(text) {
+    if (!text || typeof text !== 'string') {
+        return { text: text || '', gambar_url: '' };
+    }
+    const match = text.match(/\n?\[GAMBAR:\s*([^\]]+)\]/i);
+    if (match) {
+        return {
+            text: text.replace(/\n?\[GAMBAR:\s*([^\]]+)\]/i, '').trim(),
+            gambar_url: match[1].trim()
+        };
+    }
+    return { text, gambar_url: '' };
+}
+
 export function parseAssignmentQuestions(assignment) {
     if (!assignment || !assignment.deskripsi) {
         return { petunjuk: '', questions: [] };
@@ -30,15 +44,30 @@ export function parseAssignmentQuestions(assignment) {
     if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
             const parsed = JSON.parse(raw);
+            let qList = [];
+            let petunjuk = '';
             if (Array.isArray(parsed)) {
-                return { petunjuk: '', questions: parsed };
+                qList = parsed;
+            } else if (parsed.questions && Array.isArray(parsed.questions)) {
+                petunjuk = parsed.petunjuk || '';
+                qList = parsed.questions;
             }
-            if (parsed.questions && Array.isArray(parsed.questions)) {
-                return { petunjuk: parsed.petunjuk || '', questions: parsed.questions };
+            if (qList.length > 0) {
+                qList.forEach(q => {
+                    if (!q.gambar_url && q.pertanyaan) {
+                        const s = splitQuestionImage(q.pertanyaan);
+                        if (s.gambar_url) {
+                            q.pertanyaan = s.text;
+                            q.gambar_url = s.gambar_url;
+                        }
+                    }
+                });
+                return { petunjuk, questions: qList };
             }
         } catch (_) {}
     }
-    return { petunjuk: raw, questions: [] };
+    const s = splitQuestionImage(raw);
+    return { petunjuk: s.text, questions: [] };
 }
 
 export function isClassMatch(targetKelas, studentKelas) {
@@ -238,6 +267,9 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
             `;
         }
 
+        const { text: cleanPertanyaan, gambar_url: parsedImg } = splitQuestionImage(q.pertanyaan || '');
+        const imgUrl = q.gambar_url || parsedImg;
+
         card.innerHTML = `
             <div class="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 flex-wrap">
                 <div class="flex items-center gap-2">
@@ -253,8 +285,19 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}) {
                 </span>
             </div>
             <div class="text-xs font-black text-slate-900 leading-relaxed whitespace-pre-line">
-                ${escapeHtml(q.pertanyaan || '')}
+                ${escapeHtml(cleanPertanyaan)}
             </div>
+            ${imgUrl ? `
+                <div class="my-2.5 p-2 border-2 border-black rounded-xl bg-slate-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] max-w-lg">
+                    <a href="${escapeHtml(imgUrl)}" target="_blank" title="Klik untuk memperbesar gambar">
+                        <img src="${escapeHtml(imgUrl)}" alt="Gambar Soal ${qNum}" class="max-h-72 w-auto object-contain rounded-lg border border-slate-300 mx-auto hover:opacity-95 transition" />
+                    </a>
+                    <div class="mt-1 px-1 text-center text-[10px] font-bold text-slate-500 flex justify-between items-center">
+                        <span>📷 Stimulus / Ilustrasi Soal</span>
+                        <span class="text-indigo-600 underline">🔍 Buka Ukuran Penuh</span>
+                    </div>
+                </div>
+            ` : ''}
             ${inputHtml}
         `;
 
@@ -1142,6 +1185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             nomor: qNum,
                             tipe,
                             pertanyaan: q.pertanyaan || '',
+                            gambar_url: q.gambar_url || '',
                             opsi_a: q.opsi_a || '',
                             opsi_b: q.opsi_b || '',
                             opsi_c: q.opsi_c || '',
@@ -1580,13 +1624,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const qBox = document.createElement('div');
                 qBox.className = "bg-slate-50 border-2 border-black rounded-2xl p-4 md:p-5 space-y-3";
                 
+                const { text: cleanPertanyaan, gambar_url: qImgUrl } = splitQuestionImage(q.pertanyaan || '');
+                const displayImg = q.gambar_url || qImgUrl;
+                const imgStimulusHtml = displayImg ? `
+                    <div class="mt-2.5 mb-2 max-w-md border-2 border-black rounded-xl overflow-hidden bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <a href="${escapeHtml(displayImg)}" target="_blank" title="Klik untuk memperbesar gambar">
+                            <img src="${escapeHtml(displayImg)}" alt="Stimulus Gambar Soal ${idx + 1}" class="w-full max-h-64 object-contain bg-white hover:opacity-95 transition" />
+                        </a>
+                        <div class="px-2.5 py-1 bg-slate-100 border-t border-slate-300 text-[10px] font-bold text-slate-600 flex justify-between items-center">
+                            <span>📷 Stimulus / Ilustrasi Soal</span>
+                            <span class="text-indigo-600 font-black">🔍 Klik untuk perbesar</span>
+                        </div>
+                    </div>
+                ` : '';
+
                 if (q.tipe === 'pg') {
                     qBox.innerHTML = `
                         <div class="flex items-start gap-2">
                             <span class="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
                             <div>
                                 <span class="text-[10px] bg-indigo-100 text-indigo-900 font-black px-1.5 py-0.5 rounded border border-indigo-300 uppercase">Pilihan Ganda</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
+                                ${imgStimulusHtml}
                             </div>
                         </div>
                         <div class="space-y-2 pl-8">
@@ -1609,7 +1668,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="w-6 h-6 bg-amber-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
                             <div>
                                 <span class="text-[10px] bg-amber-100 text-amber-900 font-black px-1.5 py-0.5 rounded border border-amber-300 uppercase">Benar / Salah</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
+                                ${imgStimulusHtml}
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3 pl-8">
@@ -1629,7 +1689,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
                             <div>
                                 <span class="text-[10px] bg-blue-100 text-blue-900 font-black px-1.5 py-0.5 rounded border border-blue-300 uppercase">Isian Singkat</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
+                                ${imgStimulusHtml}
                             </div>
                         </div>
                         <div class="pl-8">
@@ -1647,7 +1708,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="w-6 h-6 bg-teal-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
                             <div>
                                 <span class="text-[10px] bg-teal-100 text-teal-900 font-black px-1.5 py-0.5 rounded border border-teal-300 uppercase">Menjodohkan</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
+                                ${imgStimulusHtml}
                             </div>
                         </div>
                         <div class="space-y-2.5 pl-8">
@@ -1668,7 +1730,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="w-6 h-6 bg-pink-600 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
                             <div>
                                 <span class="text-[10px] bg-pink-100 text-pink-900 font-black px-1.5 py-0.5 rounded border border-pink-300 uppercase">Upload Lembar Kerja / Foto</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
+                                ${imgStimulusHtml}
                             </div>
                         </div>
                         <div class="pl-8 space-y-2">
@@ -1689,7 +1752,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="w-6 h-6 bg-purple-700 text-white rounded-full flex items-center justify-center font-black text-xs shrink-0">${idx + 1}</span>
                             <div>
                                 <span class="text-[10px] bg-purple-100 text-purple-900 font-black px-1.5 py-0.5 rounded border border-purple-300 uppercase">Soal Esai</span>
-                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(q.pertanyaan)}</p>
+                                <p class="font-bold text-sm text-black leading-relaxed mt-1">${escapeHtml(cleanPertanyaan)}</p>
+                                ${imgStimulusHtml}
                             </div>
                         </div>
                         <div class="pl-8">
