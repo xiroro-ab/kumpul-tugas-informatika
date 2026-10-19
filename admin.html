@@ -908,27 +908,93 @@
     <!-- ======================================================= -->
     <!-- MODAL: HASIL UJIAN & KOREKSI ESAI SISWA                 -->
     <!-- ======================================================= -->
-    <div id="quiz-results-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-4xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 my-8">
-            <div class="flex justify-between items-center border-b-2 border-black pb-3">
+    <!-- MODAL HASIL UJIAN SISWA & LIVE MONITORING ANTI-CHEAT    -->
+    <!-- ======================================================= -->
+    <div id="quiz-results-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[4px] border-black rounded-[36px] p-5 sm:p-7 max-w-6xl w-full shadow-[14px_14px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 my-auto max-h-[92vh] overflow-hidden">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-start border-b-2 border-black pb-3 shrink-0">
                 <div>
-                    <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-black px-2 py-0.5 rounded uppercase">Hasil Ujian Siswa</span>
-                    <h3 id="quiz-results-title" class="text-2xl font-black text-black uppercase mt-1">Judul Ujian</h3>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] bg-amber-200 text-amber-950 border border-black font-black px-2.5 py-0.5 rounded-lg uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Hasil & Live Monitoring CBT</span>
+                        <span id="quiz-results-live-indicator" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-100 border border-emerald-400 text-emerald-900 rounded-lg font-black text-[10px] uppercase">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                            Live Sync Aktif
+                        </span>
+                    </div>
+                    <h3 id="quiz-results-title" class="text-xl sm:text-2xl font-black text-black uppercase mt-1">Judul Ujian</h3>
                 </div>
-                <button onclick="closeQuizResultsModal()" class="text-2xl font-black hover:text-red-600">&times;</button>
+                <button type="button" onclick="closeQuizResultsModal()" class="w-9 h-9 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-slate-100 text-xl transition">&times;</button>
             </div>
 
-            <div class="border-[3px] border-black rounded-2xl overflow-x-auto bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-                <table class="w-full min-w-[650px] divide-y-2 divide-black text-left text-xs">
-                    <thead class="bg-slate-100">
+            <!-- Bento Summary Statistics Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 shrink-0">
+                <div class="bg-slate-50 border-2 border-black rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                    <span class="text-[10px] font-black text-slate-500 uppercase block">Total Siswa</span>
+                    <span id="stat-results-total" class="font-black text-lg text-black">0</span>
+                </div>
+                <div class="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                    <span class="text-[10px] font-black text-emerald-800 uppercase block">Fokus Ujian</span>
+                    <span id="stat-results-focus" class="font-black text-lg text-emerald-700">0</span>
+                </div>
+                <div class="bg-amber-50 border-2 border-amber-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                    <span class="text-[10px] font-black text-amber-900 uppercase block">Di Luar Ujian</span>
+                    <span id="stat-results-unfocus" class="font-black text-lg text-amber-600">0</span>
+                </div>
+                <div class="bg-red-50 border-2 border-red-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                    <span class="text-[10px] font-black text-red-800 uppercase block">Terkunci Curang</span>
+                    <span id="stat-results-locked" class="font-black text-lg text-red-600">0</span>
+                </div>
+                <div class="bg-indigo-50 border-2 border-indigo-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                    <span class="text-[10px] font-black text-indigo-800 uppercase block">Selesai</span>
+                    <span id="stat-results-done" class="font-black text-lg text-indigo-700">0</span>
+                </div>
+                <div class="bg-purple-50 border-2 border-purple-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                    <span class="text-[10px] font-black text-purple-800 uppercase block">Rata-Rata</span>
+                    <span id="stat-results-avg" class="font-black text-lg text-purple-700">0</span>
+                </div>
+            </div>
+
+            <!-- Filter & Search Controls Bar -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0 bg-slate-50 border-2 border-black rounded-2xl p-3">
+                <div class="flex flex-wrap items-center gap-2 flex-1">
+                    <div class="flex items-center gap-1.5">
+                        <label for="filter-results-kelas" class="text-xs font-black uppercase text-black">Kelas:</label>
+                        <select id="filter-results-kelas" onchange="applyQuizResultsFilters()" class="h-9 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer outline-none">
+                            <option value="all">Semua Kelas</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <label for="filter-results-status" class="text-xs font-black uppercase text-black">Status:</label>
+                        <select id="filter-results-status" onchange="applyQuizResultsFilters()" class="h-9 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer outline-none">
+                            <option value="all">Semua Status</option>
+                            <option value="focus">Fokus Mengerjakan</option>
+                            <option value="unfocus">Di Luar Ujian / Tidak Fokus</option>
+                            <option value="locked">Terkunci Curang</option>
+                            <option value="done">Selesai</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 w-full sm:w-64">
+                    <input type="text" id="search-results-student" oninput="applyQuizResultsFilters()" placeholder="Cari nama atau NISN..." class="w-full h-9 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black outline-none placeholder:text-slate-400">
+                </div>
+            </div>
+
+            <!-- Results Table (Scrollable Body) -->
+            <div class="border-[3px] border-black rounded-2xl overflow-x-auto bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex-1 overflow-y-auto">
+                <table class="w-full min-w-[760px] divide-y-2 divide-black text-left text-xs">
+                    <thead class="bg-slate-100 sticky top-0 z-10">
                         <tr>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2">Nama Siswa</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2">Kelas</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Skor PG</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Skor Esai</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Total Nilai</th>
-                            <th class="px-3 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Anti-Cheat</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black text-center">Aksi Guru</th>
+                            <th class="px-3 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-12">No</th>
+                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2">Nama Siswa & NISN</th>
+                            <th class="px-3 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-24">Kelas</th>
+                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center">Status & Anti-Cheat</th>
+                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-36">Progres Soal</th>
+                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-28">Nilai Akhir</th>
+                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black text-center whitespace-nowrap">Aksi Guru</th>
                         </tr>
                     </thead>
                     <tbody id="quiz-submissions-tbody" class="divide-y-2 divide-black bg-white">
@@ -937,16 +1003,17 @@
                 </table>
             </div>
 
-            <div class="flex flex-wrap justify-between items-center gap-2 pt-2">
+            <!-- Modal Footer Buttons -->
+            <div class="flex flex-wrap justify-between items-center gap-2 pt-2 border-t-2 border-black shrink-0">
                 <div class="flex items-center gap-2">
-                    <button onclick="exportQuizCSV()" class="px-4 py-2 bg-emerald-400 hover:bg-emerald-500 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <button type="button" onclick="exportQuizCSV()" class="h-10 px-4 bg-emerald-400 hover:bg-emerald-500 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
                         Unduh Rekap CSV
                     </button>
-                    <button onclick="printQuizResults()" class="px-4 py-2 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <button type="button" onclick="printQuizResults()" class="h-10 px-4 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
                         Cetak Lembar Skor
                     </button>
                 </div>
-                <button onclick="closeQuizResultsModal()" class="px-4 py-2 bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase">
+                <button type="button" onclick="closeQuizResultsModal()" class="h-10 px-5 bg-white hover:bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase transition">
                     Tutup
                 </button>
             </div>

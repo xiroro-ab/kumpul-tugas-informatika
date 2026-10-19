@@ -3721,7 +3721,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Suite Hasil Ujian & Koreksi Esai
+    // ========================================================
+    // CBT EXAM RESULTS & LIVE ANTI-CHEAT MONITORING
+    // ========================================================
+    let activeQuizForResults = null;
+    let activeQuizSubmissions = [];
+    let resultsLiveRefreshInterval = null;
+
     window.openQuizResultsModal = async (quizId) => {
         const quiz = quizzesList.find(q => String(q.id) === String(quizId));
         if (!quiz) return;
@@ -3729,9 +3735,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('quiz-results-title').textContent = `${quiz.judul_kuis} (${quiz.mapel})`;
         const tbody = document.getElementById('quiz-submissions-tbody');
-        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center font-bold text-slate-500 uppercase animate-pulse">Memuat hasil ujian siswa...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center font-bold text-slate-500 uppercase animate-pulse">Memuat hasil dan sesi live ujian siswa...</td></tr>';
+        
+        // Reset search & filters
+        const searchInput = document.getElementById('search-results-student');
+        if (searchInput) searchInput.value = '';
+        const statusSelect = document.getElementById('filter-results-status');
+        if (statusSelect) statusSelect.value = 'all';
+
         document.getElementById('quiz-results-modal').classList.remove('hidden');
 
+        // Fetch submissions
+        await fetchAndRenderQuizSubmissions(quizId);
+
+        // Start auto-refresh interval (polling live status every 3 seconds)
+        if (resultsLiveRefreshInterval) clearInterval(resultsLiveRefreshInterval);
+        resultsLiveRefreshInterval = setInterval(() => {
+            refreshQuizSubmissionsDataSilently();
+        }, 3000);
+    };
+
+    async function fetchAndRenderQuizSubmissions(quizId) {
         try {
             const { data, error } = await supabase
                 .from('quiz_submissions')
@@ -3742,104 +3766,286 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             activeQuizSubmissions = data || [];
 
-            tbody.innerHTML = '';
-            if (activeQuizSubmissions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center font-bold text-slate-500 uppercase">Belum ada siswa yang menyelesaikan ujian ini.</td></tr>';
-                return;
+            // Populate filter-results-kelas dynamically
+            const kelasSelect = document.getElementById('filter-results-kelas');
+            if (kelasSelect) {
+                const currentVal = kelasSelect.value || 'all';
+                const submissionClasses = activeQuizSubmissions.map(s => String(s.kelas || '').trim()).filter(Boolean);
+                const quizTargetKelas = activeQuizForResults?.kelas && activeQuizForResults.kelas !== 'Semua Kelas' ? [activeQuizForResults.kelas] : [];
+                const rosterClasses = (rosterStudents || []).map(r => String(r.kelas || '').trim()).filter(Boolean);
+                const allClasses = [...new Set([...submissionClasses, ...quizTargetKelas, ...rosterClasses])].sort();
+
+                kelasSelect.innerHTML = '<option value="all">Semua Kelas</option>' +
+                    allClasses.map(k => `<option value="${escapeHtml(k)}" ${k === currentVal ? 'selected' : ''}>Kelas ${escapeHtml(k)}</option>`).join('');
+                
+                // If this quiz is dedicated to 1 class, auto-select it if still 'all'
+                if (currentVal === 'all' && activeQuizForResults?.kelas && activeQuizForResults.kelas !== 'Semua Kelas') {
+                    kelasSelect.value = activeQuizForResults.kelas;
+                }
             }
 
-            activeQuizSubmissions.forEach(sub => {
-                let cheatAttempts = 0;
-                if (sub.jawaban_siswa && typeof sub.jawaban_siswa === 'object') {
-                    cheatAttempts = sub.jawaban_siswa.cheatAttempts || 0;
-                } else if (typeof sub.jawaban_siswa === 'string') {
-                    try {
-                        const parsed = JSON.parse(sub.jawaban_siswa);
-                        cheatAttempts = parsed.cheatAttempts || 0;
-                    } catch (_) {}
-                }
+            applyQuizResultsFilters();
 
-                const isLocked = sub.status_koreksi === 'terkunci_curang';
-                const isOngoing = sub.status_koreksi === 'sedang_ujian';
+        } catch (e) {
+            const tbody = document.getElementById('quiz-submissions-tbody');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-red-600 font-bold uppercase">Gagal memuat: ${escapeHtml(e.message)}</td></tr>`;
+            }
+        }
+    }
 
-                let antiCheatBadge = '';
-                if (isLocked) {
-                    antiCheatBadge = `<span class="bg-red-100 text-red-900 border border-red-500 font-black px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} pelanggaran - Ujian dibekukan sistem">Terkunci (${cheatAttempts}x Curang)</span>`;
-                } else if (isOngoing) {
-                    antiCheatBadge = `<span class="bg-yellow-200 text-yellow-950 border border-yellow-500 font-black px-2 py-0.5 rounded text-[10px] animate-pulse" title="Siswa sedang aktif membuka jendela CBT">Sedang Ujian</span>`;
-                } else if (cheatAttempts > 0) {
-                    antiCheatBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-500 font-bold px-2 py-0.5 rounded text-[10px]" title="${cheatAttempts} peringatan tercatat">${cheatAttempts}x Peringatan</span>`;
+    async function refreshQuizSubmissionsDataSilently() {
+        if (!activeQuizForResults) return;
+        try {
+            const { data, error } = await supabase
+                .from('quiz_submissions')
+                .select('*')
+                .eq('quiz_id', activeQuizForResults.id)
+                .order('total_nilai', { ascending: false });
+
+            if (error) return;
+            activeQuizSubmissions = data || [];
+            applyQuizResultsFilters(true);
+        } catch (_) {}
+    }
+
+    window.applyQuizResultsFilters = (isSilent = false) => {
+        if (!activeQuizForResults) return;
+
+        const selectedKelas = document.getElementById('filter-results-kelas')?.value || 'all';
+        const selectedStatus = document.getElementById('filter-results-status')?.value || 'all';
+        const searchQuery = (document.getElementById('search-results-student')?.value || '').trim().toLowerCase();
+
+        const totalQ = (activeQuizForResults.quiz_questions || []).length || 1;
+
+        // Categorize each submission
+        const enriched = activeQuizSubmissions.map(sub => {
+            let cheatAttempts = 0;
+            let cheatLogs = [];
+            let isFocus = true;
+            let isOnline = true;
+            let lastActiveAt = sub.updated_at || sub.created_at;
+            let progress = 0;
+
+            if (sub.jawaban_siswa && typeof sub.jawaban_siswa === 'object') {
+                cheatAttempts = sub.jawaban_siswa.cheatAttempts || 0;
+                cheatLogs = sub.jawaban_siswa.cheatLogs || [];
+                isFocus = sub.jawaban_siswa.isFocus !== false;
+                isOnline = sub.jawaban_siswa.isOnline !== false;
+                lastActiveAt = sub.jawaban_siswa.lastActiveAt || lastActiveAt;
+                progress = Object.keys(sub.jawaban_siswa.answers || {}).length;
+            } else if (typeof sub.jawaban_siswa === 'string') {
+                try {
+                    const parsed = JSON.parse(sub.jawaban_siswa);
+                    cheatAttempts = parsed.cheatAttempts || 0;
+                    cheatLogs = parsed.cheatLogs || [];
+                    isFocus = parsed.isFocus !== false;
+                    isOnline = parsed.isOnline !== false;
+                    lastActiveAt = parsed.lastActiveAt || lastActiveAt;
+                    progress = Object.keys(parsed.answers || {}).length;
+                } catch (_) {}
+            }
+
+            const isLocked = sub.status_koreksi === 'terkunci_curang';
+            const isOngoing = sub.status_koreksi === 'sedang_ujian';
+
+            // Check if active or inactive
+            const lastActiveTime = lastActiveAt ? new Date(lastActiveAt).getTime() : 0;
+            const isOffline = (Date.now() - lastActiveTime) > 30000; // > 30 detik tanpa heartbeat
+
+            let liveState = 'done';
+            if (isLocked) {
+                liveState = 'locked';
+            } else if (isOngoing) {
+                if (!isFocus || !isOnline || isOffline) {
+                    liveState = 'unfocus';
                 } else {
-                    antiCheatBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 font-bold px-2 py-0.5 rounded text-[10px]">Tertib (0)</span>`;
+                    liveState = 'focus';
                 }
+            }
 
-                let actionButtonsHtml = '';
-                if (isLocked) {
-                    actionButtonsHtml = `
-                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                            <button onclick="openExamReviewModal('${sub.id}')" title="Periksa lembar jawaban & rincian pelanggaran siswa" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-black text-white rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                Periksa
-                            </button>
-                            <button onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Buka kunci agar siswa dapat melanjutkan ujian" class="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                Buka Kunci
-                            </button>
-                            <button onclick="resetStudentExamSession('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Hapus sesi agar siswa ujian dari awal" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg font-black text-[11px] uppercase">
-                                Reset
-                            </button>
+            return {
+                ...sub,
+                cheatAttempts,
+                cheatLogs,
+                isLocked,
+                isOngoing,
+                isFocus,
+                isOnline,
+                isOffline,
+                liveState,
+                progress,
+                totalQ
+            };
+        });
+
+        // 1. Calculate statistics for the selected class
+        const classFiltered = selectedKelas === 'all'
+            ? enriched
+            : enriched.filter(s => String(s.kelas || '').trim() === selectedKelas);
+
+        const statTotal = classFiltered.length;
+        const statFocus = classFiltered.filter(s => s.liveState === 'focus').length;
+        const statUnfocus = classFiltered.filter(s => s.liveState === 'unfocus').length;
+        const statLocked = classFiltered.filter(s => s.liveState === 'locked').length;
+        const statDone = classFiltered.filter(s => s.liveState === 'done').length;
+
+        const completedList = classFiltered.filter(s => s.status_koreksi === 'selesai' || s.status_koreksi === 'perlu_dinilai');
+        const statAvg = completedList.length > 0
+            ? Math.round(completedList.reduce((acc, s) => acc + Number(s.total_nilai || 0), 0) / completedList.length)
+            : 0;
+
+        const totalEl = document.getElementById('stat-results-total');
+        const focusEl = document.getElementById('stat-results-focus');
+        const unfocusEl = document.getElementById('stat-results-unfocus');
+        const lockedEl = document.getElementById('stat-results-locked');
+        const doneEl = document.getElementById('stat-results-done');
+        const avgEl = document.getElementById('stat-results-avg');
+
+        if (totalEl) totalEl.textContent = statTotal;
+        if (focusEl) focusEl.textContent = statFocus;
+        if (unfocusEl) unfocusEl.textContent = statUnfocus;
+        if (lockedEl) lockedEl.textContent = statLocked;
+        if (doneEl) doneEl.textContent = statDone;
+        if (avgEl) avgEl.textContent = completedList.length > 0 ? statAvg : '-';
+
+        // 2. Filter displayed rows by Class, Status, and Search Query
+        const finalFiltered = classFiltered.filter(sub => {
+            const matchStatus = selectedStatus === 'all' || sub.liveState === selectedStatus;
+            const studentName = String(sub.nama_siswa || '').toLowerCase();
+            const studentNisn = String(sub.student_id || '').toLowerCase();
+            const matchSearch = !searchQuery || studentName.includes(searchQuery) || studentNisn.includes(searchQuery);
+            return matchStatus && matchSearch;
+        });
+
+        const tbody = document.getElementById('quiz-submissions-tbody');
+        if (!tbody) return;
+
+        if (finalFiltered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center font-bold text-slate-500 uppercase">Tidak ada peserta ujian yang cocok dengan kriteria filter saat ini.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = finalFiltered.map((sub, idx) => {
+            // Live Status & Anti-Cheat Badge
+            let antiCheatBadge = '';
+            let rowHighlight = '';
+
+            if (sub.isLocked) {
+                rowHighlight = 'bg-red-50/60';
+                antiCheatBadge = `
+                    <div class="inline-flex flex-col items-center gap-0.5">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-100 text-red-900 border-2 border-red-500 rounded-xl font-black text-[11px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                            <span class="w-2 h-2 rounded-full bg-red-600"></span>
+                            Terkunci Curang
+                        </span>
+                        <span class="text-[10px] font-bold text-red-700">(${sub.cheatAttempts}x Pelanggaran)</span>
+                    </div>
+                `;
+            } else if (sub.isOngoing) {
+                if (!sub.isFocus) {
+                    rowHighlight = 'bg-amber-50/70';
+                    antiCheatBadge = `
+                        <div class="inline-flex flex-col items-center gap-0.5">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-300 text-yellow-950 border-2 border-black rounded-xl font-black text-[11px] uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] animate-pulse">
+                                <span class="w-2 h-2 rounded-full bg-amber-600 animate-ping"></span>
+                                Di Luar Ujian / Tidak Fokus
+                            </span>
+                            ${sub.cheatAttempts > 0 ? `<span class="text-[10px] font-bold text-red-600">(${sub.cheatAttempts}x Pelanggaran)</span>` : `<span class="text-[10px] font-bold text-amber-800">(Pindah Tab / Jendela)</span>`}
                         </div>
                     `;
-                } else if (isOngoing) {
-                    actionButtonsHtml = `
-                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                            <button onclick="openExamReviewModal('${sub.id}')" title="Pantau lembar jawaban langsung" class="px-2.5 py-1 bg-indigo-600 hover:bg-black text-white rounded-lg font-black text-[11px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                Pantau
-                            </button>
-                            <button onclick="forceFinishStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-2.5 py-1 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                                Paksa Selesai
-                            </button>
-                            <button onclick="resetStudentExamSession('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg font-black text-[11px] uppercase">
-                                Reset Sesi
-                            </button>
+                } else if (sub.isOffline || !sub.isOnline) {
+                    rowHighlight = 'bg-slate-50';
+                    antiCheatBadge = `
+                        <div class="inline-flex flex-col items-center gap-0.5">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-200 text-slate-800 border-2 border-slate-500 rounded-xl font-bold text-[11px] uppercase">
+                                <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                                Terputus / Menutup Tab
+                            </span>
+                            ${sub.cheatAttempts > 0 ? `<span class="text-[10px] font-bold text-red-600">(${sub.cheatAttempts}x Pelanggaran)</span>` : ''}
                         </div>
                     `;
                 } else {
-                    actionButtonsHtml = `
-                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                            <button onclick="openExamReviewModal('${sub.id}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                                Periksa
-                            </button>
-                            <button onclick="resetStudentExamSession('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Reset nilai agar siswa bisa ujian ulang" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-black border border-black rounded-lg font-black text-[11px] uppercase">
-                                Reset
-                            </button>
+                    antiCheatBadge = `
+                        <div class="inline-flex flex-col items-center gap-0.5">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 text-emerald-950 border-2 border-emerald-500 rounded-xl font-black text-[11px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                Fokus Mengerjakan
+                            </span>
+                            ${sub.cheatAttempts > 0 ? `<span class="text-[10px] font-bold text-amber-700">(${sub.cheatAttempts}x Peringatan)</span>` : ''}
                         </div>
                     `;
                 }
+            } else {
+                antiCheatBadge = `
+                    <div class="inline-flex flex-col items-center gap-0.5">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-800 border border-slate-400 rounded-xl font-bold text-[11px] uppercase">
+                            Selesai Ujian
+                        </span>
+                        ${sub.cheatAttempts > 0 ? `<span class="text-[10px] font-bold text-amber-700">(${sub.cheatAttempts}x Peringatan)</span>` : ''}
+                    </div>
+                `;
+            }
 
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition";
-                tr.innerHTML = `
+            // Progress bar
+            const pct = Math.min(100, Math.round((sub.progress / totalQ) * 100));
+            const progressHtml = `
+                <div class="flex flex-col items-center gap-1">
+                    <span class="font-black text-xs text-black">${sub.progress} / ${totalQ} Soal</span>
+                    <div class="w-24 bg-slate-200 rounded-full h-2 border border-black overflow-hidden">
+                        <div class="${pct === 100 ? 'bg-emerald-500' : 'bg-indigo-600'} h-full transition-all duration-300" style="width: ${pct}%"></div>
+                    </div>
+                    <span class="text-[10px] font-mono font-bold text-slate-500">${pct}% Terjawab</span>
+                </div>
+            `;
+
+            // Score badge
+            let scoreBadge = '';
+            if (sub.isOngoing) {
+                scoreBadge = `<span class="px-2.5 py-1 bg-yellow-100 text-yellow-900 border border-yellow-400 rounded-xl font-bold text-xs uppercase">Sedang Ujian</span>`;
+            } else if (sub.isLocked) {
+                scoreBadge = `<span class="px-3 py-1 bg-red-100 text-red-900 border-2 border-red-500 rounded-xl font-black text-sm uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">${sub.total_nilai || 0}</span>`;
+            } else {
+                scoreBadge = `<span class="px-3 py-1 bg-emerald-400 text-black border-2 border-black rounded-xl font-black text-sm uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${sub.total_nilai || 0}</span>`;
+            }
+
+            // Clean action buttons in 1 single horizontal row!
+            const actionButtons = `
+                <div class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <button type="button" onclick="openExamReviewModal('${sub.id}')" title="Periksa lembar jawaban & rincian soal" class="h-8 px-3 bg-black hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                        Periksa
+                    </button>
+                    ${sub.isLocked ? `
+                        <button type="button" onclick="unlockStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Buka kunci akun agar siswa dapat melanjutkan" class="h-8 px-3 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                            Buka Kunci
+                        </button>
+                    ` : ''}
+                    ${sub.isOngoing ? `
+                        <button type="button" onclick="forceFinishStudentExam('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Paksa selesai dan kumpulkan ujian siswa" class="h-8 px-3 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                            Paksa Selesai
+                        </button>
+                    ` : ''}
+                    <button type="button" onclick="resetStudentExamSession('${sub.id}', '${escapeHtml(sub.nama_siswa)}')" title="Hapus sesi agar siswa bisa ujian dari awal" class="h-8 px-3 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-400 rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                        Reset
+                    </button>
+                </div>
+            `;
+
+            return `
+                <tr class="hover:bg-slate-50 transition ${rowHighlight}">
+                    <td class="px-3 py-3 text-center font-black text-slate-700 border-b-2 border-black border-r-2">${idx + 1}</td>
                     <td class="px-4 py-3 font-black text-black border-b-2 border-black border-r-2">
                         <div>${escapeHtml(sub.nama_siswa)}</div>
                         ${sub.student_id ? `<div class="text-[10px] font-mono font-bold text-slate-500">NISN: ${escapeHtml(sub.student_id)}</div>` : ''}
                     </td>
-                    <td class="px-4 py-3 font-bold text-black border-b-2 border-black border-r-2">${escapeHtml(sub.kelas)}</td>
-                    <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-indigo-700">${isOngoing ? '-' : (sub.skor_pg || 0)}</td>
-                    <td class="px-4 py-3 text-center font-bold border-b-2 border-black border-r-2 text-purple-700">${isOngoing ? '-' : (sub.skor_esai || 0)}</td>
-                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">
-                        <span class="${isLocked ? 'bg-red-100 text-red-900 border border-red-500' : 'bg-emerald-100 text-emerald-900 border border-emerald-400'} font-black px-2 py-0.5 rounded-lg text-sm">${isOngoing ? '...' : (sub.total_nilai || 0)}</span>
-                    </td>
-                    <td class="px-3 py-3 text-center border-b-2 border-black border-r-2">
-                        ${antiCheatBadge}
-                    </td>
-                    <td class="px-4 py-3 text-center border-b-2 border-black">
-                        ${actionButtonsHtml}
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-red-600 font-bold uppercase">Gagal memuat: ${e.message}</td></tr>`;
-        }
+                    <td class="px-3 py-3 text-center font-black text-black border-b-2 border-black border-r-2">${escapeHtml(sub.kelas || '-')}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">${antiCheatBadge}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">${progressHtml}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">${scoreBadge}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black whitespace-nowrap">${actionButtons}</td>
+                </tr>
+            `;
+        }).join('');
     };
 
     window.unlockStudentExam = async (subId, studentName) => {
@@ -3932,6 +4138,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.closeQuizResultsModal = () => {
+        if (resultsLiveRefreshInterval) {
+            clearInterval(resultsLiveRefreshInterval);
+            resultsLiveRefreshInterval = null;
+        }
         document.getElementById('quiz-results-modal').classList.add('hidden');
         activeQuizForResults = null;
     };
@@ -3942,20 +4152,54 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let csv = "\uFEFF";
-        csv += "No,Nama Siswa,Kelas,Skor Pilihan Ganda,Skor Esai,Total Nilai,Status Ketuntasan,Waktu Selesai\n";
+        const selectedKelas = document.getElementById('filter-results-kelas')?.value || 'all';
+        const filtered = selectedKelas === 'all'
+            ? activeQuizSubmissions
+            : activeQuizSubmissions.filter(s => String(s.kelas || '').trim() === selectedKelas);
 
-        activeQuizSubmissions.forEach((s, idx) => {
-            const dateStr = s.created_at ? new Date(s.created_at).toLocaleString('id-ID') : '';
+        if (filtered.length === 0) {
+            showCustomModal("Tidak ada data siswa pada kelas yang dipilih untuk diekspor.");
+            return;
+        }
+
+        let csv = "\uFEFF";
+        csv += "No,Nama Siswa,NISN,Kelas,Status Ujian,Progres Soal,Skor PG,Skor Esai,Nilai Akhir,Status Ketuntasan,Pelanggaran Anti-Cheat,Waktu Selesai\n";
+
+        const totalQ = (activeQuizForResults?.quiz_questions || []).length || 0;
+
+        filtered.forEach((s, idx) => {
+            const dateStr = s.updated_at || s.created_at ? new Date(s.updated_at || s.created_at).toLocaleString('id-ID') : '';
             const statusStr = (s.total_nilai || 0) >= 75 ? 'Tuntas' : 'Remedial';
-            csv += `${idx + 1},"${s.nama_siswa}","${s.kelas}",${s.skor_pg || 0},${s.skor_esai || 0},${s.total_nilai || 0},"${statusStr}","${dateStr}"\n`;
+
+            let cheatAttempts = 0;
+            let answeredCount = 0;
+            if (s.jawaban_siswa && typeof s.jawaban_siswa === 'object') {
+                cheatAttempts = s.jawaban_siswa.cheatAttempts || 0;
+                answeredCount = Object.keys(s.jawaban_siswa.answers || {}).length;
+            } else if (typeof s.jawaban_siswa === 'string') {
+                try {
+                    const parsed = JSON.parse(s.jawaban_siswa);
+                    cheatAttempts = parsed.cheatAttempts || 0;
+                    answeredCount = Object.keys(parsed.answers || {}).length;
+                } catch (_) {}
+            }
+
+            let statusUjian = 'Selesai';
+            if (s.status_koreksi === 'terkunci_curang') statusUjian = 'Terkunci Curang';
+            else if (s.status_koreksi === 'sedang_ujian') statusUjian = 'Sedang Mengerjakan';
+            else if (s.status_koreksi === 'perlu_dinilai') statusUjian = 'Perlu Dinilai';
+
+            const progressStr = `${answeredCount}/${totalQ}`;
+
+            csv += `${idx + 1},"${s.nama_siswa || ''}","${s.student_id || ''}","${s.kelas || ''}","${statusUjian}","${progressStr}",${s.skor_pg || 0},${s.skor_esai || 0},${s.total_nilai || 0},"${statusStr}",${cheatAttempts},"${dateStr}"\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `Rekap_Hasil_Ujian_${(activeQuizForResults?.judul_kuis || 'Kuis').replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+        const kelasLabel = selectedKelas === 'all' ? 'Semua_Kelas' : `Kelas_${selectedKelas}`;
+        link.setAttribute("download", `Rekap_Ujian_${(activeQuizForResults?.judul_kuis || 'Kuis').replace(/[^a-zA-Z0-9]/g, '_')}_${kelasLabel}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -3968,6 +4212,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const selectedKelas = document.getElementById('filter-results-kelas')?.value || 'all';
+        const filtered = selectedKelas === 'all'
+            ? activeQuizSubmissions
+            : activeQuizSubmissions.filter(s => String(s.kelas || '').trim() === selectedKelas);
+
+        if (filtered.length === 0) {
+            showCustomModal("Tidak ada data siswa pada kelas yang dipilih untuk dicetak.");
+            return;
+        }
+
         const quiz = activeQuizForResults;
         const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
         const teacherName = currentTeacher?.name || currentSession?.user?.email || 'Guru Pengampu';
@@ -3976,27 +4230,45 @@ document.addEventListener('DOMContentLoaded', () => {
         let totalAll = 0;
         let highest = 0;
         let lowest = 100;
+        let completedCount = 0;
 
-        activeQuizSubmissions.forEach((s, idx) => {
+        filtered.forEach((s, idx) => {
             const score = s.total_nilai || 0;
-            totalAll += score;
-            if (score > highest) highest = score;
-            if (score < lowest) lowest = score;
+            if (s.status_koreksi === 'selesai' || s.status_koreksi === 'perlu_dinilai') {
+                totalAll += score;
+                if (score > highest) highest = score;
+                if (score < lowest) lowest = score;
+                completedCount++;
+            }
+
+            let statusKetuntasan = '-';
+            if (s.status_koreksi === 'selesai' || s.status_koreksi === 'perlu_dinilai') {
+                statusKetuntasan = score >= 75 ? 'Tuntas' : 'Remedial';
+            } else if (s.status_koreksi === 'terkunci_curang') {
+                statusKetuntasan = 'Didiskualifikasi (Curang)';
+            } else if (s.status_koreksi === 'sedang_ujian') {
+                statusKetuntasan = 'Sedang Ujian';
+            }
 
             rowsHtml += `
                 <tr>
                     <td style="border: 1px solid black; padding: 6px; text-align: center;">${idx + 1}</td>
-                    <td style="border: 1px solid black; padding: 6px; font-weight: bold;">${escapeHtml(s.nama_siswa)}</td>
-                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold;">${escapeHtml(s.kelas)}</td>
-                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${s.skor_pg || 0}</td>
-                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${s.skor_esai || 0}</td>
-                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold; font-size: 13px;">${score}</td>
-                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${score >= 75 ? 'Tuntas' : 'Remedial'}</td>
+                    <td style="border: 1px solid black; padding: 6px; font-weight: bold;">${escapeHtml(s.nama_siswa || '')}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${escapeHtml(s.student_id || '-')}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold;">${escapeHtml(s.kelas || '')}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold; font-size: 13px;">${s.status_koreksi === 'sedang_ujian' ? '-' : score}</td>
+                    <td style="border: 1px solid black; padding: 6px; text-align: center;">${statusKetuntasan}</td>
                 </tr>
             `;
         });
 
-        const avg = (totalAll / activeQuizSubmissions.length).toFixed(1);
+        const avg = completedCount > 0 ? (totalAll / completedCount).toFixed(1) : '-';
+        if (completedCount === 0) {
+            lowest = '-';
+            highest = '-';
+        }
+
+        const kelasPrint = selectedKelas === 'all' ? (quiz.kelas || 'Semua Kelas') : selectedKelas;
 
         const printWin = window.open('', '_blank');
         printWin.document.write(`
@@ -4034,11 +4306,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="meta">
                     <div>
                         <strong>Judul Ujian:</strong> ${escapeHtml(quiz.judul_kuis)}<br>
-                        <strong>Mata Pelajaran:</strong> ${escapeHtml(quiz.mapel)} &bull; <strong>Kelas:</strong> ${escapeHtml(quiz.kelas)}
+                        <strong>Mata Pelajaran:</strong> ${escapeHtml(quiz.mapel)} &bull; <strong>Kelas:</strong> ${escapeHtml(kelasPrint)}
                     </div>
                     <div style="text-align: right;">
                         <strong>Tanggal Cetak:</strong> ${dateStr}<br>
-                        <strong>Jumlah Peserta:</strong> ${activeQuizSubmissions.length} Siswa
+                        <strong>Jumlah Peserta:</strong> ${filtered.length} Siswa
                     </div>
                 </div>
                 <table>
@@ -4046,11 +4318,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tr>
                             <th style="width: 30px;">No</th>
                             <th>Nama Lengkap Siswa</th>
+                            <th style="width: 100px;">NISN</th>
                             <th style="width: 60px;">Kelas</th>
-                            <th style="width: 70px;">Skor PG</th>
-                            <th style="width: 70px;">Skor Esai</th>
                             <th style="width: 70px;">Nilai Akhir</th>
-                            <th style="width: 80px;">Ketuntasan</th>
+                            <th style="width: 120px;">Ketuntasan / Status</th>
                         </tr>
                     </thead>
                     <tbody>

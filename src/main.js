@@ -1833,26 +1833,91 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (_) {}
     }
 
+    function reportExamPresence(isFocus, reason = '') {
+        if (!activeCbtExam) return;
+        activeCbtExam.isFocus = isFocus;
+        activeCbtExam.lastActiveAt = new Date().toISOString();
+
+        saveCbtExamStateLocally();
+
+        if (activeCbtExam.submissionId) {
+            const answeredCount = Object.keys(activeCbtExam.answers || {}).length;
+            supabase.from('quiz_submissions').update({
+                jawaban_siswa: {
+                    answers: activeCbtExam.answers,
+                    doubtful: activeCbtExam.doubtful,
+                    cheatAttempts: activeCbtExam.cheatAttempts,
+                    cheatLogs: activeCbtExam.cheatLogs,
+                    isFocus: isFocus,
+                    isOnline: true,
+                    focusReason: reason || (isFocus ? 'fokus' : 'tidak_fokus'),
+                    progress: answeredCount,
+                    totalQuestions: activeCbtExam.questions.length,
+                    remainingSeconds: activeCbtExam.timerSeconds,
+                    lastActiveAt: new Date().toISOString()
+                }
+            }).eq('id', activeCbtExam.submissionId).then(() => {}).catch(() => {});
+        }
+    }
+
     function onFullscreenChange() {
         if (!activeCbtExam || !activeCbtExam.fullscreenEnabled) return;
         const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-        if (!isFull && !isWarningActive) {
-            handleViolation("Meninggalkan mode layar penuh (Fullscreen) dilarang!");
+        if (!isFull) {
+            reportExamPresence(false, "Keluar mode Fullscreen");
+            if (!isWarningActive) {
+                handleViolation("Meninggalkan mode layar penuh (Fullscreen) dilarang!");
+            }
+        } else {
+            reportExamPresence(true, "Kembali ke mode Fullscreen");
         }
     }
 
     function onVisibilityChange() {
         if (!activeCbtExam) return;
-        if (document.hidden && !isWarningActive) {
-            handleViolation("Berpindah tab atau meminimalkan browser terdeteksi!");
+        if (document.hidden) {
+            reportExamPresence(false, "Berpindah tab atau meminimalkan browser");
+            if (!isWarningActive) {
+                handleViolation("Berpindah tab atau meminimalkan browser terdeteksi!");
+            }
+        } else {
+            reportExamPresence(true, "Kembali ke tab ujian");
         }
     }
 
     function onWindowBlur() {
         if (!activeCbtExam) return;
+        reportExamPresence(false, "Jendela ujian kehilangan fokus");
         if (!isWarningActive) {
             handleViolation("Jendela ujian kehilangan fokus (membuka aplikasi lain / split screen)!");
         }
+    }
+
+    function onWindowFocus() {
+        if (!activeCbtExam) return;
+        reportExamPresence(true, "Jendela ujian kembali fokus");
+    }
+
+    function onBeforeUnload() {
+        if (!activeCbtExam || !activeCbtExam.submissionId) return;
+        try {
+            const answeredCount = Object.keys(activeCbtExam.answers || {}).length;
+            supabase.from('quiz_submissions').update({
+                jawaban_siswa: {
+                    answers: activeCbtExam.answers,
+                    doubtful: activeCbtExam.doubtful,
+                    cheatAttempts: activeCbtExam.cheatAttempts,
+                    cheatLogs: activeCbtExam.cheatLogs,
+                    isFocus: false,
+                    isOnline: false,
+                    focusReason: "Siswa menutup tab/halaman",
+                    progress: answeredCount,
+                    totalQuestions: activeCbtExam.questions.length,
+                    remainingSeconds: activeCbtExam.timerSeconds,
+                    lastActiveAt: new Date().toISOString()
+                }
+            }).eq('id', activeCbtExam.submissionId).then(() => {}).catch(() => {});
+        } catch (_) {}
     }
 
     function onKeyDown(e) {
@@ -1895,6 +1960,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('webkitfullscreenchange', onFullscreenChange);
         document.addEventListener('visibilitychange', onVisibilityChange);
         window.addEventListener('blur', onWindowBlur);
+        window.addEventListener('focus', onWindowFocus);
+        window.addEventListener('beforeunload', onBeforeUnload);
+        window.addEventListener('pagehide', onBeforeUnload);
         window.addEventListener('keydown', onKeyDown, true);
         document.addEventListener('contextmenu', onContextMenu);
         document.addEventListener('copy', onCopyCut);
@@ -1908,6 +1976,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
         document.removeEventListener('visibilitychange', onVisibilityChange);
         window.removeEventListener('blur', onWindowBlur);
+        window.removeEventListener('focus', onWindowFocus);
+        window.removeEventListener('beforeunload', onBeforeUnload);
+        window.removeEventListener('pagehide', onBeforeUnload);
         window.removeEventListener('keydown', onKeyDown, true);
         document.removeEventListener('contextmenu', onContextMenu);
         document.removeEventListener('copy', onCopyCut);
@@ -2947,8 +3018,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
             }
 
-            if (activeCbtExam.timerSeconds % 10 === 0) {
-                saveCbtExamStateLocally();
+            // Simpan lokal dan kirim status live setiap 3 detik
+            if (activeCbtExam.timerSeconds % 3 === 0) {
+                const hasFocus = !document.hidden && document.hasFocus();
+                reportExamPresence(hasFocus);
             }
 
             if (activeCbtExam.timerSeconds <= 0) {
@@ -2959,6 +3032,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 1000);
 
         addAntiCheatListeners();
+        reportExamPresence(true, "Mulai masuk ujian");
         if (activeCbtExam.fullscreenEnabled) {
             await requestFullscreenLock();
         }
