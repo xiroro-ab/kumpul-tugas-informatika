@@ -64,15 +64,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tab Navigation
     window.switchTab = (tabName) => {
-        const tabs = ['tugas', 'materi', 'kuis', 'setting'];
+        const tabs = ['tugas', 'materi', 'kuis', 'setting', 'approval'];
         tabs.forEach(t => {
             const btn = document.getElementById(`tab-btn-${t}`);
             const content = document.getElementById(`tab-content-${t}`);
             if (t === tabName) {
-                btn.className = "lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
+                if (btn) btn.className = "lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
                 if (content) content.classList.remove('hidden');
             } else {
-                btn.className = "lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100";
+                if (btn) {
+                    if (t === 'approval') {
+                        btn.className = "lms-tab-btn col-span-2 sm:col-span-4 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300";
+                    } else {
+                        btn.className = "lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100";
+                    }
+                }
                 if (content) content.classList.add('hidden');
             }
         });
@@ -80,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabName === 'materi') loadMaterials();
         if (tabName === 'kuis') loadQuizzes();
         if (tabName === 'tugas') loadFilesTable();
+        if (tabName === 'approval') loadAllTeachers();
     };
 
     // Auth Session Listener
@@ -167,15 +174,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
 
             if (data.session) {
+                // Cek apakah guru pertama (otomatis superadmin & approved)
+                const { count } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
+                const isFirstTeacher = !count || count === 0;
+
                 await supabase.from('teachers').upsert([{
                     id: data.user.id,
                     email: data.user.email,
                     nama_guru: nama,
-                    mapel: mapel
+                    mapel: mapel,
+                    role: isFirstTeacher ? 'superadmin' : 'guru',
+                    status: isFirstTeacher ? 'approved' : 'pending'
                 }]);
-                showCustomModal("Pendaftaran berhasil! Selamat datang di LMS SMPN 58.");
+
+                if (isFirstTeacher) {
+                    showCustomModal("Pendaftaran berhasil! Anda terdaftar sebagai Superadmin sekolah.");
+                } else {
+                    showCustomModal("Pendaftaran berhasil! Akun Anda telah dicatat dan saat ini sedang MENUNGGU PERSETUJUAN dari Admin Sekolah sebelum dapat digunakan.");
+                }
             } else {
-                showCustomModal("Akun berhasil didaftarkan! Jika fitur konfirmasi email aktif di Supabase, silakan periksa inbox email Anda, atau matikan 'Confirm email' di menu Auth Supabase agar bisa langsung login.");
+                showCustomModal("Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan dari Admin Sekolah.");
                 toggleAuthMode('login');
             }
         } catch (error) {
@@ -196,15 +214,54 @@ document.addEventListener('DOMContentLoaded', () => {
         currentSession = session;
         if (session) {
             document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('dashboard-section').classList.remove('hidden');
+            const teacher = await loadOrCreateTeacherProfile(session.user);
+
+            // Cek Status Persetujuan Akun
+            const pendingSection = document.getElementById('pending-section');
+            const dashboardSection = document.getElementById('dashboard-section');
+
+            if (!teacher || teacher.status === 'pending') {
+                dashboardSection.classList.add('hidden');
+                if (pendingSection) {
+                    pendingSection.classList.remove('hidden');
+                    document.getElementById('pending-name').textContent = teacher?.nama_guru || session.user.email;
+                    document.getElementById('pending-mapel').textContent = teacher?.mapel || '-';
+                    document.getElementById('pending-email').textContent = session.user.email;
+                }
+                return;
+            }
+
+            if (teacher.status === 'rejected') {
+                dashboardSection.classList.add('hidden');
+                if (pendingSection) pendingSection.classList.add('hidden');
+                showCustomModal("Akun Anda telah dinonaktifkan oleh administrator sekolah.");
+                await supabase.auth.signOut();
+                return;
+            }
+
+            // Jika status Disetujui (Approved)
+            if (pendingSection) pendingSection.classList.add('hidden');
+            dashboardSection.classList.remove('hidden');
             document.getElementById('user-email').innerText = session.user.email;
 
-            await loadOrCreateTeacherProfile(session.user);
+            // Jika Superadmin, munculkan tombol tab Verifikasi Guru
+            const approvalTabBtn = document.getElementById('tab-btn-approval');
+            const roleBadge = document.getElementById('teacher-role-badge');
+            if (teacher.role === 'superadmin') {
+                if (approvalTabBtn) approvalTabBtn.classList.remove('hidden');
+                if (roleBadge) roleBadge.classList.remove('hidden');
+            } else {
+                if (approvalTabBtn) approvalTabBtn.classList.add('hidden');
+                if (roleBadge) roleBadge.classList.add('hidden');
+            }
+
             loadOptionsSettings();
             loadFilesTable();
             checkGeminiKeyStatus();
         } else {
             document.getElementById('login-section').classList.remove('hidden');
+            const pendingSection = document.getElementById('pending-section');
+            if (pendingSection) pendingSection.classList.add('hidden');
             document.getElementById('dashboard-section').classList.add('hidden');
         }
     }
@@ -227,14 +284,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data) {
                 currentTeacher = data;
                 updateTeacherDisplay(data.nama_guru, data.mapel);
+                return data;
             } else {
-                // Buat profil default dari metadata Google
-                const defaultName = user.user_metadata?.full_name || user.email.split('@')[0];
+                // Cek apakah guru pertama yang pernah ada di database
+                const { count } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
+                const isFirstTeacher = !count || count === 0;
+
+                const defaultName = user.user_metadata?.full_name || user.user_metadata?.nama_guru || user.email.split('@')[0];
+                const defaultMapel = user.user_metadata?.mapel || 'Informatika';
+
                 const newTeacher = {
                     id: user.id,
                     email: user.email,
                     nama_guru: defaultName,
-                    mapel: 'Informatika'
+                    mapel: defaultMapel,
+                    role: isFirstTeacher ? 'superadmin' : 'guru',
+                    status: isFirstTeacher ? 'approved' : 'pending'
                 };
 
                 const { data: inserted, error: insErr } = await supabase
@@ -246,14 +311,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!insErr && inserted) {
                     currentTeacher = inserted;
                     updateTeacherDisplay(inserted.nama_guru, inserted.mapel);
+                    return inserted;
                 } else {
                     currentTeacher = newTeacher;
-                    updateTeacherDisplay(defaultName, 'Informatika');
+                    updateTeacherDisplay(defaultName, defaultMapel);
+                    return newTeacher;
                 }
             }
         } catch (e) {
             console.error("Teacher profile error", e);
             updateTeacherDisplay('Bpk/Ibu Guru', 'Informatika');
+            return null;
         }
     }
 
@@ -1033,6 +1101,91 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         btn.disabled = false;
         btn.innerText = "SIMPAN PILIHAN KELAS & TUGAS";
+    };
+
+    // ==========================================
+    // 6. Persetujuan Akun Guru (Superadmin Only)
+    // ==========================================
+    window.loadAllTeachers = async () => {
+        const tbody = document.getElementById('teachers-approval-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center font-bold text-slate-500 uppercase animate-pulse">Memuat daftar akun guru...</td></tr>';
+        
+        try {
+            const { data, error } = await supabase.from('teachers').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center font-bold text-slate-500 uppercase">Belum ada akun guru lain.</td></tr>';
+                return;
+            }
+
+            data.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                
+                const isSuper = t.role === 'superadmin';
+                let statusBadge = '';
+                if (t.status === 'approved') {
+                    statusBadge = '<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">✅ Disetujui</span>';
+                } else if (t.status === 'rejected') {
+                    statusBadge = '<span class="bg-red-100 text-red-900 border border-red-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">❌ Ditolak</span>';
+                } else {
+                    statusBadge = '<span class="bg-amber-100 text-amber-900 border border-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase animate-pulse">⏳ Menunggu</span>';
+                }
+
+                let actionButtons = '';
+                if (isSuper) {
+                    actionButtons = '<span class="text-xs font-black text-purple-800">Superadmin (Akun Utama)</span>';
+                } else if (t.status === 'pending') {
+                    actionButtons = `
+                        <button onclick="setTeacherStatus('${t.id}', 'approved')" class="bg-emerald-400 hover:bg-emerald-500 text-black border border-black font-black px-3 py-1.5 rounded-lg text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] mr-1 active:translate-y-0.5">
+                            Setujui
+                        </button>
+                        <button onclick="setTeacherStatus('${t.id}', 'rejected')" class="bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 font-black px-3 py-1.5 rounded-lg text-xs uppercase active:translate-y-0.5">
+                            Tolak
+                        </button>
+                    `;
+                } else if (t.status === 'approved') {
+                    actionButtons = `
+                        <button onclick="setTeacherStatus('${t.id}', 'pending')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold px-3 py-1.5 rounded-lg text-xs uppercase active:translate-y-0.5">
+                            Tangguhkan
+                        </button>
+                    `;
+                } else {
+                    actionButtons = `
+                        <button onclick="setTeacherStatus('${t.id}', 'approved')" class="bg-emerald-400 hover:bg-emerald-500 text-black border border-black font-black px-3 py-1.5 rounded-lg text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                            Aktifkan Kembali
+                        </button>
+                    `;
+                }
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-black text-black border-b-2 border-black border-r-2 text-xs">
+                        ${t.nama_guru} ${isSuper ? '<span class="text-[9px] bg-purple-100 text-purple-900 font-black px-1.5 py-0.5 rounded ml-1 border border-purple-300">ADMIN</span>' : ''}
+                    </td>
+                    <td class="px-4 py-3 font-bold text-black border-b-2 border-black border-r-2 text-xs">${t.mapel}</td>
+                    <td class="px-4 py-3 font-medium text-slate-600 border-b-2 border-black border-r-2 text-xs">${t.email}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black border-r-2">${statusBadge}</td>
+                    <td class="px-4 py-3 text-center border-b-2 border-black">${actionButtons}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-red-600 font-bold text-xs uppercase">Gagal memuat guru: ${e.message}</td></tr>`;
+        }
+    };
+
+    window.setTeacherStatus = async (teacherId, newStatus) => {
+        try {
+            const { error } = await supabase.from('teachers').update({ status: newStatus }).eq('id', teacherId);
+            if (error) throw error;
+            showCustomModal(newStatus === 'approved' ? "Akun guru berhasil disetujui! Guru tersebut sekarang dapat masuk ke LMS." : "Status akun guru berhasil diperbarui.");
+            loadAllTeachers();
+        } catch (e) {
+            showCustomModal("Gagal memperbarui status guru: " + e.message);
+        }
     };
 
 });

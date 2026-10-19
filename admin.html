@@ -85,7 +85,29 @@
             </form>
         </div>
 
-        <!-- Dashboard Section Guru (Aktif setelah Login) -->
+        <!-- Section Menunggu Persetujuan Admin (Pending Approval) -->
+        <div id="pending-section" class="bg-amber-300 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-10 text-center shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] mb-8 hidden max-w-lg mx-auto w-full">
+            <div class="w-16 h-16 bg-white border-2 border-black rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                ⏳
+            </div>
+            <span class="inline-block bg-black text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                Status: Menunggu Persetujuan
+            </span>
+            <h2 class="text-2xl md:text-3xl font-black text-black uppercase tracking-tight mb-2">Akun Belum Disetujui</h2>
+            <p class="text-black font-bold text-xs md:text-sm leading-relaxed mb-6">
+                Akun Bapak/Ibu guru telah terdaftar, namun demi keamanan sistem sekolah, akun Anda sedang menunggu verifikasi dan persetujuan dari <strong>Admin Sekolah (Bpk. Aris Bermansyah)</strong>.
+            </p>
+            <div class="bg-white border-2 border-black rounded-2xl p-4 text-xs font-bold text-slate-800 text-left mb-6 space-y-1">
+                <div><strong>Nama Guru:</strong> <span id="pending-name">-</span></div>
+                <div><strong>Mata Pelajaran:</strong> <span id="pending-mapel">-</span></div>
+                <div><strong>Email:</strong> <span id="pending-email">-</span></div>
+            </div>
+            <button onclick="logout()" class="w-full py-3 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider transition">
+                Keluar / Ganti Akun
+            </button>
+        </div>
+
+        <!-- Dashboard Section Guru (Aktif setelah Disetujui Admin) -->
         <div id="dashboard-section" class="hidden space-y-6 w-full max-w-5xl">
             
             <!-- Profil Guru Bar -->
@@ -99,6 +121,9 @@
                             <span id="teacher-name-display" class="font-black text-lg text-black">Guru SMPN 58</span>
                             <span id="teacher-mapel-badge" class="bg-emerald-300 text-black text-xs font-black px-2.5 py-0.5 rounded-lg border-2 border-black uppercase tracking-wider">
                                 Informatika
+                            </span>
+                            <span id="teacher-role-badge" class="hidden bg-purple-200 text-purple-950 text-[10px] font-black px-2 py-0.5 rounded border border-purple-400 uppercase">
+                                Superadmin
                             </span>
                         </div>
                         <p id="user-email" class="text-xs text-slate-500 font-bold truncate"></p>
@@ -116,7 +141,7 @@
             </div>
 
             <!-- LMS Navigation Tabs (Neobrutalism Style) -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
+            <div id="lms-tabs-bar" class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
                 <button onclick="switchTab('tugas')" id="tab-btn-tugas" class="lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                     📋 Koreksi Tugas
                 </button>
@@ -128,6 +153,9 @@
                 </button>
                 <button onclick="switchTab('setting')" id="tab-btn-setting" class="lms-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100">
                     ⚙️ AI & Opsi
+                </button>
+                <button onclick="switchTab('approval')" id="tab-btn-approval" class="lms-tab-btn col-span-2 sm:col-span-4 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all hidden items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300">
+                    👥 Persetujuan Guru (Superadmin)
                 </button>
             </div>
 
@@ -299,9 +327,43 @@
                             SIMPAN PILIHAN KELAS & TUGAS
                         </button>
                         <span id="options-status" class="text-xs font-black bg-emerald-100 text-emerald-900 px-3 py-1.5 rounded-lg border border-emerald-400 empty:hidden"></span>
+            </div>
+
+            <!-- ======================================================= -->
+            <!-- TAB 5: PERSETUJUAN GURU (SUPERADMIN ONLY)               -->
+            <!-- ======================================================= -->
+            <div id="tab-content-approval" class="space-y-6 hidden">
+                <div class="bg-purple-300 border-[3px] border-black rounded-[32px] md:rounded-[40px] p-6 md:p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <span class="inline-block bg-white text-black text-[10px] font-black px-2.5 py-0.5 rounded-full border border-black uppercase tracking-wider mb-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                Hak Akses Superadmin
+                            </span>
+                            <h3 class="text-2xl md:text-3xl font-black text-black uppercase tracking-tight">Persetujuan Akun Guru</h3>
+                            <p class="text-black font-bold text-xs mt-0.5">Hanya akun guru yang disetujui yang dapat mengakses data tugas dan bank soal.</p>
+                        </div>
+                        <button onclick="loadAllTeachers()" class="px-4 py-2 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                            🔄 Muat Ulang Daftar Guru
+                        </button>
+                    </div>
+
+                    <div class="border-[3px] border-black rounded-2xl overflow-x-auto bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <table class="w-full min-w-[700px] divide-y-2 divide-black text-left">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="px-4 py-3 text-xs font-black uppercase text-black border-b-2 border-black border-r-2">Nama Lengkap</th>
+                                    <th class="px-4 py-3 text-xs font-black uppercase text-black border-b-2 border-black border-r-2">Mata Pelajaran</th>
+                                    <th class="px-4 py-3 text-xs font-black uppercase text-black border-b-2 border-black border-r-2">Email</th>
+                                    <th class="px-4 py-3 text-xs font-black uppercase text-black border-b-2 border-black border-r-2 text-center">Status</th>
+                                    <th class="px-4 py-3 text-xs font-black uppercase text-black border-b-2 border-black text-center">Aksi Persetujuan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teachers-approval-tbody" class="divide-y-2 divide-black bg-white">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-
             </div>
 
         </div>

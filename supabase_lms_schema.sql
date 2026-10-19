@@ -13,8 +13,10 @@ create table if not exists public.teachers (
   mapel text not null,
   nip text default '',
   role text default 'guru', -- 'guru' atau 'superadmin'
+  status text default 'pending', -- 'pending', 'approved', 'rejected'
   created_at timestamptz default now()
 );
+alter table public.teachers add column if not exists status text default 'pending';
 
 -- 2. TABEL MATERI PEMBELAJARAN
 create table if not exists public.materials (
@@ -110,7 +112,8 @@ alter table public.quiz_submissions enable row level security;
 
 -- Kebijakan Guru
 create policy "Allow public read teachers" on public.teachers for select to anon, authenticated using (true);
-create policy "Allow teachers manage self" on public.teachers for all to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+drop policy if exists "Allow teachers manage self" on public.teachers;
+create policy "Allow authenticated manage teachers" on public.teachers for all to authenticated using (true) with check (true);
 
 -- Kebijakan Materi
 create policy "Allow public read materials" on public.materials for select to anon, authenticated using (true);
