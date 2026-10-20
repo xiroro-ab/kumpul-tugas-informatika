@@ -40,31 +40,30 @@
             </div>
         </header>
 
-        <!-- Profil Siswa & Kelas Bar (Auto-Remember) -->
+        <!-- Filter Kelas & Ringkasan Pembelajaran Siswa -->
         <div id="portal-student-profile-card" class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] p-4 md:p-6 mb-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-3.5">
                     <div class="w-12 h-12 bg-yellow-300 border-2 border-black rounded-2xl flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0">
-                        <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342"></path></svg>
+                        <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"></path></svg>
                     </div>
                     <div>
                         <div class="flex items-center gap-2 flex-wrap">
-                            <h2 id="student-greeting" class="font-black text-lg md:text-xl text-black">Halo, Siswa SMPN 58!</h2>
-                            <span id="profile-saved-badge" class="hidden text-[10px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full border border-emerald-300">Profil Aktif</span>
+                            <h2 class="font-black text-lg md:text-xl text-black">Filter Konten Belajar</h2>
+                            <span id="profile-saved-badge" class="hidden text-[10px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full border border-emerald-300">Kelas Aktif</span>
                         </div>
-                        <p id="student-meta" class="text-xs font-bold text-slate-500">Isi nama & kelas Anda agar tugas dan ujian tersaring otomatis.</p>
+                        <p id="student-meta" class="text-xs font-bold text-slate-500">Pilih kelas Anda untuk menyaring tugas, materi, dan ujian secara otomatis.</p>
                     </div>
                 </div>
 
-                <!-- Input Nama & Kelas Cepat -->
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-                    <input type="text" id="global-student-name" placeholder="Nama Lengkap Siswa..." class="w-full sm:w-52 h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white outline-none">
-                    <select id="global-student-kelas" class="w-full sm:w-36 h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white outline-none cursor-pointer">
-                        <option value="">Semua Kelas</option>
-                    </select>
-                    <button id="btn-save-profile" type="button" class="h-11 px-4 bg-black text-white hover:bg-slate-800 font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 shrink-0">
-                        Simpan
-                    </button>
+                <!-- Dropdown Filter Kelas Cepat Langsung Aktif -->
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <div class="w-full sm:w-56">
+                        <label for="global-student-kelas" class="block text-[10px] font-black uppercase text-slate-500 mb-1">Pilih Kelas Siswa:</label>
+                        <select id="global-student-kelas" class="w-full h-11 px-3 border-2 border-black rounded-xl font-black text-xs bg-slate-50 hover:bg-white focus:bg-white outline-none cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition">
+                            <option value="">Semua Kelas (Tampilkan Semua)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 

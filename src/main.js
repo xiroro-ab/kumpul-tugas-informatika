@@ -481,44 +481,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadClassOptions();
 
-    // Pulihkan profil siswa dari localStorage
-    const savedName = localStorage.getItem('student_nama') || '';
+    // Pulihkan filter kelas siswa dari localStorage
     const savedKelas = localStorage.getItem('student_kelas') || '';
 
-    if (savedName) {
-        globalNameInput.value = savedName;
-        if (checkNameInput) checkNameInput.value = savedName;
-    }
-    if (savedKelas) {
+    if (savedKelas && globalKelasSelect) {
         globalKelasSelect.value = savedKelas;
     }
 
-    function updateStudentProfileUI(name, kelas) {
-        if (name) {
-            greetingEl.textContent = `Halo, ${name}!`;
-            metaEl.textContent = kelas ? `Siswa Kelas ${kelas} SMP Negeri 58 Palembang` : 'Siswa SMP Negeri 58 Palembang';
-            if (savedBadge) savedBadge.classList.remove('hidden');
-        } else {
-            greetingEl.textContent = "Halo, Siswa SMPN 58!";
-            metaEl.textContent = "Isi nama & kelas Anda agar tugas dan ujian tersaring otomatis.";
-            if (savedBadge) savedBadge.classList.add('hidden');
+    function updateStudentProfileUI(kelas) {
+        if (metaEl) {
+            metaEl.textContent = kelas
+                ? `Menampilkan konten tugas, materi, dan ujian khusus Kelas ${kelas}.`
+                : 'Pilih kelas Anda untuk menyaring tugas, materi, dan ujian secara otomatis.';
+        }
+        if (savedBadge) {
+            if (kelas) {
+                savedBadge.textContent = `Kelas ${kelas}`;
+                savedBadge.classList.remove('hidden');
+            } else {
+                savedBadge.classList.add('hidden');
+            }
         }
     }
 
-    updateStudentProfileUI(savedName, savedKelas);
+    updateStudentProfileUI(savedKelas);
 
-    if (btnSaveProfile) {
-        btnSaveProfile.addEventListener('click', async () => {
-            const name = globalNameInput.value.trim();
+    // Event listener langsung saat siswa mengganti kelas (otomatis tanpa tombol Simpan)
+    if (globalKelasSelect) {
+        globalKelasSelect.addEventListener('change', async () => {
             const kelas = globalKelasSelect.value;
-            localStorage.setItem('student_nama', name);
             localStorage.setItem('student_kelas', kelas);
-            updateStudentProfileUI(name, kelas);
+            updateStudentProfileUI(kelas);
 
-            // Re-fetch dan render konten sesuai profil siswa aktif
+            // Re-fetch dan render konten otomatis seketika
             await loadStudentAssignments();
             await loadStudentMaterials();
-            await loadStudentQuizzes();
+            renderStudentQuizzes();
             updatePortalOverviewStats();
         });
     }
@@ -556,8 +554,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 3. Ringkasan Statistik Portal LMS
     // ==========================================
     async function updatePortalOverviewStats() {
-        const studentKelas = globalKelasSelect.value;
-        const studentName = globalNameInput.value.trim();
+        const studentKelas = globalKelasSelect ? globalKelasSelect.value : (localStorage.getItem('student_kelas') || '');
+        const studentName = (globalNameInput ? globalNameInput.value.trim() : '') || localStorage.getItem('student_nama') || '';
 
         // Count assignments
         const relevantAssignments = allAssignments.filter(a => !studentKelas || isClassMatch(a.kelas, studentKelas));
@@ -575,14 +573,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (statQuizEl) statQuizEl.textContent = `${relevantQuizzes.length} Ujian`;
 
         // Count graded items
+        const statGradeEl = document.getElementById('stat-grades-count');
         if (studentName) {
             try {
                 const { count } = await supabase.from('files').select('*', { count: 'exact', head: true }).ilike('nama', `%${studentName}%`).not('nilai', 'is', null);
-                const statGradeEl = document.getElementById('stat-grades-count');
                 if (statGradeEl) statGradeEl.textContent = `${count || 0} Nilai`;
             } catch (e) {
                 console.warn(e);
             }
+        } else if (statGradeEl) {
+            statGradeEl.textContent = `Buku Nilai`;
         }
     }
 
