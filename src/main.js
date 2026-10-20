@@ -189,6 +189,7 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
         const prevAnswer = previousAnswersMap[qNum] || '';
         const tipe = q.tipe || 'esai';
         const isPg = tipe === 'pg' || tipe === 'pilihan_ganda';
+        const isPgKompleks = tipe === 'pg_kompleks';
         const isBs = tipe === 'benar_salah';
         const isFoto = tipe === 'upload_foto';
         const isMatch = tipe === 'menjodohkan';
@@ -202,6 +203,9 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
         if (isPg) {
             typeLabel = 'Pilihan Ganda';
             typeBadgeClass = 'bg-blue-100 text-blue-900 border-blue-300';
+        } else if (isPgKompleks) {
+            typeLabel = 'Pilihan Ganda Kompleks';
+            typeBadgeClass = 'bg-cyan-100 text-cyan-900 border-cyan-300';
         } else if (isBs) {
             typeLabel = 'Benar / Salah';
             typeBadgeClass = 'bg-teal-100 text-teal-900 border-teal-300';
@@ -217,7 +221,7 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
         }
 
         let inputHtml = '';
-        if (isPg) {
+        if (isPg || isPgKompleks) {
             const optA = q.opsi_a || q.opsi?.A || '';
             const optB = q.opsi_b || q.opsi?.B || '';
             const optC = q.opsi_c || q.opsi?.C || '';
@@ -231,14 +235,19 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
 
             const disabledAttr = isReadOnly ? 'disabled' : '';
             const cursorStyle = isReadOnly ? 'cursor-not-allowed opacity-90' : 'cursor-pointer';
+            const prevKeys = isPgKompleks 
+                ? (Array.isArray(prevAnswer) ? prevAnswer : String(prevAnswer || '').split(',').map(s => s.trim().toUpperCase()))
+                : [String(prevAnswer || '').toUpperCase()];
 
             inputHtml = `
                 <div class="space-y-2 pt-1">
+                    ${isPgKompleks ? '<p class="text-[11px] font-bold text-slate-500 mb-1">Pilihlah satu atau lebih opsi jawaban yang benar:</p>' : ''}
                     ${options.map(opt => {
-                        const isChecked = prevAnswer === opt.key ? 'checked' : '';
+                        const isChecked = prevKeys.includes(opt.key) ? 'checked' : '';
+                        const inputType = isPgKompleks ? 'checkbox' : 'radio';
                         return `
                             <label class="flex items-start gap-3 p-3 rounded-xl border-2 border-black bg-slate-50 ${isReadOnly ? '' : 'hover:bg-indigo-50'} ${cursorStyle} transition select-none has-[:checked]:bg-indigo-100 has-[:checked]:border-indigo-600">
-                                <input type="radio" name="student_q_${qNum}" value="${opt.key}" ${isChecked} ${disabledAttr} required class="w-4 h-4 mt-0.5 accent-indigo-600 shrink-0">
+                                <input type="${inputType}" name="student_q_${qNum}" value="${opt.key}" ${isChecked} ${disabledAttr} ${isPgKompleks ? '' : 'required'} class="w-4 h-4 mt-0.5 accent-indigo-600 shrink-0">
                                 <div class="text-xs font-bold text-slate-800 leading-snug">
                                     <span class="font-black text-indigo-700 mr-1">${opt.key}.</span> ${escapeHtml(opt.text)}
                                 </div>
@@ -1460,7 +1469,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const tipe = q.tipe || 'esai';
                         let val = '';
 
-                        if (tipe === 'pg' || tipe === 'pilihan_ganda' || tipe === 'benar_salah') {
+                        if (tipe === 'pg_kompleks') {
+                            const checked = Array.from(document.querySelectorAll(`input[name="student_q_${qNum}"]:checked`)).map(c => c.value);
+                            val = checked.join(',');
+                        } else if (tipe === 'pg' || tipe === 'pilihan_ganda' || tipe === 'benar_salah') {
                             const checked = document.querySelector(`input[name="student_q_${qNum}"]:checked`);
                             if (checked) val = checked.value;
                         } else if (tipe === 'upload_foto') {

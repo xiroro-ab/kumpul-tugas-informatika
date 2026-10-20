@@ -467,6 +467,32 @@ export async function aiGenerateQuestions(
     const ragam = cfg.ragam || cfg.modelRagam || 'campuran';
     const totalSoal = Number(cfg.totalSoal) || (Number(cfg.jmlPg || 0) + Number(cfg.jmlEsai || 0)) || 5;
 
+    // Kustom Komposisi Soal Mandiri
+    const customComp = cfg.customComposition;
+    let customBreakdownText = '';
+    let targetTotal = totalSoal;
+    if (customComp && typeof customComp === 'object') {
+        const pg = Number(customComp.pg) || 0;
+        const pgk = Number(customComp.pg_kompleks || customComp.pgk) || 0;
+        const bs = Number(customComp.benar_salah || customComp.bs) || 0;
+        const singkat = Number(customComp.singkat) || 0;
+        const jodoh = Number(customComp.menjodohkan || customComp.jodoh) || 0;
+        const esai = Number(customComp.esai) || 0;
+        const sumCount = pg + pgk + bs + singkat + jodoh + esai;
+        if (sumCount > 0) {
+            targetTotal = sumCount;
+            customBreakdownText = `
+KOMPOSISI BUTIR SOAL WAJIB DIPENUHI PERSIS SESUAI PERMINTAAN GURU:
+- Pilihan Ganda Biasa (tipe: "pg"): TEPAT ${pg} butir (opsi_a, opsi_b, opsi_c, opsi_d, kunci_pg: satu huruf A/B/C/D)
+- Pilihan Ganda Kompleks (tipe: "pg_kompleks"): TEPAT ${pgk} butir (opsi_a, opsi_b, opsi_c, opsi_d, kunci_pg: kombinasi huruf benar dipisah koma misal "A,C")
+- Benar / Salah (tipe: "benar_salah"): TEPAT ${bs} butir (kunci_pg: "Benar" atau "Salah")
+- Isian Singkat (tipe: "singkat"): TEPAT ${singkat} butir (kunci_pg: kata kunci jawaban singkat)
+- Menjodohkan (tipe: "menjodohkan"): TEPAT ${jodoh} butir (memiliki array "pasangan" 2-4 pasang kiri & kanan)
+- Esai / Uraian (tipe: "esai"): TEPAT ${esai} butir (memiliki "rubrik_esai" kriteria penilaian bertingkat)
+TOTAL BUTIR SOAL HARUS TEPAT BERJUMLAH ${targetTotal} BUTIR SOAL. TIDAK BOLEH KURANG DARI ${targetTotal} BUTIR DAN TIDAK BOLEH LEBIH.`;
+        }
+    }
+
     const taksonomiDescriptions = {
         campuran: 'Kombinasi Berimbang Kurikulum Nasional: LOTS 30% (C1-C2 Pemahaman Dasar), MOTS 40% (C3 Aplikasi Konsep), HOTS 30% (C4 Analisis & C5 Evaluasi).',
         hots: 'Dominan HOTS (Higher Order Thinking Skills): C4 Analisis data/kasus, C5 Evaluasi keputusan, C6 Kreasi solusi. Soal menuntut nalar kritis siswa, bukan sekadar hafalan definisi.',
@@ -545,15 +571,15 @@ KEMBALIKAN HANYA JSON MURNI TANPA MARKDOWN BACKTICKS SESUAI SCHEMA:
   ]
 }`;
 
-    const prompt = `Susunlah ${totalSoal} butir soal ujian SMP dengan spesifikasi:
+    const prompt = `Susunlah ${targetTotal} butir soal ujian SMP dengan spesifikasi:
 - Mata Pelajaran: ${cfg.mapel}
 - Kelas: ${cfg.kelas}
 - Materi Pokok / Capaian Pembelajaran: ${cfg.topik}
-- Model Ragam Soal: ${ragamGuidelines}
+- Model Ragam Soal: ${customBreakdownText ? customBreakdownText : ragamGuidelines}
 - Taksonomi Bloom: ${taksonomiDescriptions}
 - Tingkat Kesulitan: ${kesulitanDescriptions}
 - Karakteristik Stimulus: ${stimulusDescriptions}
-- Total Butir Soal: ${totalSoal} butir
+- Total Butir Soal: TEPAT ${targetTotal} butir soal (DILARANG KURANG DARI ${targetTotal} BUTIR DAN DILARANG LEBIH)
 - Alokasi Durasi Ujian: ${cfg.durasi} menit`;
 
     const raw = await callGemini(prompt, system, true);
@@ -629,6 +655,28 @@ KEMBALIKAN HANYA JSON MURNI TANPA MARKDOWN BACKTICKS SESUAI SCHEMA:
         };
     });
 
+    // Jaminan ketat jumlah butir soal: tidak boleh kurang dan tidak boleh lebih
+    while (items.length < targetTotal) {
+        const nextNum = items.length + 1;
+        items.push({
+            nomor: nextNum,
+            tipe: 'esai',
+            tingkat_kognitif: 'HOTS',
+            pertanyaan: `Jelaskan secara komprehensif penerapan konsep ${cfg.topik || 'materi ini'} dalam pemecahan masalah kontekstual!`,
+            opsi_a: '',
+            opsi_b: '',
+            opsi_c: '',
+            opsi_d: '',
+            kunci_pg: '',
+            rubrik_esai: `Kesesuaian dan kedalaman pembahasan terkait materi ${cfg.topik || 'ini'}.`,
+            pasangan: [],
+            bobot: 15
+        });
+    }
+    if (items.length > targetTotal) {
+        items = items.slice(0, targetTotal);
+    }
+
     // Seimbangkan seluruh bobot butir soal agar akumulasi total tepat 100 poin
     balanceExamWeights(items, 100);
 
@@ -694,16 +742,52 @@ Kriteria Penilaian:
 /**
  * AI Generator Butir Soal Formulir Tugas Siswa (Model Google Form)
  */
-export async function aiGenerateFormQuestions({ mapel, kelas, topik, jmlSoal = 4, tipeSoal = 'campuran', tingkatKognitif = 'hots' }) {
+export async function aiGenerateFormQuestions({ 
+    mapel, 
+    kelas, 
+    topik, 
+    jmlSoal = 4, 
+    tipeSoal = 'campuran', 
+    tingkatKognitif = 'hots',
+    customComposition = null 
+}) {
+    let customBreakdownText = '';
+    let targetTotal = Number(jmlSoal) || 4;
+    if (customComposition && typeof customComposition === 'object') {
+        const pg = Number(customComposition.pg) || 0;
+        const pgk = Number(customComposition.pg_kompleks || customComposition.pgk) || 0;
+        const bs = Number(customComposition.benar_salah || customComposition.bs) || 0;
+        const singkat = Number(customComposition.singkat) || 0;
+        const jodoh = Number(customComposition.menjodohkan || customComposition.jodoh) || 0;
+        const esai = Number(customComposition.esai) || 0;
+        const sumCount = pg + pgk + bs + singkat + jodoh + esai;
+        if (sumCount > 0) {
+            targetTotal = sumCount;
+            customBreakdownText = `
+KOMPOSISI BUTIR SOAL WAJIB DIPENUHI PERSIS SESUAI PERMINTAAN GURU:
+- Pilihan Ganda Biasa ("tipe": "pg"): TEPAT ${pg} butir (opsi_a, opsi_b, opsi_c, opsi_d, kunci: A/B/C/D)
+- Pilihan Ganda Kompleks ("tipe": "pg_kompleks"): TEPAT ${pgk} butir (opsi_a, opsi_b, opsi_c, opsi_d, kunci: huruf benar dipisah koma misal "A,C")
+- Benar / Salah ("tipe": "benar_salah"): TEPAT ${bs} butir (kunci: "BENAR" atau "SALAH")
+- Isian Singkat ("tipe": "singkat"): TEPAT ${singkat} butir (kunci: kata kunci jawaban singkat)
+- Menjodohkan ("tipe": "menjodohkan"): TEPAT ${jodoh} butir (memiliki array "pasangan" 2-4 pasang kiri & kanan)
+- Esai / Uraian ("tipe": "esai"): TEPAT ${esai} butir (memiliki panduan kunci/rubrik uraian)
+TOTAL BUTIR SOAL HARUS TEPAT BERJUMLAH ${targetTotal} BUTIR SOAL. TIDAK BOLEH KURANG DARI ${targetTotal} (DILARANG ${targetTotal - 1}) DAN TIDAK BOLEH LEBIH.`;
+        }
+    }
+
     const system = `Anda adalah ahli pengembang instrumen lembar tugas siswa (Google Form style) untuk SMP Negeri 58 Palembang berstandar Kurikulum Merdeka.
 Tugas Anda merancang butir-butir pertanyaan penugasan yang bervariasi, jelas, terstruktur, mendidik, dan relevan dengan materi.
 Tipe soal yang didukung:
 - "esai": pertanyaan uraian mendalam yang menuntut penalaran siswa. Sertakan panduan kunci jawaban / rubrik ringkas.
 - "pg": pertanyaan pilihan ganda dengan 4 opsi (A, B, C, D) dan kunci jawaban (A/B/C/D).
+- "pg_kompleks": pertanyaan pilihan ganda kompleks dengan lebih dari 1 jawaban benar (kunci dipisah koma misal "A,C").
 - "singkat": pertanyaan isian singkat (1 frasa/istilah) beserta kunci jawaban singkat.
 - "benar_salah": pernyataan konsep dengan kunci jawaban ("BENAR" atau "SALAH") serta penjelasan singkat.
 - "upload_foto": instruksi tugas karya/praktikum yang meminta siswa mengunggah foto catatan, screenshot, atau hasil kerja nyata.
 - "menjodohkan": pertanyaan menjodohkan konsep dengan 3-4 pasangan premis di kiri dan definisi di kanan.
+
+ATURAN PEMBOBOTAN NILAI (SKALA TOTAL TEPAT 100 POIN):
+- Total akumulasi bobot dari seluruh butir soal HARUS TEPAT 100 POIN.
 
 KEMBALIKAN HANYA JSON DENGAN STRUKTUR BERIKUT:
 {
@@ -712,12 +796,12 @@ KEMBALIKAN HANYA JSON DENGAN STRUKTUR BERIKUT:
   "questions": [
     {
       "id": 1,
-      "tipe": "esai" | "pg" | "singkat" | "benar_salah" | "upload_foto" | "menjodohkan",
+      "tipe": "esai" | "pg" | "pg_kompleks" | "singkat" | "benar_salah" | "upload_foto" | "menjodohkan",
       "pertanyaan": "string",
-      "opsi_a": "string (khusus pg)",
-      "opsi_b": "string (khusus pg)",
-      "opsi_c": "string (khusus pg)",
-      "opsi_d": "string (khusus pg)",
+      "opsi_a": "string (khusus pg/pg_kompleks)",
+      "opsi_b": "string (khusus pg/pg_kompleks)",
+      "opsi_c": "string (khusus pg/pg_kompleks)",
+      "opsi_d": "string (khusus pg/pg_kompleks)",
       "kunci": "string (A/B/C/D untuk pg, BENAR/SALAH untuk benar_salah, frasa/rubrik untuk lainnya)",
       "pasangan": [
         {"kiri": "Istilah 1", "kanan": "Definisi 1"},
@@ -733,10 +817,10 @@ KEMBALIKAN HANYA JSON DENGAN STRUKTUR BERIKUT:
 - Mata Pelajaran: ${mapel || 'Informatika'}
 - Target Kelas: ${kelas || 'Kelas 7'}
 - Topik / Materi Pembelajaran: ${topik}
-- Preferensi Tipe Soal: ${tipeSoal} (pilihan: campuran, esai, pg, singkat, benar_salah, menjodohkan)
+- Preferensi Tipe Soal: ${customBreakdownText ? customBreakdownText : tipeSoal}
 - Tingkat Kognitif: ${tingkatKognitif} (LOTS pemahaman dasar, MOTS penerapan, atau HOTS penalaran kritis)
-- Jumlah Pertanyaan: ${jmlSoal} butir soal
-Pastikan total bobot dari semua butir soal berjumlah 100 poin.`;
+- Jumlah Pertanyaan: TEPAT ${targetTotal} butir soal (WAJIB TEPAT ${targetTotal} BUTIR, DILARANG MENGURANGI JADI ${targetTotal - 1} ATAU MENAMBAH)
+- Total Bobot: Akumulasi bobot seluruh butir soal WAJIB TEPAT 100 POIN.`;
 
     const raw = await callGemini(prompt, system, true);
     const parsed = robustJsonParse(raw);
@@ -750,32 +834,59 @@ Pastikan total bobot dari semua butir soal berjumlah 100 poin.`;
         questions = parsed;
     }
 
+    let mapped = questions.map((q, idx) => {
+        const rawType = String(q.tipe || 'esai').toLowerCase();
+        let tipe = 'esai';
+        if (rawType.includes('kompleks') || rawType.includes('multiple')) tipe = 'pg_kompleks';
+        else if (rawType.includes('pg') || rawType.includes('pilihan')) tipe = 'pg';
+        else if (rawType.includes('singkat') || rawType.includes('isian')) tipe = 'singkat';
+        else if (rawType.includes('benar') || rawType.includes('salah')) tipe = 'benar_salah';
+        else if (rawType.includes('foto') || rawType.includes('upload') || rawType.includes('berkas')) tipe = 'upload_foto';
+        else if (rawType.includes('jodoh') || rawType.includes('match')) tipe = 'menjodohkan';
+
+        return {
+            id: q.id || (idx + 1),
+            nomor: idx + 1,
+            tipe,
+            pertanyaan: q.pertanyaan || q.soal || `Pertanyaan nomor ${idx + 1}`,
+            opsi_a: q.opsi_a || '',
+            opsi_b: q.opsi_b || '',
+            opsi_c: q.opsi_c || '',
+            opsi_d: q.opsi_d || '',
+            kunci: q.kunci || q.kunci_pg || q.rubrik_esai || '',
+            pasangan: Array.isArray(q.pasangan) ? q.pasangan : [],
+            bobot: Number(q.bobot) || (['esai', 'menjodohkan', 'upload_foto'].includes(tipe) ? 20 : 10)
+        };
+    });
+
+    // Jaminan ketat jumlah butir soal: tidak boleh kurang (misal 9 saat minta 10) dan tidak boleh lebih
+    while (mapped.length < targetTotal) {
+        const nextNum = mapped.length + 1;
+        mapped.push({
+            id: nextNum,
+            nomor: nextNum,
+            tipe: 'esai',
+            pertanyaan: `Jelaskan secara mendalam relevansi dan penerapan konsep ${topik || 'materi ini'} bagi siswa!`,
+            opsi_a: '',
+            opsi_b: '',
+            opsi_c: '',
+            opsi_d: '',
+            kunci: `Kesesuaian dan kelengkapan pembahasan mengenai konsep ${topik || 'materi ini'}.`,
+            pasangan: [],
+            bobot: 15
+        });
+    }
+    if (mapped.length > targetTotal) {
+        mapped = mapped.slice(0, targetTotal);
+    }
+
+    // Seimbangkan bobot seluruh butir soal agar akumulasi total persis 100 poin
+    balanceExamWeights(mapped, 100);
+
     return {
         judul_tugas: parsed?.judul_tugas || `Tugas ${mapel} - ${topik}`,
         petunjuk: parsed?.petunjuk || `Jawablah butir pertanyaan berikut dengan teliti dan jujur.`,
-        questions: questions.map((q, idx) => {
-            const rawType = String(q.tipe || 'esai').toLowerCase();
-            let tipe = 'esai';
-            if (rawType.includes('pg') || rawType.includes('pilihan')) tipe = 'pg';
-            else if (rawType.includes('singkat') || rawType.includes('isian')) tipe = 'singkat';
-            else if (rawType.includes('benar') || rawType.includes('salah')) tipe = 'benar_salah';
-            else if (rawType.includes('foto') || rawType.includes('upload') || rawType.includes('berkas')) tipe = 'upload_foto';
-            else if (rawType.includes('jodoh') || rawType.includes('match')) tipe = 'menjodohkan';
-
-            return {
-                id: q.id || (idx + 1),
-                nomor: idx + 1,
-                tipe,
-                pertanyaan: q.pertanyaan || q.soal || `Pertanyaan nomor ${idx + 1}`,
-                opsi_a: q.opsi_a || '',
-                opsi_b: q.opsi_b || '',
-                opsi_c: q.opsi_c || '',
-                opsi_d: q.opsi_d || '',
-                kunci: q.kunci || q.kunci_pg || q.rubrik_esai || '',
-                pasangan: Array.isArray(q.pasangan) ? q.pasangan : [],
-                bobot: Number(q.bobot) || Math.round(100 / (questions.length || 1))
-            };
-        })
+        questions: mapped
     };
 }
 

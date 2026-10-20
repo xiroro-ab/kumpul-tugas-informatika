@@ -144,11 +144,8 @@
             </div>
 
             <!-- LMS Navigation Tabs (Neobrutalism Style) -->
-            <div id="lms-tabs-bar" class="grid grid-cols-2 sm:grid-cols-6 gap-2 md:gap-3">
-                <button onclick="switchTab('tugas')" id="tab-btn-tugas" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer">
-                    Koreksi Tugas
-                </button>
-                <button onclick="switchTab('penugasan')" id="tab-btn-penugasan" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100 cursor-pointer">
+            <div id="lms-tabs-bar" class="grid grid-cols-2 sm:grid-cols-5 gap-2 md:gap-3">
+                <button onclick="switchTab('penugasan')" id="tab-btn-penugasan" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer">
                     Kelola Tugas/PR
                 </button>
                 <button onclick="switchTab('materi')" id="tab-btn-materi" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100 cursor-pointer">
@@ -163,99 +160,100 @@
                 <button onclick="switchTab('setting')" id="tab-btn-setting" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100 cursor-pointer">
                     Pengaturan AI
                 </button>
-                <button onclick="switchTab('approval')" id="tab-btn-approval" class="lms-tab-btn col-span-2 sm:col-span-6 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all hidden items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300 cursor-pointer">
+                <button onclick="switchTab('approval')" id="tab-btn-approval" class="lms-tab-btn col-span-2 sm:col-span-5 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all hidden items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300 cursor-pointer">
                     Persetujuan Guru
                 </button>
             </div>
 
             <!-- ======================================================= -->
-            <!-- TAB 1: KOREKSI TUGAS MASUK                              -->
+            <!-- TAB 1: KELOLA TUGAS / PR & MEJA KOREKSI LENGKAP         -->
             <!-- ======================================================= -->
-            <div id="tab-content-tugas" class="space-y-6">
-                <div class="bg-white border-[3px] border-black rounded-3xl md:rounded-[40px] p-4 sm:p-6 md:p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-2xl font-black text-black uppercase tracking-tight">Meja Koreksi Tugas Siswa</h3>
-                                <span class="bg-indigo-100 text-indigo-800 text-[11px] font-black px-2 py-0.5 rounded border border-indigo-400">Database Supabase</span>
-                            </div>
-                            <p class="text-slate-500 font-bold text-xs mt-1">Periksa berkas & tautan tugas siswa, beri nilai 0-100 atau gunakan koreksi AI.</p>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                            <button onclick="exportCSV()" class="bg-emerald-400 hover:bg-emerald-500 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                <span>Unduh Rekap CSV</span>
-                            </button>
-                            <button onclick="printOfficialGradebook()" class="bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black h-11 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:translate-y-0.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider shrink-0">
-                                <span>Cetak Buku Nilai</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Filter Bar -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 mb-5">
-                        <div class="lg:col-span-3">
-                            <select id="filter-kelas-tugas" class="w-full h-11 px-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50 cursor-pointer">
-                                <option value="">Semua Kelas</option>
-                            </select>
-                        </div>
-                        <div class="lg:col-span-4">
-                            <select id="filter-materi-tugas" class="w-full h-11 px-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50 cursor-pointer">
-                                <option value="">Semua Judul Tugas</option>
-                            </select>
-                        </div>
-                        <div class="lg:col-span-5 relative">
-                            <input type="text" id="search-tugas" placeholder="Cari nama siswa atau file..." class="w-full h-11 pl-4 pr-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50">
-                        </div>
-                    </div>
-
-                    <!-- Table Tugas -->
-                    <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-2 px-1">
-                        <span>Daftar Pengumpulan Siswa</span>
-                        <span class="md:hidden text-indigo-600 font-extrabold">Geser tabel ke kanan untuk melihat lengkap</span>
-                    </div>
-                    <div class="border-[3px] border-black rounded-2xl overflow-x-auto shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
-                        <table class="w-full min-w-[780px] divide-y-2 divide-black border-collapse text-left">
-                            <thead class="bg-slate-100">
-                                <tr>
-                                    <th class="w-20 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Kelas</th>
-                                    <th class="w-32 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Judul Tugas</th>
-                                    <th class="w-40 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Siswa</th>
-                                    <th class="px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2 min-w-[220px]">Rincian Tugas</th>
-                                    <th class="w-24 px-3 py-3 text-center text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Nilai</th>
-                                    <th class="w-44 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black">Aksi Guru</th>
-                                </tr>
-                            </thead>
-                            <tbody id="files-tbody" class="bg-white divide-y-2 divide-black">
-                                <!-- Diisi via admin.js -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ======================================================= -->
-            <!-- TAB 2: KELOLA TUGAS / PENUGASAN GURU                    -->
-            <!-- ======================================================= -->
-            <div id="tab-content-penugasan" class="space-y-6 hidden">
+            <div id="tab-content-penugasan" class="space-y-6">
                 <div class="bg-emerald-300 border-[3px] border-black rounded-3xl md:rounded-[40px] p-4 sm:p-6 md:p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
                         <div class="flex-1 min-w-[260px]">
-                            <h3 class="text-2xl sm:text-3xl font-black text-black uppercase tracking-tight">Kelola Penugasan Siswa</h3>
-                            <p class="text-black font-bold text-xs md:text-sm mt-0.5">Buat instruksi penugasan, batas waktu, dan rubrik kriteria untuk koreksi AI.</p>
+                            <h3 class="text-2xl sm:text-3xl font-black text-black uppercase tracking-tight">Kelola Tugas/PR & Meja Koreksi</h3>
+                            <p class="text-black font-bold text-xs md:text-sm mt-0.5">Kelola penugasan, rancang formulir tugas, dan periksa lembar jawaban siswa secara mendalam.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
-                            <button type="button" onclick="openAiAssignmentModal()" class="flex-1 sm:flex-none h-11 bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap">
+                            <button type="button" onclick="exportCSV()" class="h-11 bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
+                                Unduh CSV
+                            </button>
+                            <button type="button" onclick="printOfficialGradebook()" class="h-11 bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
+                                Cetak Rekap Nilai
+                            </button>
+                            <button type="button" onclick="openAiAssignmentModal()" class="h-11 bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
                                 AI Buat Tugas
                             </button>
-                            <button type="button" onclick="openAssignmentModal()" class="flex-1 sm:flex-none h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap">
+                            <button type="button" onclick="openAssignmentModal()" class="h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
                                 Buat Tugas Baru
                             </button>
                         </div>
                     </div>
 
-                    <div id="assignments-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Kartu Penugasan Guru diisi via JS -->
+                    <!-- Sub-view Navigation Toggles -->
+                    <div class="flex flex-wrap items-center gap-2 border-b-2 border-black/20 pb-4 mb-6">
+                        <button type="button" id="subview-btn-cards" onclick="switchPenugasanSubView('cards')" class="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                            Daftar Tugas (<span id="penugasan-count-badge">0</span>)
+                        </button>
+                        <button type="button" id="subview-btn-table" onclick="switchPenugasanSubView('table')" class="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black border-2 border-black hover:bg-slate-100 active:translate-y-0.5 transition cursor-pointer">
+                            Meja Koreksi Siswa (<span id="submissions-count-badge">0</span>)
+                        </button>
+                    </div>
+
+                    <!-- SUB-VIEW 1: CARDS PENUGASAN -->
+                    <div id="penugasan-cards-view" class="space-y-4">
+                        <div id="assignments-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Kartu Penugasan Guru diisi via JS -->
+                        </div>
+                    </div>
+
+                    <!-- SUB-VIEW 2: MEJA KOREKSI / TABEL PENGUMPULAN TUGAS SISWA -->
+                    <div id="penugasan-table-view" class="hidden space-y-4 bg-white border-[3px] border-black rounded-2xl md:rounded-3xl p-4 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <div>
+                            <h4 class="text-xl font-black text-black uppercase tracking-tight">Meja Koreksi Tugas Siswa</h4>
+                            <p class="text-slate-500 font-bold text-xs mt-0.5">Periksa formulir dan berkas tugas siswa, beri skor per butir esai atau gunakan koreksi AI.</p>
+                        </div>
+
+                        <!-- Filter Bar -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+                            <div class="lg:col-span-3">
+                                <select id="filter-kelas-tugas" class="w-full h-11 px-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50 cursor-pointer">
+                                    <option value="">Semua Kelas</option>
+                                </select>
+                            </div>
+                            <div class="lg:col-span-4">
+                                <select id="filter-materi-tugas" class="w-full h-11 px-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50 cursor-pointer">
+                                    <option value="">Semua Judul Tugas</option>
+                                </select>
+                            </div>
+                            <div class="lg:col-span-5 relative">
+                                <input type="text" id="search-tugas" placeholder="Cari nama siswa atau file..." class="w-full h-11 pl-4 pr-4 rounded-xl border-[2px] border-black font-bold focus:outline-none text-xs bg-slate-50">
+                            </div>
+                        </div>
+
+                        <!-- Table Tugas -->
+                        <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-1 px-1">
+                            <span>Daftar Pengumpulan Siswa</span>
+                            <span class="md:hidden text-indigo-600 font-extrabold">Geser tabel ke kanan untuk melihat lengkap</span>
+                        </div>
+                        <div class="border-[3px] border-black rounded-2xl overflow-x-auto shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] bg-white">
+                            <table class="w-full min-w-[780px] divide-y-2 divide-black border-collapse text-left">
+                                <thead class="bg-slate-100">
+                                    <tr>
+                                        <th class="w-20 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Kelas</th>
+                                        <th class="w-32 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Judul Tugas</th>
+                                        <th class="w-40 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Siswa</th>
+                                        <th class="px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2 min-w-[220px]">Rincian Tugas</th>
+                                        <th class="w-24 px-3 py-3 text-center text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Nilai</th>
+                                        <th class="w-44 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black">Aksi Guru</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="files-tbody" class="bg-white divide-y-2 divide-black">
+                                    <!-- Diisi via admin.js -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -868,14 +866,54 @@
                     </div>
                     <div>
                         <label class="block text-xs font-black uppercase text-black mb-1">Kombinasi Tipe Soal</label>
-                        <select id="ai-assign-tipe" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                        <select id="ai-assign-tipe" onchange="onAiAssignTipeChange(this)" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
                             <option value="campuran" selected>Campuran Beragam (PG, Esai, Benar/Salah, Singkat, Jodohkan)</option>
+                            <option value="custom_komposisi">Kustom Komposisi Soal Sendiri (Tentukan per Tipe)</option>
                             <option value="esai">Penuh Esai / Uraian Penalaran</option>
                             <option value="pg">Pilihan Ganda (PG) Berbobot</option>
                             <option value="benar_salah">Pernyataan Benar / Salah</option>
                             <option value="singkat">Isian Singkat Konseptual</option>
                             <option value="menjodohkan">Menjodohkan Istilah & Definisi</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Custom Composition Breakdown for Tugas -->
+                <div id="ai-assign-custom-box" class="hidden bg-slate-50 border-2 border-black rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between border-b border-black/10 pb-2">
+                        <span class="text-xs font-black uppercase text-black">Rincian Komposisi Butir Soal</span>
+                        <span id="ai-assign-custom-badge" class="text-[11px] font-black bg-yellow-300 text-black px-2.5 py-0.5 rounded-lg border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                            Total: 0 Soal
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">PG Biasa</label>
+                            <input type="number" id="ai-assign-count-pg" min="0" value="0" oninput="updateAiAssignCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">PG Kompleks</label>
+                            <input type="number" id="ai-assign-count-pgk" min="0" value="0" oninput="updateAiAssignCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Benar / Salah</label>
+                            <input type="number" id="ai-assign-count-bs" min="0" value="0" oninput="updateAiAssignCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Isian Singkat</label>
+                            <input type="number" id="ai-assign-count-singkat" min="0" value="0" oninput="updateAiAssignCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Menjodohkan</label>
+                            <input type="number" id="ai-assign-count-jodoh" min="0" value="0" oninput="updateAiAssignCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Uraian / Esai</label>
+                            <input type="number" id="ai-assign-count-esai" min="0" value="0" oninput="updateAiAssignCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                    </div>
+                    <div class="text-[10px] font-bold text-slate-500 italic">
+                        * Masukkan jumlah butir per tipe sesuai keinginan. Total bobot otomatis diseimbangkan tepat 100 poin.
                     </div>
                 </div>
 
@@ -1352,13 +1390,53 @@
                     </div>
                     <div>
                         <label class="block text-xs font-black uppercase text-black mb-1">Ragam / Tipe Soal</label>
-                        <select id="ai-quiz-model-ragam" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                        <select id="ai-quiz-model-ragam" onchange="onAiQuizRagamChange(this)" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
                             <option value="campuran" selected>Kombinasi Variasi AKM (PG, B/S, Singkat, Jodohkan, Esai)</option>
+                            <option value="custom_komposisi">Kustom Komposisi Soal Sendiri (Tentukan per Tipe)</option>
                             <option value="pg_murni">Pilihan Ganda (PG) Murni</option>
                             <option value="pg_esai">Standar Ujian (PG & Esai)</option>
                             <option value="akm_khusus">Literasi AKM (PG, Benar/Salah, Menjodohkan)</option>
                             <option value="esai_murni">Uraian / Penalaran Esai Saja</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Custom Composition Breakdown for CBT / Ujian -->
+                <div id="ai-quiz-custom-box" class="hidden bg-slate-50 border-2 border-black rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between border-b border-black/10 pb-2">
+                        <span class="text-xs font-black uppercase text-black">Rincian Komposisi Butir Soal Ujian</span>
+                        <span id="ai-quiz-custom-badge" class="text-[11px] font-black bg-emerald-300 text-black px-2.5 py-0.5 rounded-lg border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                            Total: 0 Soal
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">PG Biasa</label>
+                            <input type="number" id="ai-quiz-count-pg" min="0" value="0" oninput="updateAiQuizCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">PG Kompleks</label>
+                            <input type="number" id="ai-quiz-count-pgk" min="0" value="0" oninput="updateAiQuizCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Benar / Salah</label>
+                            <input type="number" id="ai-quiz-count-bs" min="0" value="0" oninput="updateAiQuizCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Isian Singkat</label>
+                            <input type="number" id="ai-quiz-count-singkat" min="0" value="0" oninput="updateAiQuizCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Menjodohkan</label>
+                            <input type="number" id="ai-quiz-count-jodoh" min="0" value="0" oninput="updateAiQuizCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Uraian / Esai</label>
+                            <input type="number" id="ai-quiz-count-esai" min="0" value="0" oninput="updateAiQuizCustomTotal()" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-xs bg-white text-center">
+                        </div>
+                    </div>
+                    <div class="text-[10px] font-bold text-slate-500 italic">
+                        * Masukkan jumlah butir per tipe sesuai keinginan. Total bobot otomatis diseimbangkan tepat 100 poin.
                     </div>
                 </div>
 

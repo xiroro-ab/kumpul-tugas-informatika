@@ -346,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tab Navigation
     window.switchTab = (tabName) => {
-        const tabs = ['tugas', 'penugasan', 'materi', 'kuis', 'siswa', 'setting', 'approval'];
+        const tabs = ['penugasan', 'materi', 'kuis', 'siswa', 'setting', 'approval'];
         tabs.forEach(t => {
             const btn = document.getElementById(`tab-btn-${t}`);
             const content = document.getElementById(`tab-content-${t}`);
@@ -356,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 if (btn) {
                     if (t === 'approval') {
-                        btn.className = "lms-tab-btn col-span-2 sm:col-span-6 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300";
+                        btn.className = "lms-tab-btn col-span-2 sm:col-span-5 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300";
                     } else {
                         btn.className = "lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100";
                     }
@@ -365,12 +365,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (tabName === 'tugas') loadFilesTable();
-        if (tabName === 'penugasan') loadAssignments();
+        if (tabName === 'penugasan') {
+            loadAssignments();
+            loadFilesTable();
+        }
         if (tabName === 'materi') loadMaterials();
         if (tabName === 'kuis') loadQuizzes();
         if (tabName === 'siswa') loadStudentsRoster();
         if (tabName === 'approval') loadAllTeachers();
+    };
+
+    // Sub-view Switcher dalam Tab Kelola Tugas & Meja Koreksi
+    window.switchPenugasanSubView = (view) => {
+        const btnCards = document.getElementById('subview-btn-cards');
+        const btnTable = document.getElementById('subview-btn-table');
+        const cardsView = document.getElementById('penugasan-cards-view');
+        const tableView = document.getElementById('penugasan-table-view');
+
+        if (view === 'cards') {
+            if (btnCards) btnCards.className = "px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer";
+            if (btnTable) btnTable.className = "px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black border-2 border-black hover:bg-slate-100 active:translate-y-0.5 transition cursor-pointer";
+            if (cardsView) cardsView.classList.remove('hidden');
+            if (tableView) tableView.classList.add('hidden');
+        } else {
+            if (btnTable) btnTable.className = "px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer";
+            if (btnCards) btnCards.className = "px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black border-2 border-black hover:bg-slate-100 active:translate-y-0.5 transition cursor-pointer";
+            if (cardsView) cardsView.classList.add('hidden');
+            if (tableView) tableView.classList.remove('hidden');
+            loadFilesTable();
+        }
     };
 
     // Auth Session Listener
@@ -540,6 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             loadOptionsSettings();
+            loadAssignments();
             loadFilesTable();
             loadModelSettingsUI();
         } else {
@@ -720,6 +744,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             
             pendingFiles = data || [];
+            const sBadge = document.getElementById('submissions-count-badge');
+            if (sBadge) sBadge.textContent = pendingFiles.length;
             applyFilters();
         } catch (e) {
             console.error(e);
@@ -899,6 +925,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     let typeBadgeClass = 'text-purple-700';
                     let keyBadge = '';
 
+                    const itemMaxScore = Number(q.bobot) || 20;
+                    let initialScore = '';
+                    let initialFeedback = q.catatan_guru || q.feedback_ai || '';
+
                     if (isPg) {
                         typeLabel = 'Pilihan Ganda';
                         typeBadgeClass = 'text-blue-700';
@@ -906,6 +936,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         keyBadge = isCorrect
                             ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Benar (Kunci: ${escapeHtml(q.kunci)})</span>`
                             : `<span class="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Jawaban: ${escapeHtml(q.jawaban_siswa || 'Kosong')} (Kunci: ${escapeHtml(q.kunci)})</span>`;
+                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
+                            initialScore = q.skor_guru;
+                        } else {
+                            initialScore = isCorrect ? itemMaxScore : 0;
+                        }
                     } else if (isBs) {
                         typeLabel = 'Benar / Salah';
                         typeBadgeClass = 'text-teal-700';
@@ -913,15 +948,53 @@ document.addEventListener('DOMContentLoaded', () => {
                         keyBadge = isCorrect
                             ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Benar (Kunci: ${escapeHtml(q.kunci)})</span>`
                             : `<span class="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Jawaban: ${escapeHtml(q.jawaban_siswa || 'Kosong')} (Kunci: ${escapeHtml(q.kunci)})</span>`;
+                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
+                            initialScore = q.skor_guru;
+                        } else {
+                            initialScore = isCorrect ? itemMaxScore : 0;
+                        }
                     } else if (isFoto) {
                         typeLabel = 'Upload Foto / Bukti';
                         typeBadgeClass = 'text-orange-700';
+                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
+                            initialScore = q.skor_guru;
+                        } else if (q.skor_ai !== undefined && q.skor_ai !== null) {
+                            initialScore = q.skor_ai;
+                        }
                     } else if (isMatch) {
                         typeLabel = 'Menjodohkan';
                         typeBadgeClass = 'text-pink-700';
+                        const studentMatches = (typeof q.jawaban_siswa === 'object' && q.jawaban_siswa !== null) ? q.jawaban_siswa : {};
+                        const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
+                        let correctMatches = 0;
+                        pairs.forEach(p => {
+                            if (String(studentMatches[p.kiri] || '').trim().toLowerCase() === String(p.kanan || '').trim().toLowerCase()) {
+                                correctMatches++;
+                            }
+                        });
+                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
+                            initialScore = q.skor_guru;
+                        } else {
+                            initialScore = pairs.length > 0 ? Math.round(itemMaxScore * (correctMatches / pairs.length)) : 0;
+                        }
                     } else if (isSingkat) {
                         typeLabel = 'Isian Singkat';
                         typeBadgeClass = 'text-emerald-700';
+                        const isCorrect = String(q.jawaban_siswa || '').trim().toLowerCase() === String(q.kunci || '').trim().toLowerCase();
+                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
+                            initialScore = q.skor_guru;
+                        } else if (isCorrect) {
+                            initialScore = itemMaxScore;
+                        } else if (q.skor_ai !== undefined && q.skor_ai !== null) {
+                            initialScore = q.skor_ai;
+                        }
+                    } else {
+                        // esai
+                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
+                            initialScore = q.skor_guru;
+                        } else if (q.skor_ai !== undefined && q.skor_ai !== null) {
+                            initialScore = q.skor_ai;
+                        }
                     }
 
                     let answerHtml = '';
@@ -990,7 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ${keyBadge}
                                 </div>
                                 <span class="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
-                                    Bobot: ${q.bobot || 25} Poin
+                                    Bobot: ${itemMaxScore} Poin
                                 </span>
                             </div>
 
@@ -1016,6 +1089,23 @@ document.addEventListener('DOMContentLoaded', () => {
                             ` : ''}
 
                             <div id="ai-item-eval-${idx}" class="hidden bg-emerald-50 border border-emerald-300 rounded-xl p-2.5 text-xs text-emerald-950 font-medium"></div>
+
+                            <!-- Input Skor & Catatan per Butir Soal (Format Standar CBT) -->
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2.5 items-center border-t border-slate-200 mt-2">
+                                <div class="sm:col-span-3">
+                                    <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Skor (0 - ${itemMaxScore})</label>
+                                    <input type="number" id="grade-item-score-${idx}" value="${initialScore !== '' ? initialScore : ''}" min="0" max="${itemMaxScore}" oninput="window.recalcGradeFormTotalScore()" placeholder="0" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white text-center">
+                                </div>
+                                <div class="sm:col-span-6">
+                                    <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Catatan Evaluasi Butir</label>
+                                    <input type="text" id="grade-item-feedback-${idx}" value="${escapeHtml(initialFeedback)}" placeholder="Catatan evaluasi butir..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                                </div>
+                                <div class="sm:col-span-3 flex items-end">
+                                    <button type="button" onclick="window.runAiGradeSingleItem(${idx})" class="w-full h-9 bg-purple-100 hover:bg-purple-200 text-purple-900 border-2 border-purple-400 rounded-lg font-black text-[10px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                                        Koreksi AI Butir
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -1061,7 +1151,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        document.getElementById('grade-input-score').value = item.nilai !== null && item.nilai !== undefined ? item.nilai : '';
+        if (item.nilai !== null && item.nilai !== undefined && item.nilai !== '') {
+            document.getElementById('grade-input-score').value = item.nilai;
+        } else if (isForm) {
+            window.recalcGradeFormTotalScore();
+        } else {
+            document.getElementById('grade-input-score').value = '';
+        }
         document.getElementById('grade-input-feedback').value = item.catatan_guru || item.ai_feedback || '';
         document.getElementById('grade-modal').classList.remove('hidden');
     };
@@ -1069,6 +1165,80 @@ document.addEventListener('DOMContentLoaded', () => {
     window.closeGradeModal = () => {
         document.getElementById('grade-modal').classList.add('hidden');
         activeGradeItem = null;
+    };
+
+    // Kalkulasi Otomatis Total Skor Tugas Form dari Skor Butir
+    window.recalcGradeFormTotalScore = () => {
+        if (!activeGradeItem) return;
+        let isForm = false;
+        let formItems = [];
+
+        if (activeGradeItem.storage_path && activeGradeItem.storage_path.startsWith('FORM:')) {
+            isForm = true;
+            try { formItems = JSON.parse(activeGradeItem.storage_path.replace(/^FORM:/, '')); } catch (_) {}
+        } else if (activeGradeItem.tipe === 'form') {
+            isForm = true;
+            try { formItems = JSON.parse(activeGradeItem.storage_path || '[]'); } catch (_) {}
+        }
+
+        if (isForm && Array.isArray(formItems) && formItems.length > 0) {
+            let total = 0;
+            formItems.forEach((_, idx) => {
+                const sEl = document.getElementById(`grade-item-score-${idx}`);
+                if (sEl && sEl.value !== '') {
+                    total += Number(sEl.value) || 0;
+                }
+            });
+            const clamped = Math.max(0, Math.min(100, Math.round(total)));
+            const inputScore = document.getElementById('grade-input-score');
+            if (inputScore) inputScore.value = clamped;
+        }
+    };
+
+    // Koreksi AI untuk Butir Soal Tunggal (Esai / Isian / Non-Objektif)
+    window.runAiGradeSingleItem = async (idx) => {
+        if (!activeGradeItem) return;
+        let isForm = false;
+        let formItems = [];
+
+        if (activeGradeItem.storage_path && activeGradeItem.storage_path.startsWith('FORM:')) {
+            isForm = true;
+            try { formItems = JSON.parse(activeGradeItem.storage_path.replace(/^FORM:/, '')); } catch (_) {}
+        } else if (activeGradeItem.tipe === 'form') {
+            isForm = true;
+            try { formItems = JSON.parse(activeGradeItem.storage_path || '[]'); } catch (_) {}
+        }
+
+        const q = formItems[idx];
+        if (!q) return;
+
+        showAiLoadingModal({
+            badge: 'KOREKSI BUTIR AI',
+            title: `Mengevaluasi Butir Soal #${idx + 1}...`,
+            steps: [
+                'Membaca teks jawaban siswa...',
+                'Mencocokkan dengan kunci & rubrik guru...',
+                'Mengestimasi perolehan skor objektif...'
+            ]
+        });
+
+        try {
+            const studentAns = q.jawaban_siswa || '';
+            const keyOrRubric = q.kunci || q.rubrik_esai || 'Kesesuaian dan kelengkapan konsep materi.';
+            const maxBobot = Number(q.bobot) || 20;
+
+            const result = await aiGradeQuizEssay(q.pertanyaan, keyOrRubric, String(studentAns), maxBobot);
+            const scoreInput = document.getElementById(`grade-item-score-${idx}`);
+            const fbInput = document.getElementById(`grade-item-feedback-${idx}`);
+            if (scoreInput && result.skor !== undefined) scoreInput.value = result.skor;
+            if (fbInput && result.feedback) fbInput.value = result.feedback;
+
+            window.recalcGradeFormTotalScore();
+        } catch (e) {
+            showCustomModal("Gagal koreksi AI butir soal: " + e.message);
+        } finally {
+            hideAiLoadingModal();
+        }
     };
 
     window.runAiGrade = async () => {
@@ -1082,7 +1252,7 @@ document.addEventListener('DOMContentLoaded', () => {
             title: 'Mengevaluasi Jawaban Siswa...',
             steps: [
                 'Menghubungkan ke Google Gemini AI...',
-                'Membaca teks/berkas pengerjaan siswa...',
+                'Membaca lembar jawaban per butir soal...',
                 'Mengevaluasi kesesuaian dengan rubrik tugas...',
                 'Menghitung estimasi skor capaian...',
                 'Menyusun masukan evaluasi dan catatan guru...'
@@ -1106,30 +1276,51 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (isForm && Array.isArray(formItems) && formItems.length > 0) {
-                // Gunakan AI Form Evaluator per butir soal
-                const evalResult = await aiEvaluateFormSubmission(
-                    currentTeacher?.mapel || 'Informatika',
-                    activeGradeItem.materi,
-                    formItems
-                );
+                // Evaluasi setiap butir soal secara komprehensif
+                for (let i = 0; i < formItems.length; i++) {
+                    const q = formItems[i];
+                    const tipe = q.tipe || 'esai';
+                    const maxBobot = Number(q.bobot) || 20;
+                    const isPg = tipe === 'pg' || tipe === 'pilihan_ganda';
+                    const isBs = tipe === 'benar_salah';
+                    const isMatch = tipe === 'menjodohkan';
 
-                if (evalResult.nilai_total !== undefined) {
-                    document.getElementById('grade-input-score').value = evalResult.nilai_total;
-                }
-                if (evalResult.catatan_guru) {
-                    document.getElementById('grade-input-feedback').value = evalResult.catatan_guru;
+                    const scoreInput = document.getElementById(`grade-item-score-${i}`);
+                    const fbInput = document.getElementById(`grade-item-feedback-${i}`);
+
+                    if (isPg || isBs) {
+                        const isCorrect = String(q.jawaban_siswa).trim().toUpperCase() === String(q.kunci).trim().toUpperCase();
+                        if (scoreInput) scoreInput.value = isCorrect ? maxBobot : 0;
+                        if (fbInput) fbInput.value = isCorrect ? "Jawaban tepat sesuai kunci." : `Jawaban kurang tepat (Kunci: ${q.kunci}).`;
+                    } else if (isMatch) {
+                        const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
+                        const studentMatches = (typeof q.jawaban_siswa === 'object' && q.jawaban_siswa !== null) ? q.jawaban_siswa : {};
+                        let matchCount = 0;
+                        pairs.forEach(p => {
+                            if (String(studentMatches[p.kiri] || '').trim().toLowerCase() === String(p.kanan || '').trim().toLowerCase()) {
+                                matchCount++;
+                            }
+                        });
+                        const matchScore = pairs.length > 0 ? Math.round(maxBobot * (matchCount / pairs.length)) : 0;
+                        if (scoreInput) scoreInput.value = matchScore;
+                        if (fbInput) fbInput.value = `Berhasil menjodohkan ${matchCount} dari ${pairs.length} pasangan dengan tepat.`;
+                    } else {
+                        // Esai, singkat, upload_foto -> gunakan AI
+                        const result = await aiGradeQuizEssay(
+                            q.pertanyaan,
+                            q.kunci || q.rubrik_esai || 'Kesesuaian konsep materi.',
+                            String(q.jawaban_siswa || ''),
+                            maxBobot
+                        );
+                        if (scoreInput && result.skor !== undefined) scoreInput.value = result.skor;
+                        if (fbInput && result.feedback) fbInput.value = result.feedback;
+                    }
                 }
 
-                if (Array.isArray(evalResult.evaluasi_per_soal)) {
-                    evalResult.evaluasi_per_soal.forEach(ev => {
-                        const idx = (ev.nomor || 1) - 1;
-                        const el = document.getElementById(`ai-item-eval-${idx}`);
-                        if (el) {
-                            el.innerHTML = `<strong>Koreksi AI:</strong> Nilai Butir Ini: ${ev.skor} Poin. ${escapeHtml(ev.catatan)}`;
-                            el.classList.remove('hidden');
-                        }
-                    });
-                }
+                window.recalcGradeFormTotalScore();
+                const totalScore = document.getElementById('grade-input-score').value;
+                document.getElementById('grade-input-feedback').value = `Hasil evaluasi tugas: pencapaian skor akumulatif ${totalScore}/100. Seluruh butir esai dan objektif telah dievaluasi.`;
+                showCustomModal("Seluruh lembar butir soal berhasil dianalisis oleh AI! Anda dapat menyesuaikan skor secara manual sebelum menyimpan.");
             } else {
                 let studentContent = '';
                 if (isTextSubmission(activeGradeItem)) {
@@ -1200,17 +1391,46 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBtn.innerText = "Menyimpan...";
 
         try {
-            const { error } = await supabase.from('files').update({
+            let isForm = false;
+            let formItems = [];
+
+            if (activeGradeItem.storage_path && activeGradeItem.storage_path.startsWith('FORM:')) {
+                isForm = true;
+                try { formItems = JSON.parse(activeGradeItem.storage_path.replace(/^FORM:/, '')); } catch (_) {}
+            } else if (activeGradeItem.tipe === 'form') {
+                isForm = true;
+                try { formItems = JSON.parse(activeGradeItem.storage_path || '[]'); } catch (_) {}
+            }
+
+            let updatedStoragePath = activeGradeItem.storage_path;
+
+            if (isForm && Array.isArray(formItems) && formItems.length > 0) {
+                formItems.forEach((q, idx) => {
+                    const sInput = document.getElementById(`grade-item-score-${idx}`);
+                    const fbInput = document.getElementById(`grade-item-feedback-${idx}`);
+                    if (sInput && sInput.value !== '') q.skor_guru = Number(sInput.value);
+                    if (fbInput) q.catatan_guru = fbInput.value.trim();
+                });
+                updatedStoragePath = 'FORM:' + JSON.stringify(formItems);
+            }
+
+            const updatePayload = {
                 nilai: scoreNum,
                 catatan_guru: feedbackVal,
                 status_koreksi: 'sudah_dikoreksi'
-            }).eq('id', activeGradeItem.id);
+            };
+            if (isForm) {
+                updatePayload.storage_path = updatedStoragePath;
+            }
+
+            const { error } = await supabase.from('files').update(updatePayload).eq('id', activeGradeItem.id);
 
             if (error) throw error;
 
             activeGradeItem.nilai = scoreNum;
             activeGradeItem.catatan_guru = feedbackVal;
             activeGradeItem.status_koreksi = 'sudah_dikoreksi';
+            if (isForm) activeGradeItem.storage_path = updatedStoragePath;
 
             closeGradeModal();
             applyFilters();
@@ -1226,7 +1446,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showCustomModal("Gagal menyimpan nilai: " + e.message);
         }
         saveBtn.disabled = false;
-        saveBtn.innerText = "Simpan Nilai";
+        saveBtn.innerText = "Simpan Nilai & Evaluasi";
     };
 
     window.deleteFile = async (id, path, isLink = false) => {
@@ -1427,6 +1647,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const { data, error } = await supabase.from('assignments').select('*').order('created_at', { ascending: false });
             if (error) throw error;
             assignmentsList = data || [];
+            const pBadge = document.getElementById('penugasan-count-badge');
+            if (pBadge) pBadge.textContent = assignmentsList.length;
 
             // Pastikan data pengumpulan siswa termutakhir tersedia untuk penghitungan
             if (!pendingFiles || pendingFiles.length === 0) {
@@ -1890,6 +2112,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const tipe = q.tipe || 'esai';
             const isPg = tipe === 'pg';
+            const isPgKompleks = tipe === 'pg_kompleks';
             const isSingkat = tipe === 'singkat';
             const isBs = tipe === 'benar_salah';
             const isFoto = tipe === 'upload_foto';
@@ -1905,6 +2128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <select onchange="window.changeFormQuestionType(${idx}, this.value)" class="h-8 px-2 border-2 border-black rounded-lg font-black text-xs bg-slate-50 cursor-pointer">
                                 <option value="esai" ${tipe === 'esai' ? 'selected' : ''}>Esai / Uraian</option>
                                 <option value="pg" ${isPg ? 'selected' : ''}>Pilihan Ganda (PG)</option>
+                                <option value="pg_kompleks" ${isPgKompleks ? 'selected' : ''}>Pilihan Ganda Kompleks</option>
                                 <option value="singkat" ${isSingkat ? 'selected' : ''}>Isian Singkat</option>
                                 <option value="benar_salah" ${isBs ? 'selected' : ''}>Benar / Salah</option>
                                 <option value="upload_foto" ${isFoto ? 'selected' : ''}>Upload Foto / Bukti</option>
@@ -1994,6 +2218,32 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <option value="C" ${q.kunci === 'C' ? 'selected' : ''}>C</option>
                                     <option value="D" ${q.kunci === 'D' ? 'selected' : ''}>D</option>
                                 </select>
+                            </div>
+                        </div>
+                    ` : isPgKompleks ? `
+                        <div class="space-y-2 pt-1">
+                            <label class="block text-xs font-black uppercase text-black">Opsi Pilihan Ganda Kompleks & Kunci Jawaban</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 text-center font-black text-sm text-slate-700">A</span>
+                                    <input type="text" placeholder="Teks opsi A..." value="${escapeHtml(q.opsi_a || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_a', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 text-center font-black text-sm text-slate-700">B</span>
+                                    <input type="text" placeholder="Teks opsi B..." value="${escapeHtml(q.opsi_b || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_b', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 text-center font-black text-sm text-slate-700">C</span>
+                                    <input type="text" placeholder="Teks opsi C..." value="${escapeHtml(q.opsi_c || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_c', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 text-center font-black text-sm text-slate-700">D</span>
+                                    <input type="text" placeholder="Teks opsi D..." value="${escapeHtml(q.opsi_d || '')}" oninput="window.updateFormQuestionField(${idx}, 'opsi_d', this.value)" class="flex-1 h-10 px-3 border-2 border-black rounded-lg font-medium text-sm bg-slate-50 text-slate-900">
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 pt-1">
+                                <label class="text-xs font-black uppercase text-black">Kunci Benar (Pisahkan Koma):</label>
+                                <input type="text" placeholder="Contoh: A,C atau B,D" value="${escapeHtml(q.kunci || '')}" oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value.toUpperCase())" class="h-9 px-3 border-2 border-black rounded-lg font-black text-xs bg-cyan-100 text-cyan-950 uppercase">
                             </div>
                         </div>
                     ` : isBs ? `
@@ -2130,9 +2380,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.changeFormQuestionType = (idx, newType) => {
         if (formBuilderQuestions[idx]) {
             formBuilderQuestions[idx].tipe = newType;
-            if (newType === 'pg') {
-                if (!formBuilderQuestions[idx].kunci || !['A', 'B', 'C', 'D'].includes(formBuilderQuestions[idx].kunci)) {
-                    formBuilderQuestions[idx].kunci = 'A';
+            if (newType === 'pg' || newType === 'pg_kompleks') {
+                if (!formBuilderQuestions[idx].kunci) {
+                    formBuilderQuestions[idx].kunci = newType === 'pg' ? 'A' : 'A,B';
                 }
                 if (!formBuilderQuestions[idx].opsi_a) formBuilderQuestions[idx].opsi_a = '';
                 if (!formBuilderQuestions[idx].opsi_b) formBuilderQuestions[idx].opsi_b = '';
@@ -2298,6 +2548,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    window.onAiAssignTipeChange = (sel) => {
+        const customBox = document.getElementById('ai-assign-custom-box');
+        if (sel && sel.value === 'custom_komposisi') {
+            if (customBox) customBox.classList.remove('hidden');
+            window.updateAiAssignCustomTotal();
+        } else {
+            if (customBox) customBox.classList.add('hidden');
+        }
+    };
+
+    window.updateAiAssignCustomTotal = () => {
+        const pg = Number(document.getElementById('ai-assign-count-pg')?.value) || 0;
+        const pgk = Number(document.getElementById('ai-assign-count-pgk')?.value) || 0;
+        const bs = Number(document.getElementById('ai-assign-count-bs')?.value) || 0;
+        const singkat = Number(document.getElementById('ai-assign-count-singkat')?.value) || 0;
+        const jodoh = Number(document.getElementById('ai-assign-count-jodoh')?.value) || 0;
+        const esai = Number(document.getElementById('ai-assign-count-esai')?.value) || 0;
+        const total = pg + pgk + bs + singkat + jodoh + esai;
+
+        const badge = document.getElementById('ai-assign-custom-badge');
+        if (badge) badge.textContent = `Total: ${total} Soal`;
+
+        const totalSelect = document.getElementById('ai-assign-jumlah');
+        if (totalSelect) {
+            const hasOption = Array.from(totalSelect.options).some(o => o.value === String(total));
+            if (hasOption) {
+                totalSelect.value = String(total);
+            }
+        }
+    };
+
     window.openAiAssignmentModal = () => {
         const kelasSelect = document.getElementById('ai-assign-kelas');
         populateTargetClassSelect(kelasSelect, 'Semua Kelas');
@@ -2311,6 +2592,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (customInput) customInput.value = '';
         const assignSelect = document.getElementById('ai-assign-jumlah');
         if (assignSelect) assignSelect.value = '4';
+
+        const tipeSelect = document.getElementById('ai-assign-tipe');
+        if (tipeSelect) tipeSelect.value = 'campuran';
+        const customBox = document.getElementById('ai-assign-custom-box');
+        if (customBox) customBox.classList.add('hidden');
+        ['pg', 'pgk', 'bs', 'singkat', 'jodoh', 'esai'].forEach(k => {
+            const el = document.getElementById(`ai-assign-count-${k}`);
+            if (el) el.value = '0';
+        });
+
         document.getElementById('ai-assignment-modal').classList.remove('hidden');
     };
 
@@ -2321,18 +2612,37 @@ document.addEventListener('DOMContentLoaded', () => {
     window.runAiGenerateAssignment = async () => {
         const mapel = document.getElementById('ai-assign-mapel')?.value || currentTeacher?.mapel || 'Informatika';
         const kelas = document.getElementById('ai-assign-kelas')?.value || stateKelas[0] || 'Semua Kelas';
-        
-        let jumlah = 4;
-        const assignCustomBox = document.getElementById('ai-assign-total-custom-box');
-        const assignCustomInput = document.getElementById('ai-assign-jumlah-custom');
-        const assignSelect = document.getElementById('ai-assign-jumlah');
+        const tipeSoal = document.getElementById('ai-assign-tipe')?.value || 'campuran';
 
-        if (assignCustomBox && !assignCustomBox.classList.contains('hidden') && assignCustomInput && assignCustomInput.value.trim() !== '') {
-            jumlah = parseInt(assignCustomInput.value.trim(), 10);
-        } else if (assignSelect && assignSelect.value === 'custom' && assignCustomInput && assignCustomInput.value.trim() !== '') {
-            jumlah = parseInt(assignCustomInput.value.trim(), 10);
-        } else if (assignSelect && assignSelect.value !== 'custom') {
-            jumlah = parseInt(assignSelect.value, 10) || 4;
+        let jumlah = 4;
+        let customComposition = null;
+
+        if (tipeSoal === 'custom_komposisi') {
+            const pg = Number(document.getElementById('ai-assign-count-pg')?.value) || 0;
+            const pgk = Number(document.getElementById('ai-assign-count-pgk')?.value) || 0;
+            const bs = Number(document.getElementById('ai-assign-count-bs')?.value) || 0;
+            const singkat = Number(document.getElementById('ai-assign-count-singkat')?.value) || 0;
+            const jodoh = Number(document.getElementById('ai-assign-count-jodoh')?.value) || 0;
+            const esai = Number(document.getElementById('ai-assign-count-esai')?.value) || 0;
+            const sumCount = pg + pgk + bs + singkat + jodoh + esai;
+            if (sumCount <= 0) {
+                showCustomModal("Silakan masukkan minimal 1 butir soal pada rincian komposisi kustom!");
+                return;
+            }
+            customComposition = { pg, pgk, bs, singkat, jodoh, esai };
+            jumlah = sumCount;
+        } else {
+            const assignCustomBox = document.getElementById('ai-assign-total-custom-box');
+            const assignCustomInput = document.getElementById('ai-assign-jumlah-custom');
+            const assignSelect = document.getElementById('ai-assign-jumlah');
+
+            if (assignCustomBox && !assignCustomBox.classList.contains('hidden') && assignCustomInput && assignCustomInput.value.trim() !== '') {
+                jumlah = parseInt(assignCustomInput.value.trim(), 10);
+            } else if (assignSelect && assignSelect.value === 'custom' && assignCustomInput && assignCustomInput.value.trim() !== '') {
+                jumlah = parseInt(assignCustomInput.value.trim(), 10);
+            } else if (assignSelect && assignSelect.value !== 'custom') {
+                jumlah = parseInt(assignSelect.value, 10) || 4;
+            }
         }
 
         if (isNaN(jumlah) || jumlah < 1) {
@@ -2344,7 +2654,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const tipeSoal = document.getElementById('ai-assign-tipe')?.value || 'campuran';
         const tingkatKognitif = document.getElementById('ai-assign-kognitif')?.value || 'hots';
         const topik = document.getElementById('ai-assign-topik')?.value.trim();
 
@@ -2376,7 +2685,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 topik,
                 jmlSoal: jumlah,
                 tipeSoal,
-                tingkatKognitif
+                tingkatKognitif,
+                customComposition
             });
 
             closeAiAssignmentModal();
@@ -2392,7 +2702,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             renderFormBuilderQuestions();
 
-            showCustomModal(`AI berhasil menyusun ${formBuilderQuestions.length} butir soal formulir tugas! Silakan periksa, sesuaikan, atau langsung publikasikan ke siswa.`);
+            showCustomModal(`AI berhasil menyusun ${formBuilderQuestions.length} butir soal formulir tugas dengan total bobot 100 poin! Silakan periksa atau langsung publikasikan ke siswa.`);
         } catch (e) {
             showCustomModal("Gagal generate soal form AI: " + e.message);
         } finally {
@@ -2765,6 +3075,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    window.onAiQuizRagamChange = (sel) => {
+        const customBox = document.getElementById('ai-quiz-custom-box');
+        if (sel && sel.value === 'custom_komposisi') {
+            if (customBox) customBox.classList.remove('hidden');
+            window.updateAiQuizCustomTotal();
+        } else {
+            if (customBox) customBox.classList.add('hidden');
+        }
+    };
+
+    window.updateAiQuizCustomTotal = () => {
+        const pg = Number(document.getElementById('ai-quiz-count-pg')?.value) || 0;
+        const pgk = Number(document.getElementById('ai-quiz-count-pgk')?.value) || 0;
+        const bs = Number(document.getElementById('ai-quiz-count-bs')?.value) || 0;
+        const singkat = Number(document.getElementById('ai-quiz-count-singkat')?.value) || 0;
+        const jodoh = Number(document.getElementById('ai-quiz-count-jodoh')?.value) || 0;
+        const esai = Number(document.getElementById('ai-quiz-count-esai')?.value) || 0;
+        const total = pg + pgk + bs + singkat + jodoh + esai;
+
+        const badge = document.getElementById('ai-quiz-custom-badge');
+        if (badge) badge.textContent = `Total: ${total} Soal`;
+
+        const totalSelect = document.getElementById('ai-quiz-total-soal');
+        if (totalSelect) {
+            const hasOption = Array.from(totalSelect.options).some(o => o.value === String(total));
+            if (hasOption) {
+                totalSelect.value = String(total);
+            }
+        }
+    };
+
     window.openAiQuizModal = () => {
         const kelasSelect = document.getElementById('ai-quiz-kelas');
         populateTargetClassSelect(kelasSelect, 'Semua Kelas');
@@ -2779,6 +3120,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (customInput) customInput.value = '';
         const quizSelect = document.getElementById('ai-quiz-total-soal');
         if (quizSelect) quizSelect.value = '5';
+
+        const ragamSelect = document.getElementById('ai-quiz-model-ragam');
+        if (ragamSelect) ragamSelect.value = 'campuran';
+        const customBox = document.getElementById('ai-quiz-custom-box');
+        if (customBox) customBox.classList.add('hidden');
+        ['pg', 'pgk', 'bs', 'singkat', 'jodoh', 'esai'].forEach(k => {
+            const el = document.getElementById(`ai-quiz-count-${k}`);
+            if (el) el.value = '0';
+        });
+
         document.getElementById('ai-quiz-modal').classList.remove('hidden');
     };
 
@@ -2797,16 +3148,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const ragam = document.getElementById('ai-quiz-model-ragam')?.value || 'campuran';
         
         let totalSoal = 5;
-        const quizCustomBox = document.getElementById('ai-quiz-total-custom-box');
-        const quizCustomInput = document.getElementById('ai-quiz-total-soal-custom');
-        const quizSelect = document.getElementById('ai-quiz-total-soal');
+        let customComposition = null;
 
-        if (quizCustomBox && !quizCustomBox.classList.contains('hidden') && quizCustomInput && quizCustomInput.value.trim() !== '') {
-            totalSoal = parseInt(quizCustomInput.value.trim(), 10);
-        } else if (quizSelect && quizSelect.value === 'custom' && quizCustomInput && quizCustomInput.value.trim() !== '') {
-            totalSoal = parseInt(quizCustomInput.value.trim(), 10);
-        } else if (quizSelect && quizSelect.value !== 'custom') {
-            totalSoal = parseInt(quizSelect.value, 10) || 5;
+        if (ragam === 'custom_komposisi') {
+            const pg = Number(document.getElementById('ai-quiz-count-pg')?.value) || 0;
+            const pgk = Number(document.getElementById('ai-quiz-count-pgk')?.value) || 0;
+            const bs = Number(document.getElementById('ai-quiz-count-bs')?.value) || 0;
+            const singkat = Number(document.getElementById('ai-quiz-count-singkat')?.value) || 0;
+            const jodoh = Number(document.getElementById('ai-quiz-count-jodoh')?.value) || 0;
+            const esai = Number(document.getElementById('ai-quiz-count-esai')?.value) || 0;
+            const sumCount = pg + pgk + bs + singkat + jodoh + esai;
+            if (sumCount <= 0) {
+                showCustomModal("Silakan masukkan minimal 1 butir soal pada rincian komposisi kustom!");
+                return;
+            }
+            customComposition = { pg, pgk, bs, singkat, jodoh, esai };
+            totalSoal = sumCount;
+        } else {
+            const quizCustomBox = document.getElementById('ai-quiz-total-custom-box');
+            const quizCustomInput = document.getElementById('ai-quiz-total-soal-custom');
+            const quizSelect = document.getElementById('ai-quiz-total-soal');
+
+            if (quizCustomBox && !quizCustomBox.classList.contains('hidden') && quizCustomInput && quizCustomInput.value.trim() !== '') {
+                totalSoal = parseInt(quizCustomInput.value.trim(), 10);
+            } else if (quizSelect && quizSelect.value === 'custom' && quizCustomInput && quizCustomInput.value.trim() !== '') {
+                totalSoal = parseInt(quizCustomInput.value.trim(), 10);
+            } else if (quizSelect && quizSelect.value !== 'custom') {
+                totalSoal = parseInt(quizSelect.value, 10) || 5;
+            }
         }
 
         if (isNaN(totalSoal) || totalSoal < 1) {
@@ -2851,7 +3220,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 stimulus,
                 ragam,
                 totalSoal,
-                durasi
+                durasi,
+                customComposition
             });
 
             const rawQuestions = Array.isArray(result) ? result : (result?.soal || result?.questions || []);
