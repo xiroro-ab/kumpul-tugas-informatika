@@ -1742,6 +1742,60 @@ document.addEventListener('DOMContentLoaded', async () => {
                         });
                     }
 
+                    let totalObjektifScore = 0;
+                    let hasEssayOrManual = false;
+
+                    studentAnswers.forEach(item => {
+                        const tipe = item.tipe || 'esai';
+                        const bobot = Number(item.bobot) || 10;
+                        const isPg = tipe === 'pg' || tipe === 'pilihan_ganda';
+                        const isPgk = tipe === 'pg_kompleks' || tipe === 'pilihan_ganda_kompleks';
+                        const isBs = tipe === 'benar_salah';
+                        const isSingkat = tipe === 'singkat' || tipe === 'isian_singkat';
+                        const isMatch = tipe === 'menjodohkan';
+
+                        if (isPg) {
+                            const isCorrect = String(item.jawaban_siswa || '').trim().toUpperCase() === String(item.kunci || '').trim().toUpperCase();
+                            item.skor_guru = isCorrect ? bobot : 0;
+                            item.catatan_guru = isCorrect ? 'Jawaban tepat sesuai kunci.' : `Jawaban kurang tepat (Kunci: ${item.kunci}).`;
+                            totalObjektifScore += item.skor_guru;
+                        } else if (isPgk) {
+                            const studentAns = item.jawaban_siswa || [];
+                            const studentKeys = (Array.isArray(studentAns) ? studentAns : String(studentAns).split(',')).map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+                            const correctKeys = (item.kunci || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+                            const isCorrect = studentKeys.length > 0 && studentKeys.join(',') === correctKeys.join(',');
+                            item.skor_guru = isCorrect ? bobot : 0;
+                            item.catatan_guru = isCorrect ? 'Pilihan ganda kompleks tepat.' : `Pilihan kurang tepat (Kunci: ${correctKeys.join(', ')}).`;
+                            totalObjektifScore += item.skor_guru;
+                        } else if (isBs) {
+                            const isCorrect = String(item.jawaban_siswa || '').trim().toUpperCase() === String(item.kunci || '').trim().toUpperCase();
+                            item.skor_guru = isCorrect ? bobot : 0;
+                            item.catatan_guru = isCorrect ? 'Jawaban tepat sesuai kunci kebenaran.' : `Jawaban kurang tepat (Kunci: ${item.kunci}).`;
+                            totalObjektifScore += item.skor_guru;
+                        } else if (isSingkat) {
+                            const isCorrect = String(item.jawaban_siswa || '').trim().toLowerCase() === String(item.kunci || '').trim().toLowerCase();
+                            item.skor_guru = isCorrect ? bobot : 0;
+                            item.catatan_guru = isCorrect ? 'Jawaban isian singkat tepat sesuai kunci.' : `Jawaban singkat belum tepat (Kunci: ${item.kunci}).`;
+                            totalObjektifScore += item.skor_guru;
+                        } else if (isMatch) {
+                            const pairs = Array.isArray(item.pasangan) ? item.pasangan : [];
+                            const studentMatches = (typeof item.jawaban_siswa === 'object' && item.jawaban_siswa !== null) ? item.jawaban_siswa : {};
+                            let matchCount = 0;
+                            pairs.forEach(p => {
+                                if (String(studentMatches[p.kiri] || '').trim().toLowerCase() === String(p.kanan || '').trim().toLowerCase()) {
+                                    matchCount++;
+                                }
+                            });
+                            const matchScore = pairs.length > 0 ? Math.round(bobot * (matchCount / pairs.length)) : 0;
+                            item.skor_guru = matchScore;
+                            item.catatan_guru = `Berhasil menjodohkan ${matchCount} dari ${pairs.length} pasangan dengan tepat.`;
+                            totalObjektifScore += matchScore;
+                        } else {
+                            hasEssayOrManual = true;
+                            item.skor_guru = null;
+                        }
+                    });
+
                     const displayFilename = `[Form Web] ${materi} (${studentAnswers.length} Soal)`;
                     const payload = {
                         nama,
@@ -1753,7 +1807,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         storage_path: `FORM:${JSON.stringify(studentAnswers)}`,
                         link_url: null,
                         tipe: 'form',
-                        status_koreksi: 'belum_dikoreksi'
+                        nilai: totalObjektifScore,
+                        status_koreksi: hasEssayOrManual ? 'belum_dikoreksi' : 'sudah_dikoreksi',
+                        catatan_guru: hasEssayOrManual 
+                            ? `Skor sementara objektif: ${totalObjektifScore} poin (Menunggu penilaian soal esai).`
+                            : 'Tuntas otomatis oleh sistem.'
                     };
 
                     const { error: dbError } = await supabase.from('files').insert([payload]);

@@ -693,7 +693,12 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, '&#039;');
     }
 
+    function isFormSubmission(f) {
+        return Boolean(f && (f.tipe === 'form' || (f.storage_path && f.storage_path.startsWith('FORM:'))));
+    }
+
     function isTextSubmission(f) {
+        if (isFormSubmission(f)) return false;
         return f.tipe === 'text' || (f.storage_path && f.storage_path.startsWith('TEXT:'));
     }
 
@@ -705,6 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isLinkSubmission(f) {
+        if (isFormSubmission(f)) return false;
         if (isTextSubmission(f)) return false;
         return f.tipe === 'link' || 
                (f.storage_path && (f.storage_path.startsWith('LINK:') || f.storage_path.startsWith('http://') || f.storage_path.startsWith('https://'))) || 
@@ -788,12 +794,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = document.createElement('tr');
             tr.className = "hover:bg-slate-50 transition-colors";
             
+            const isForm = isFormSubmission(f);
             const isText = isTextSubmission(f);
             const isLink = isLinkSubmission(f);
             let detailCell = '';
             let downloadBtnHtml = '';
 
-            if (isText) {
+            if (isForm) {
+                let formItems = [];
+                try {
+                    formItems = JSON.parse(f.storage_path.replace(/^FORM:/, ''));
+                } catch (_) {}
+                const qCount = formItems.length || 0;
+                detailCell = `
+                    <div class="flex flex-col gap-1 py-0.5 w-full pr-2">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="inline-flex items-center shrink-0 bg-emerald-100 text-emerald-900 text-[10px] font-black px-1.5 py-0.5 rounded border border-emerald-300 uppercase">
+                                FORM ONLINE (${qCount} SOAL)
+                            </span>
+                            <span class="font-bold text-xs text-slate-800 break-words">${escapeHtml(f.filename || 'Lembar Jawaban Form')}</span>
+                        </div>
+                        <button type="button" onclick="openGradeModal('${f.id}')" class="text-indigo-600 hover:text-indigo-900 font-bold text-xs underline text-left cursor-pointer">
+                            Periksa & Koreksi Lembar Jawaban Siswa ↗
+                        </button>
+                    </div>
+                `;
+            } else if (isText) {
                 const textSnippet = getTextContent(f);
                 detailCell = `
                     <div class="flex flex-col gap-1 py-0.5 w-full pr-2">
@@ -916,114 +942,169 @@ document.addEventListener('DOMContentLoaded', () => {
                 formContainer.innerHTML = formItems.map((q, idx) => {
                     const tipe = q.tipe || 'esai';
                     const isPg = tipe === 'pg' || tipe === 'pilihan_ganda';
+                    const isPgk = tipe === 'pg_kompleks' || tipe === 'pilihan_ganda_kompleks';
                     const isBs = tipe === 'benar_salah';
                     const isFoto = tipe === 'upload_foto';
                     const isMatch = tipe === 'menjodohkan';
                     const isSingkat = tipe === 'singkat' || tipe === 'isian_singkat';
 
-                    let typeLabel = 'Esai / Uraian';
-                    let typeBadgeClass = 'text-purple-700';
-                    let keyBadge = '';
+                    let typeLabel = 'Soal Esai';
+                    let typeBadgeClass = 'text-purple-900 bg-purple-100 border-purple-300';
+                    let statusBadge = '';
 
-                    const itemMaxScore = Number(q.bobot) || 20;
+                    const itemMaxScore = Number(q.bobot) || 10;
                     let initialScore = '';
                     let initialFeedback = q.catatan_guru || q.feedback_ai || '';
 
+                    let isCorrect = false;
+                    let studentKeys = [];
+                    let correctKeys = [];
+                    let correctMatches = 0;
+                    let pairs = [];
+
                     if (isPg) {
                         typeLabel = 'Pilihan Ganda';
-                        typeBadgeClass = 'text-blue-700';
-                        const isCorrect = String(q.jawaban_siswa).trim().toUpperCase() === String(q.kunci).trim().toUpperCase();
-                        keyBadge = isCorrect
-                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Benar (Kunci: ${escapeHtml(q.kunci)})</span>`
-                            : `<span class="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Jawaban: ${escapeHtml(q.jawaban_siswa || 'Kosong')} (Kunci: ${escapeHtml(q.kunci)})</span>`;
-                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
-                            initialScore = q.skor_guru;
-                        } else {
-                            initialScore = isCorrect ? itemMaxScore : 0;
-                        }
+                        typeBadgeClass = 'text-blue-900 bg-blue-100 border-blue-300';
+                        isCorrect = String(q.jawaban_siswa || '').trim().toUpperCase() === String(q.kunci || '').trim().toUpperCase();
+                        statusBadge = isCorrect
+                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Benar (${itemMaxScore}/${itemMaxScore})</span>`
+                            : `<span class="bg-red-100 text-red-900 border border-red-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Salah (0/${itemMaxScore})</span>`;
+                        initialScore = (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') ? q.skor_guru : (isCorrect ? itemMaxScore : 0);
+                        if (!initialFeedback) initialFeedback = isCorrect ? 'Jawaban tepat sesuai kunci.' : `Jawaban kurang tepat (Kunci: ${q.kunci}).`;
+                    } else if (isPgk) {
+                        typeLabel = 'PG Kompleks';
+                        typeBadgeClass = 'text-cyan-900 bg-cyan-100 border-cyan-300';
+                        const studentAns = q.jawaban_siswa || [];
+                        studentKeys = (Array.isArray(studentAns) ? studentAns : String(studentAns).split(',')).map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+                        correctKeys = (q.kunci || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+                        isCorrect = studentKeys.length > 0 && studentKeys.join(',') === correctKeys.join(',');
+                        statusBadge = isCorrect
+                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Benar (${itemMaxScore}/${itemMaxScore})</span>`
+                            : `<span class="bg-red-100 text-red-900 border border-red-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Kurang Tepat (0/${itemMaxScore})</span>`;
+                        initialScore = (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') ? q.skor_guru : (isCorrect ? itemMaxScore : 0);
+                        if (!initialFeedback) initialFeedback = isCorrect ? 'Pilihan ganda kompleks tepat.' : `Pilihan kurang tepat (Kunci: ${correctKeys.join(', ')}).`;
                     } else if (isBs) {
                         typeLabel = 'Benar / Salah';
-                        typeBadgeClass = 'text-teal-700';
-                        const isCorrect = String(q.jawaban_siswa).trim().toUpperCase() === String(q.kunci).trim().toUpperCase();
-                        keyBadge = isCorrect
-                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Benar (Kunci: ${escapeHtml(q.kunci)})</span>`
-                            : `<span class="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Jawaban: ${escapeHtml(q.jawaban_siswa || 'Kosong')} (Kunci: ${escapeHtml(q.kunci)})</span>`;
-                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
-                            initialScore = q.skor_guru;
-                        } else {
-                            initialScore = isCorrect ? itemMaxScore : 0;
-                        }
-                    } else if (isFoto) {
-                        typeLabel = 'Upload Foto / Bukti';
-                        typeBadgeClass = 'text-orange-700';
-                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
-                            initialScore = q.skor_guru;
-                        } else if (q.skor_ai !== undefined && q.skor_ai !== null) {
-                            initialScore = q.skor_ai;
-                        }
-                    } else if (isMatch) {
-                        typeLabel = 'Menjodohkan';
-                        typeBadgeClass = 'text-pink-700';
-                        const studentMatches = (typeof q.jawaban_siswa === 'object' && q.jawaban_siswa !== null) ? q.jawaban_siswa : {};
-                        const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
-                        let correctMatches = 0;
-                        pairs.forEach(p => {
-                            if (String(studentMatches[p.kiri] || '').trim().toLowerCase() === String(p.kanan || '').trim().toLowerCase()) {
-                                correctMatches++;
-                            }
-                        });
-                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
-                            initialScore = q.skor_guru;
-                        } else {
-                            initialScore = pairs.length > 0 ? Math.round(itemMaxScore * (correctMatches / pairs.length)) : 0;
-                        }
+                        typeBadgeClass = 'text-amber-900 bg-amber-100 border-amber-300';
+                        isCorrect = String(q.jawaban_siswa || '').trim().toUpperCase() === String(q.kunci || '').trim().toUpperCase();
+                        statusBadge = isCorrect
+                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Benar (${itemMaxScore}/${itemMaxScore})</span>`
+                            : `<span class="bg-red-100 text-red-900 border border-red-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Salah (0/${itemMaxScore})</span>`;
+                        initialScore = (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') ? q.skor_guru : (isCorrect ? itemMaxScore : 0);
+                        if (!initialFeedback) initialFeedback = isCorrect ? 'Jawaban tepat sesuai kunci.' : `Jawaban kurang tepat (Kunci: ${q.kunci}).`;
                     } else if (isSingkat) {
                         typeLabel = 'Isian Singkat';
-                        typeBadgeClass = 'text-emerald-700';
-                        const isCorrect = String(q.jawaban_siswa || '').trim().toLowerCase() === String(q.kunci || '').trim().toLowerCase();
+                        typeBadgeClass = 'text-blue-900 bg-blue-100 border-blue-300';
+                        isCorrect = String(q.jawaban_siswa || '').trim().toLowerCase() === String(q.kunci || '').trim().toLowerCase();
+                        statusBadge = isCorrect
+                            ? `<span class="bg-emerald-100 text-emerald-900 border border-emerald-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Cocok Otomatis (${itemMaxScore}/${itemMaxScore})</span>`
+                            : `<span class="bg-amber-100 text-amber-900 border border-amber-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Perlu Evaluasi Guru/AI</span>`;
                         if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
                             initialScore = q.skor_guru;
                         } else if (isCorrect) {
                             initialScore = itemMaxScore;
                         } else if (q.skor_ai !== undefined && q.skor_ai !== null) {
                             initialScore = q.skor_ai;
+                        } else {
+                            initialScore = 0;
                         }
-                    } else {
-                        // esai
+                        if (!initialFeedback) initialFeedback = isCorrect ? 'Jawaban isian singkat tepat sesuai kunci.' : '';
+                    } else if (isMatch) {
+                        typeLabel = 'Menjodohkan';
+                        typeBadgeClass = 'text-teal-900 bg-teal-100 border-teal-300';
+                        const studentMatches = (typeof q.jawaban_siswa === 'object' && q.jawaban_siswa !== null) ? q.jawaban_siswa : {};
+                        pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
+                        correctMatches = 0;
+                        pairs.forEach(p => {
+                            if (String(studentMatches[p.kiri] || '').trim().toLowerCase() === String(p.kanan || '').trim().toLowerCase()) {
+                                correctMatches++;
+                            }
+                        });
+                        const matchScore = pairs.length > 0 ? Math.round(itemMaxScore * (correctMatches / pairs.length)) : 0;
+                        statusBadge = `<span class="bg-teal-100 text-teal-900 border border-teal-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Cocok: ${correctMatches}/${pairs.length} (${matchScore}/${itemMaxScore})</span>`;
+                        initialScore = (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') ? q.skor_guru : matchScore;
+                        if (!initialFeedback) initialFeedback = `Berhasil menjodohkan ${correctMatches} dari ${pairs.length} pasangan dengan tepat.`;
+                    } else if (isFoto) {
+                        typeLabel = 'Upload Foto';
+                        typeBadgeClass = 'text-pink-900 bg-pink-100 border-pink-300';
                         if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
                             initialScore = q.skor_guru;
                         } else if (q.skor_ai !== undefined && q.skor_ai !== null) {
                             initialScore = q.skor_ai;
                         }
+                        statusBadge = initialScore !== ''
+                            ? `<span class="bg-indigo-100 text-indigo-900 border border-indigo-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Dinilai: ${initialScore}/${itemMaxScore}</span>`
+                            : `<span class="bg-amber-100 text-amber-900 border border-amber-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Perlu Koreksi (${itemMaxScore} Poin)</span>`;
+                    } else {
+                        // Esai
+                        typeLabel = 'Soal Esai';
+                        typeBadgeClass = 'text-purple-900 bg-purple-100 border-purple-300';
+                        if (q.skor_guru !== undefined && q.skor_guru !== null && q.skor_guru !== '') {
+                            initialScore = q.skor_guru;
+                        } else if (q.skor_ai !== undefined && q.skor_ai !== null) {
+                            initialScore = q.skor_ai;
+                        }
+                        statusBadge = initialScore !== ''
+                            ? `<span class="bg-indigo-100 text-indigo-900 border border-indigo-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Dinilai: ${initialScore}/${itemMaxScore}</span>`
+                            : `<span class="bg-amber-100 text-amber-900 border border-amber-400 text-xs font-black px-2.5 py-0.5 rounded-lg uppercase">Perlu Koreksi (${itemMaxScore} Poin)</span>`;
                     }
 
-                    let answerHtml = '';
-                    if (isFoto) {
-                        const fileUrl = q.jawaban_siswa;
-                        if (fileUrl && (String(fileUrl).startsWith('http://') || String(fileUrl).startsWith('https://'))) {
-                            answerHtml = `
-                                <div class="space-y-2">
-                                    <img src="${escapeHtml(fileUrl)}" alt="Unggahan Siswa" class="max-h-64 rounded-xl border-2 border-black object-contain bg-white" />
-                                    <a href="${escapeHtml(fileUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-lg text-xs font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                                        Buka Berkas / Foto Asli
-                                    </a>
+                    let answerComparisonHtml = '';
+                    if (isPg) {
+                        answerComparisonHtml = `
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-300 text-xs space-y-2">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 font-medium">
+                                    <div><strong>A:</strong> ${escapeHtml(q.opsi_a || '-')}</div>
+                                    <div><strong>B:</strong> ${escapeHtml(q.opsi_b || '-')}</div>
+                                    <div><strong>C:</strong> ${escapeHtml(q.opsi_c || '-')}</div>
+                                    <div><strong>D:</strong> ${escapeHtml(q.opsi_d || '-')}</div>
                                 </div>
-                            `;
-                        } else {
-                            answerHtml = `<span class="text-slate-500 italic font-semibold">(Siswa belum melampirkan berkas foto)</span>`;
-                        }
+                                <div class="pt-2 border-t border-slate-200 flex flex-wrap gap-4 items-center font-bold">
+                                    <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700 font-black' : 'text-red-700 font-black'}">${escapeHtml(q.jawaban_siswa || '(Kosong)')}</strong></span>
+                                    <span>Kunci Benar: <strong class="text-slate-900 font-black">${escapeHtml(q.kunci || '-')}</strong></span>
+                                </div>
+                            </div>
+                        `;
+                    } else if (isPgk) {
+                        answerComparisonHtml = `
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-300 text-xs space-y-2">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 font-medium">
+                                    <div><strong>A:</strong> ${escapeHtml(q.opsi_a || '-')}</div>
+                                    <div><strong>B:</strong> ${escapeHtml(q.opsi_b || '-')}</div>
+                                    <div><strong>C:</strong> ${escapeHtml(q.opsi_c || '-')}</div>
+                                    <div><strong>D:</strong> ${escapeHtml(q.opsi_d || '-')}</div>
+                                </div>
+                                <div class="pt-2 border-t border-slate-200 flex flex-wrap gap-4 items-center font-bold">
+                                    <span>Pilihan Siswa: <strong class="${isCorrect ? 'text-emerald-700 font-black' : 'text-red-700 font-black'}">${escapeHtml(studentKeys.join(', ') || '(Tidak dijawab)')}</strong></span>
+                                    <span>Kunci Benar: <strong class="text-slate-900 font-black">${escapeHtml(correctKeys.join(', '))}</strong></span>
+                                </div>
+                            </div>
+                        `;
+                    } else if (isBs) {
+                        answerComparisonHtml = `
+                            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-300 text-xs flex flex-wrap gap-4 items-center font-bold">
+                                <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700 font-black' : 'text-red-700 font-black'}">${escapeHtml(q.jawaban_siswa || '(Kosong)')}</strong></span>
+                                <span>Kunci Kebenaran: <strong class="text-slate-900 font-black">${escapeHtml(q.kunci || '-')}</strong></span>
+                            </div>
+                        `;
+                    } else if (isSingkat) {
+                        answerComparisonHtml = `
+                            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-300 text-xs flex flex-wrap gap-4 items-center font-bold">
+                                <span>Jawaban Siswa: <strong class="${isCorrect ? 'text-emerald-700 font-black' : 'text-slate-900 font-black'}">${escapeHtml(q.jawaban_siswa || '(Kosong)')}</strong></span>
+                                <span>Kunci Kata Jawaban: <strong class="text-emerald-700 font-black">${escapeHtml(q.kunci || '-')}</strong></span>
+                            </div>
+                        `;
                     } else if (isMatch) {
                         const studentMatches = (typeof q.jawaban_siswa === 'object' && q.jawaban_siswa !== null) ? q.jawaban_siswa : {};
-                        const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
-                        answerHtml = `
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-xs text-left border-collapse border border-slate-300 rounded-lg">
+                        answerComparisonHtml = `
+                            <div class="overflow-x-auto bg-white rounded-xl border border-slate-300">
+                                <table class="w-full text-xs text-left border-collapse">
                                     <thead>
-                                        <tr class="bg-slate-100 text-slate-800 font-black">
-                                            <th class="p-2 border border-slate-300">Premis / Istilah</th>
-                                            <th class="p-2 border border-slate-300">Pilihan Siswa</th>
-                                            <th class="p-2 border border-slate-300">Kunci Benar</th>
-                                            <th class="p-2 border border-slate-300 text-center">Status</th>
+                                        <tr class="bg-slate-100 text-slate-800 font-black text-[11px] uppercase border-b border-slate-300">
+                                            <th class="p-2">Premis / Istilah</th>
+                                            <th class="p-2">Pilihan Siswa</th>
+                                            <th class="p-2">Kunci Benar</th>
+                                            <th class="p-2 text-center">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1031,11 +1112,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                             const stAns = studentMatches[p.kiri] || '(Belum dipilih)';
                                             const matchCorrect = String(stAns).trim().toLowerCase() === String(p.kanan).trim().toLowerCase();
                                             return `
-                                                <tr class="${matchCorrect ? 'bg-emerald-50/50' : 'bg-red-50/50'}">
-                                                    <td class="p-2 font-bold border border-slate-300">${escapeHtml(p.kiri)}</td>
-                                                    <td class="p-2 font-semibold border border-slate-300">${escapeHtml(stAns)}</td>
-                                                    <td class="p-2 font-semibold border border-slate-300 text-purple-900">${escapeHtml(p.kanan)}</td>
-                                                    <td class="p-2 border border-slate-300 text-center font-black">${matchCorrect ? 'Cocok' : 'Salah'}</td>
+                                                <tr class="${matchCorrect ? 'bg-emerald-50/50' : 'bg-red-50/50'} border-b border-slate-200">
+                                                    <td class="p-2 font-bold">${escapeHtml(p.kiri)}</td>
+                                                    <td class="p-2 font-semibold ${matchCorrect ? 'text-emerald-800' : 'text-red-700'}">${escapeHtml(stAns)}</td>
+                                                    <td class="p-2 font-semibold text-purple-900">${escapeHtml(p.kanan)}</td>
+                                                    <td class="p-2 text-center font-black">${matchCorrect ? '✅ Cocok' : '❌ Salah'}</td>
                                                 </tr>
                                             `;
                                         }).join('')}
@@ -1043,8 +1124,46 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </table>
                             </div>
                         `;
+                    } else if (isFoto) {
+                        const fileUrl = q.jawaban_siswa;
+                        const hasUrl = fileUrl && (String(fileUrl).startsWith('http://') || String(fileUrl).startsWith('https://'));
+                        answerComparisonHtml = `
+                            <div class="space-y-2">
+                                ${q.kunci ? `
+                                    <div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 text-xs text-amber-950 font-medium">
+                                        <span class="block text-[10px] font-black uppercase text-amber-900 mb-0.5">Kriteria Foto yang Diharapkan:</span>
+                                        <div class="leading-relaxed font-semibold">${escapeHtml(q.kunci)}</div>
+                                    </div>
+                                ` : ''}
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-300 text-xs">
+                                    <span class="font-black uppercase text-slate-500 text-[10px] block mb-1.5">Berkas / Foto Unggahan Siswa:</span>
+                                    ${hasUrl ? `
+                                        <div class="flex items-center gap-3">
+                                            <img src="${escapeHtml(fileUrl)}" alt="Unggahan Siswa" class="w-20 h-20 object-cover rounded-lg border-2 border-black bg-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]" />
+                                            <a href="${escapeHtml(fileUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-lg text-xs font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                                                Buka Berkas / Foto Asli ↗
+                                            </a>
+                                        </div>
+                                    ` : `<span class="text-slate-500 italic font-semibold">(Siswa tidak melampirkan berkas foto)</span>`}
+                                </div>
+                            </div>
+                        `;
                     } else {
-                        answerHtml = `<div class="font-semibold text-black whitespace-pre-line">${escapeHtml(q.jawaban_siswa || '(Tidak dijawab / Kosong)')}</div>`;
+                        // Esai
+                        answerComparisonHtml = `
+                            <div class="space-y-2">
+                                ${q.kunci ? `
+                                    <div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 text-xs text-amber-950 font-medium">
+                                        <span class="block text-[10px] font-black uppercase text-amber-900 mb-0.5">Kunci Jawaban / Panduan Esai Guru:</span>
+                                        <div class="leading-relaxed font-semibold">${escapeHtml(q.kunci)}</div>
+                                    </div>
+                                ` : ''}
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-300 text-xs">
+                                    <span class="font-black uppercase text-slate-500 text-[10px] block mb-1">Uraian Jawaban Siswa:</span>
+                                    <div class="font-medium text-slate-900 whitespace-pre-line leading-relaxed">${escapeHtml(q.jawaban_siswa || '(Tidak dijawab / Kosong)')}</div>
+                                </div>
+                            </div>
+                        `;
                     }
 
                     const { text: cleanPertanyaan, gambar_url: qImg } = splitQuestionImage(q.pertanyaan || '');
@@ -1052,19 +1171,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     return `
                         <div class="border-2 border-black rounded-2xl p-4 bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] space-y-2.5">
-                            <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 flex-wrap gap-1">
+                            <div class="flex items-center justify-between border-b border-slate-200 pb-2 flex-wrap gap-2">
                                 <div class="flex items-center gap-2">
-                                    <span class="w-6 h-6 rounded-lg bg-black text-white font-black text-xs flex items-center justify-center">
-                                        ${idx + 1}
+                                    <span class="font-black text-xs uppercase px-2.5 py-1 rounded-lg border ${typeBadgeClass}">
+                                        No. ${idx + 1} (${typeLabel})
                                     </span>
-                                    <span class="font-black text-xs uppercase ${typeBadgeClass}">
-                                        ${typeLabel}
+                                    <span class="text-[11px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                                        Bobot: ${itemMaxScore} Poin
                                     </span>
-                                    ${keyBadge}
                                 </div>
-                                <span class="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
-                                    Bobot: ${itemMaxScore} Poin
-                                </span>
+                                ${statusBadge}
                             </div>
 
                             <p class="font-bold text-xs md:text-sm text-slate-900 leading-relaxed">${escapeHtml(cleanPertanyaan)}</p>
@@ -1077,20 +1193,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                             ` : ''}
 
-                            <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 text-xs leading-relaxed">
-                                <span class="font-black uppercase text-amber-950 text-[10px] block mb-1">Jawaban Siswa:</span>
-                                ${answerHtml}
-                            </div>
+                            ${answerComparisonHtml}
 
-                            ${q.kunci && !isMatch ? `
-                                <div class="bg-purple-50 border border-purple-200 rounded-xl p-2.5 text-[11px] font-bold text-purple-900">
-                                    <strong>Kunci / Panduan Guru:</strong> ${escapeHtml(q.kunci)}
-                                </div>
-                            ` : ''}
-
-                            <div id="ai-item-eval-${idx}" class="hidden bg-emerald-50 border border-emerald-300 rounded-xl p-2.5 text-xs text-emerald-950 font-medium"></div>
-
-                            <!-- Input Skor & Catatan per Butir Soal (Format Standar CBT) -->
                             <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2.5 items-center border-t border-slate-200 mt-2">
                                 <div class="sm:col-span-3">
                                     <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Skor (0 - ${itemMaxScore})</label>
@@ -1109,6 +1213,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     `;
                 }).join('');
+
+                window.recalcGradeFormTotalScore();
             }
         } else {
             // Legacy / File / Link / Plain Text
@@ -1212,24 +1318,85 @@ document.addEventListener('DOMContentLoaded', () => {
         const q = formItems[idx];
         if (!q) return;
 
+        const tipe = q.tipe || 'esai';
+        const maxBobot = Number(q.bobot) || 10;
+        const isPg = tipe === 'pg' || tipe === 'pilihan_ganda';
+        const isPgk = tipe === 'pg_kompleks' || tipe === 'pilihan_ganda_kompleks';
+        const isBs = tipe === 'benar_salah';
+        const isSingkat = tipe === 'singkat' || tipe === 'isian_singkat';
+        const isMatch = tipe === 'menjodohkan';
+
+        const scoreInput = document.getElementById(`grade-item-score-${idx}`);
+        const fbInput = document.getElementById(`grade-item-feedback-${idx}`);
+
+        if (isPg) {
+            const isCorrect = String(q.jawaban_siswa || '').trim().toUpperCase() === String(q.kunci || '').trim().toUpperCase();
+            if (scoreInput) scoreInput.value = isCorrect ? maxBobot : 0;
+            if (fbInput) fbInput.value = isCorrect ? "Jawaban tepat sesuai kunci." : `Jawaban kurang tepat (Kunci: ${q.kunci}).`;
+            window.recalcGradeFormTotalScore();
+            return;
+        }
+
+        if (isPgk) {
+            const studentAns = q.jawaban_siswa || [];
+            const studentKeys = (Array.isArray(studentAns) ? studentAns : String(studentAns).split(',')).map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+            const correctKeys = (q.kunci || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+            const isCorrect = studentKeys.length > 0 && studentKeys.join(',') === correctKeys.join(',');
+            if (scoreInput) scoreInput.value = isCorrect ? maxBobot : 0;
+            if (fbInput) fbInput.value = isCorrect ? "Pilihan ganda kompleks tepat." : `Pilihan kurang tepat (Kunci: ${correctKeys.join(', ')}).`;
+            window.recalcGradeFormTotalScore();
+            return;
+        }
+
+        if (isBs) {
+            const isCorrect = String(q.jawaban_siswa || '').trim().toUpperCase() === String(q.kunci || '').trim().toUpperCase();
+            if (scoreInput) scoreInput.value = isCorrect ? maxBobot : 0;
+            if (fbInput) fbInput.value = isCorrect ? "Jawaban tepat sesuai kunci kebenaran." : `Jawaban kurang tepat (Kunci: ${q.kunci}).`;
+            window.recalcGradeFormTotalScore();
+            return;
+        }
+
+        if (isSingkat) {
+            const isCorrect = String(q.jawaban_siswa || '').trim().toLowerCase() === String(q.kunci || '').trim().toLowerCase();
+            if (isCorrect) {
+                if (scoreInput) scoreInput.value = maxBobot;
+                if (fbInput) fbInput.value = "Jawaban isian singkat tepat sesuai kunci.";
+                window.recalcGradeFormTotalScore();
+                return;
+            }
+        }
+
+        if (isMatch) {
+            const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
+            const studentMatches = (typeof q.jawaban_siswa === 'object' && q.jawaban_siswa !== null) ? q.jawaban_siswa : {};
+            let matchCount = 0;
+            pairs.forEach(p => {
+                if (String(studentMatches[p.kiri] || '').trim().toLowerCase() === String(p.kanan || '').trim().toLowerCase()) {
+                    matchCount++;
+                }
+            });
+            const matchScore = pairs.length > 0 ? Math.round(maxBobot * (matchCount / pairs.length)) : 0;
+            if (scoreInput) scoreInput.value = matchScore;
+            if (fbInput) fbInput.value = `Berhasil menjodohkan ${matchCount} dari ${pairs.length} pasangan dengan tepat.`;
+            window.recalcGradeFormTotalScore();
+            return;
+        }
+
         showAiLoadingModal({
             badge: 'KOREKSI BUTIR AI',
             title: `Mengevaluasi Butir Soal #${idx + 1}...`,
             steps: [
                 'Membaca teks jawaban siswa...',
-                'Mencocokkan dengan kunci & rubrik guru...',
-                'Mengestimasi perolehan skor objektif...'
+                'Mencocokkan dengan panduan kunci & rubrik guru...',
+                'Mengestimasi perolehan skor esai/butir...'
             ]
         });
 
         try {
             const studentAns = q.jawaban_siswa || '';
             const keyOrRubric = q.kunci || q.rubrik_esai || 'Kesesuaian dan kelengkapan konsep materi.';
-            const maxBobot = Number(q.bobot) || 20;
 
             const result = await aiGradeQuizEssay(q.pertanyaan, keyOrRubric, String(studentAns), maxBobot);
-            const scoreInput = document.getElementById(`grade-item-score-${idx}`);
-            const fbInput = document.getElementById(`grade-item-feedback-${idx}`);
             if (scoreInput && result.skor !== undefined) scoreInput.value = result.skor;
             if (fbInput && result.feedback) fbInput.value = result.feedback;
 
@@ -1280,18 +1447,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (let i = 0; i < formItems.length; i++) {
                     const q = formItems[i];
                     const tipe = q.tipe || 'esai';
-                    const maxBobot = Number(q.bobot) || 20;
+                    const maxBobot = Number(q.bobot) || 10;
                     const isPg = tipe === 'pg' || tipe === 'pilihan_ganda';
+                    const isPgk = tipe === 'pg_kompleks' || tipe === 'pilihan_ganda_kompleks';
                     const isBs = tipe === 'benar_salah';
+                    const isSingkat = tipe === 'singkat' || tipe === 'isian_singkat';
                     const isMatch = tipe === 'menjodohkan';
 
                     const scoreInput = document.getElementById(`grade-item-score-${i}`);
                     const fbInput = document.getElementById(`grade-item-feedback-${i}`);
 
-                    if (isPg || isBs) {
-                        const isCorrect = String(q.jawaban_siswa).trim().toUpperCase() === String(q.kunci).trim().toUpperCase();
+                    if (isPg) {
+                        const isCorrect = String(q.jawaban_siswa || '').trim().toUpperCase() === String(q.kunci || '').trim().toUpperCase();
                         if (scoreInput) scoreInput.value = isCorrect ? maxBobot : 0;
                         if (fbInput) fbInput.value = isCorrect ? "Jawaban tepat sesuai kunci." : `Jawaban kurang tepat (Kunci: ${q.kunci}).`;
+                    } else if (isPgk) {
+                        const studentAns = q.jawaban_siswa || [];
+                        const studentKeys = (Array.isArray(studentAns) ? studentAns : String(studentAns).split(',')).map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+                        const correctKeys = (q.kunci || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean).sort();
+                        const isCorrect = studentKeys.length > 0 && studentKeys.join(',') === correctKeys.join(',');
+                        if (scoreInput) scoreInput.value = isCorrect ? maxBobot : 0;
+                        if (fbInput) fbInput.value = isCorrect ? "Pilihan ganda kompleks tepat." : `Pilihan kurang tepat (Kunci: ${correctKeys.join(', ')}).`;
+                    } else if (isBs) {
+                        const isCorrect = String(q.jawaban_siswa || '').trim().toUpperCase() === String(q.kunci || '').trim().toUpperCase();
+                        if (scoreInput) scoreInput.value = isCorrect ? maxBobot : 0;
+                        if (fbInput) fbInput.value = isCorrect ? "Jawaban tepat sesuai kunci kebenaran." : `Jawaban kurang tepat (Kunci: ${q.kunci}).`;
+                    } else if (isSingkat) {
+                        const isCorrect = String(q.jawaban_siswa || '').trim().toLowerCase() === String(q.kunci || '').trim().toLowerCase();
+                        if (isCorrect) {
+                            if (scoreInput) scoreInput.value = maxBobot;
+                            if (fbInput) fbInput.value = "Jawaban isian singkat tepat sesuai kunci.";
+                        } else {
+                            const result = await aiGradeQuizEssay(
+                                q.pertanyaan,
+                                q.kunci || 'Jawaban singkat konsep materi.',
+                                String(q.jawaban_siswa || ''),
+                                maxBobot
+                            );
+                            if (scoreInput && result.skor !== undefined) scoreInput.value = result.skor;
+                            if (fbInput && result.feedback) fbInput.value = result.feedback;
+                        }
                     } else if (isMatch) {
                         const pairs = Array.isArray(q.pasangan) ? q.pasangan : [];
                         const studentMatches = (typeof q.jawaban_siswa === 'object' && q.jawaban_siswa !== null) ? q.jawaban_siswa : {};
@@ -1305,10 +1500,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (scoreInput) scoreInput.value = matchScore;
                         if (fbInput) fbInput.value = `Berhasil menjodohkan ${matchCount} dari ${pairs.length} pasangan dengan tepat.`;
                     } else {
-                        // Esai, singkat, upload_foto -> gunakan AI
+                        // Esai & upload_foto
                         const result = await aiGradeQuizEssay(
                             q.pertanyaan,
-                            q.kunci || q.rubrik_esai || 'Kesesuaian konsep materi.',
+                            q.kunci || q.rubrik_esai || 'Kesesuaian dan kelengkapan konsep materi.',
                             String(q.jawaban_siswa || ''),
                             maxBobot
                         );
@@ -1744,7 +1939,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const dlText = a.deadline ? new Date(a.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tanpa Batas Waktu';
             metaEl.textContent = `Kelas: ${a.kelas} • Mapel: ${a.mapel} • Tenggat: ${dlText}`;
         }
-        if (descEl) descEl.textContent = a.deskripsi || 'Tidak ada petunjuk khusus.';
+        if (descEl) {
+            let petunjukText = a.deskripsi || 'Tidak ada petunjuk khusus.';
+            let metaSoal = '';
+            if (a.deskripsi && (a.deskripsi.trim().startsWith('{') || a.deskripsi.trim().startsWith('['))) {
+                try {
+                    const parsed = JSON.parse(a.deskripsi);
+                    if (parsed.petunjuk) petunjukText = parsed.petunjuk;
+                    if (Array.isArray(parsed.questions)) {
+                        const totalBobot = parsed.questions.reduce((sum, q) => sum + (Number(q.bobot) || 0), 0);
+                        metaSoal = `\n\n📌 Format: Formulir Kuis Online • ${parsed.questions.length} Butir Soal • Akumulasi Bobot: ${totalBobot} Poin`;
+                    }
+                } catch (_) {}
+            }
+            descEl.textContent = petunjukText + metaSoal;
+        }
         if (rubrikEl) {
             if (a.rubrik_ai && !a.rubrik_ai.includes('Soal #') && !a.rubrik_ai.includes('(')) {
                 rubrikEl.innerHTML = `<strong>Rubrik Penilaian:</strong> ${escapeHtml(a.rubrik_ai)}`;
@@ -1791,16 +2000,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = document.createElement('tr');
             tr.className = "hover:bg-slate-50 transition-colors";
 
+            const isForm = isFormSubmission(f);
             const isText = isTextSubmission(f);
             const isLink = isLinkSubmission(f);
             let detailHtml = '';
+            let formItems = [];
+            let hasEssay = false;
 
-            if (isText) {
+            if (isForm) {
+                try {
+                    formItems = JSON.parse(f.storage_path.replace(/^FORM:/, ''));
+                    hasEssay = formItems.some(q => ['esai', 'upload_foto'].includes(q.tipe));
+                } catch (_) {}
+                const qCount = formItems.length || 0;
+                detailHtml = `
+                    <div class="space-y-1 py-1 max-w-xs md:max-w-sm">
+                        <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded border border-emerald-300 uppercase">
+                            Form Web (${qCount} Soal)
+                        </span>
+                        <button type="button" onclick="openGradeModal('${f.id}')" class="text-indigo-600 hover:text-indigo-900 font-bold text-xs underline block truncate text-left cursor-pointer" title="Periksa lembar jawaban">
+                            ${escapeHtml(f.filename || 'Lembar Jawaban Form')} ↗
+                        </button>
+                    </div>
+                `;
+            } else if (isText) {
                 const textSnippet = getTextContent(f);
                 detailHtml = `
                     <div class="space-y-1 py-1 max-w-xs md:max-w-sm">
                         <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded border border-amber-300 uppercase">
-                            Form Web
+                            Teks Jawaban
                         </span>
                         <p class="text-xs text-slate-700 italic bg-amber-50/70 p-2 rounded-lg border border-amber-200 line-clamp-3">
                             ${escapeHtml(textSnippet)}
@@ -1835,7 +2063,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let statusHtml = '';
-            if (f.nilai !== null && f.nilai !== undefined && f.nilai !== '') {
+            if (f.status_koreksi === 'sudah_dikoreksi' && f.nilai !== null && f.nilai !== undefined && f.nilai !== '') {
+                statusHtml = `
+                    <div class="flex flex-col items-center gap-1">
+                        <span class="inline-block bg-emerald-100 text-emerald-950 font-black text-sm px-3 py-1 rounded-xl border border-emerald-400">
+                            ${f.nilai}/100
+                        </span>
+                        <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Tuntas Dinilai</span>
+                        ${f.catatan_guru ? `<span class="text-[10px] text-slate-600 line-clamp-1 italic max-w-[140px]" title="${escapeHtml(f.catatan_guru)}">"${escapeHtml(f.catatan_guru)}"</span>` : ''}
+                    </div>
+                `;
+            } else if (isForm && hasEssay && f.status_koreksi !== 'sudah_dikoreksi') {
+                statusHtml = `
+                    <div class="flex flex-col items-center gap-1">
+                        <span class="inline-block bg-amber-100 text-amber-950 font-black text-xs px-2.5 py-1 rounded-xl border border-amber-400">
+                            Objektif: ${f.nilai !== null && f.nilai !== undefined && f.nilai !== '' ? f.nilai : 0}/100
+                        </span>
+                        <span class="text-[9px] font-black text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded uppercase">Perlu Koreksi Esai</span>
+                    </div>
+                `;
+            } else if (f.nilai !== null && f.nilai !== undefined && f.nilai !== '') {
                 statusHtml = `
                     <div class="flex flex-col items-center gap-1">
                         <span class="inline-block bg-emerald-100 text-emerald-950 font-black text-sm px-3 py-1 rounded-xl border border-emerald-400">
