@@ -691,12 +691,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tabs = ['tugas', 'materi', 'ujian', 'nilai'];
         tabs.forEach(t => {
             const btn = document.getElementById(`nav-btn-${t}`);
+            const mobBtn = document.getElementById(`mobile-nav-btn-${t}`);
             const content = document.getElementById(`view-${t}`);
             if (t === viewName) {
-                if (btn) btn.className = "portal-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
+                if (btn) btn.className = "portal-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] min-h-[44px]";
+                if (mobBtn) {
+                    mobBtn.className = "mobile-nav-item py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 font-black text-[10px] uppercase tracking-wider transition-all min-h-[48px] bg-black text-yellow-300 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+                }
                 if (content) content.classList.remove('hidden');
             } else {
-                if (btn) btn.className = "portal-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100";
+                if (btn) btn.className = "portal-tab-btn py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-white text-black border-[3px] border-black hover:bg-slate-100 min-h-[44px]";
+                if (mobBtn) {
+                    mobBtn.className = "mobile-nav-item py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 font-bold text-[10px] uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100";
+                }
                 if (content) content.classList.add('hidden');
             }
         });
@@ -2083,16 +2090,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     function enterExamMode() {
         const header = document.getElementById('portal-global-header');
         const profileCard = document.getElementById('portal-student-profile-card');
+        const classBanner = document.getElementById('student-class-alert-banner');
         const tabs = document.getElementById('portal-student-tabs');
+        const mobileNav = document.getElementById('portal-mobile-bottom-nav');
         const landing = document.getElementById('quiz-portal-landing');
         const room = document.getElementById('quiz-room-container');
         const footer = document.querySelector('footer');
+        const pageContainer = document.getElementById('portal-page-container');
 
         if (header) header.classList.add('hidden');
         if (profileCard) profileCard.classList.add('hidden');
+        if (classBanner) classBanner.classList.add('hidden');
         if (tabs) tabs.classList.add('hidden');
+        if (mobileNav) mobileNav.classList.add('hidden');
         if (landing) landing.classList.add('hidden');
         if (footer) footer.classList.add('hidden');
+        if (pageContainer) pageContainer.classList.remove('pb-20');
         if (room) room.classList.remove('hidden');
 
         document.querySelectorAll('.portal-view').forEach(v => v.classList.add('hidden'));
@@ -2111,16 +2124,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const header = document.getElementById('portal-global-header');
         const profileCard = document.getElementById('portal-student-profile-card');
+        const classBanner = document.getElementById('student-class-alert-banner');
         const tabs = document.getElementById('portal-student-tabs');
+        const mobileNav = document.getElementById('portal-mobile-bottom-nav');
         const landing = document.getElementById('quiz-portal-landing');
         const room = document.getElementById('quiz-room-container');
         const footer = document.querySelector('footer');
+        const pageContainer = document.getElementById('portal-page-container');
 
         if (header) header.classList.remove('hidden');
         if (profileCard) profileCard.classList.remove('hidden');
+        if (classBanner) classBanner.classList.remove('hidden');
         if (tabs) tabs.classList.remove('hidden');
+        if (mobileNav) mobileNav.classList.remove('hidden');
         if (landing) landing.classList.remove('hidden');
         if (footer) footer.classList.remove('hidden');
+        if (pageContainer) pageContainer.classList.add('pb-20');
         if (room) room.classList.add('hidden');
 
         try {
@@ -3272,10 +3291,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             sessionKey: activeCbtExam.sessionKey
         }));
 
-        document.getElementById('quiz-room-mapel').textContent = `${quizData.mapel} • Kelas ${quizData.kelas}`;
+        document.getElementById('quiz-room-mapel').textContent = quizData.mapel || 'Ujian Online';
         document.getElementById('quiz-room-title').textContent = quizData.judul_kuis;
         const studentTag = document.getElementById('cbt-student-tag');
-        if (studentTag) studentTag.textContent = `Siswa: ${studentName}`;
+        if (studentTag) studentTag.textContent = '';
 
         updateStudentViolationUI(activeCbtExam.cheatAttempts, false);
 
