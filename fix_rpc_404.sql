@@ -397,6 +397,8 @@ BEGIN
 END; $$;
 
 -- 7. RPC SYNC PROGRESS
+DROP FUNCTION IF EXISTS public.sync_exam_progress(BIGINT,TEXT,JSONB,JSONB,INT,JSONB,INT,BOOLEAN,BOOLEAN,TEXT);
+
 CREATE OR REPLACE FUNCTION public.sync_exam_progress(
   p_submission_id BIGINT,
   p_session_key TEXT,
@@ -409,24 +411,43 @@ CREATE OR REPLACE FUNCTION public.sync_exam_progress(
   p_is_online BOOLEAN,
   p_reason TEXT
 )
-RETURNS BOOLEAN
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO public
 AS $$
-DECLARE v_sub public.quiz_submissions;
+DECLARE
+  v_sub public.quiz_submissions;
+  v_db_cheats INT;
+  v_final_cheats INT;
 BEGIN
   SELECT * INTO v_sub FROM public.quiz_submissions WHERE id = p_submission_id FOR UPDATE;
-  IF NOT FOUND THEN RETURN false; END IF;
-  IF coalesce(v_sub.jawaban_siswa->>'sessionKey','') <> coalesce(p_session_key,'') THEN RETURN false; END IF;
-  IF v_sub.status_koreksi <> 'sedang_ujian' THEN RETURN false; END IF;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok', false, 'error', 'Sesi ujian tidak ditemukan.'); END IF;
+  IF coalesce(v_sub.jawaban_siswa->>'sessionKey','') <> coalesce(p_session_key,'') THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'Sesi ujian tidak valid.');
+  END IF;
+  IF v_sub.status_koreksi <> 'sedang_ujian' THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'Sesi ujian sudah ditutup.', 'status', v_sub.status_koreksi);
+  END IF;
+
+  v_db_cheats := coalesce((v_sub.jawaban_siswa->>'cheatAttempts')::int, 0);
+
+  -- JIKA GURU TELAH MERESET KECURANGAN MENJADI 0:
+  -- Hitung hanya pelanggaran baru yang terjadi SETELAH waktu reset (unlockedAt)
+  IF v_db_cheats = 0 AND (v_sub.jawaban_siswa->>'unlockedAt') IS NOT NULL THEN
+    SELECT count(*) INTO v_final_cheats
+      FROM jsonb_array_elements(coalesce(p_cheat_logs, '[]'::jsonb)) AS l
+     WHERE coalesce(l->>'time', '') > (v_sub.jawaban_siswa->>'unlockedAt');
+  ELSE
+    v_final_cheats := greatest(coalesce(p_cheat_attempts, 0), v_db_cheats);
+  END IF;
 
   UPDATE public.quiz_submissions
      SET jawaban_siswa = coalesce(jawaban_siswa, '{}'::jsonb) || jsonb_build_object(
        'answers', coalesce(p_answers, '{}'::jsonb),
        'doubtful', coalesce(p_doubtful, '{}'::jsonb),
-       'cheatAttempts', greatest(coalesce(p_cheat_attempts,0), coalesce((jawaban_siswa->>'cheatAttempts')::int,0)),
-       'cheatLogs', coalesce(p_cheat_logs, '[]'::jsonb),
+       'cheatAttempts', v_final_cheats,
+       'cheatLogs', CASE WHEN v_final_cheats = 0 THEN '[]'::jsonb ELSE coalesce(p_cheat_logs, '[]'::jsonb) END,
        'remainingSeconds', p_remaining_seconds,
        'isFocus', p_is_focus,
        'isOnline', p_is_online,
@@ -434,7 +455,8 @@ BEGIN
        'lastActiveAt', now()::text
      )
    WHERE id = p_submission_id;
-  RETURN true;
+
+  RETURN jsonb_build_object('ok', true, 'serverCheatAttempts', v_final_cheats, 'status', v_sub.status_koreksi);
 END; $$;
 
 -- 8. RPC SUBMIT EXAM

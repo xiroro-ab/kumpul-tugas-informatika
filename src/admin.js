@@ -4135,6 +4135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try { curJawaban = JSON.parse(curJawaban); } catch (_) { curJawaban = {}; }
             }
             curJawaban.cheatAttempts = 0;
+            curJawaban.cheatLogs = [];
             curJawaban.lockedDueToCheating = false;
             curJawaban.isFocus = true;
             curJawaban.isOnline = true;
@@ -4146,6 +4147,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }).eq('id', subId);
 
             if (updErr) throw updErr;
+
+            // Segera sinkronkan state lokal admin
+            const localSub = activeQuizSubmissions.find(s => String(s.id) === String(subId));
+            if (localSub) {
+                localSub.status_koreksi = 'sedang_ujian';
+                localSub.jawaban_siswa = curJawaban;
+                localSub.cheatAttempts = 0;
+                localSub.isLocked = false;
+                localSub.isFocus = true;
+                localSub.isOnline = true;
+            }
+            if (typeof applyQuizResultsFilters === 'function') {
+                applyQuizResultsFilters(true);
+            }
 
             await showCustomModal(`Berhasil! Pelanggaran anti-cheat siswa "${studentName}" telah di-reset ke 0 dan status ujian aktif kembali. Siswa dapat melanjutkan pengerjaan.`, 'alert', 'Pelanggaran Direset', '');
             if (activeQuizForResults) {
@@ -4178,6 +4193,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try { curJawaban = JSON.parse(curJawaban); } catch (_) { curJawaban = {}; }
             }
             curJawaban.cheatAttempts = 0;
+            curJawaban.cheatLogs = [];
             curJawaban.lockedDueToCheating = false;
             curJawaban.isFocus = true;
             curJawaban.isOnline = true;
@@ -4189,6 +4205,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }).eq('id', subId);
 
             if (updErr) throw updErr;
+
+            // Segera sinkronkan state lokal admin
+            const localSub = activeQuizSubmissions.find(s => String(s.id) === String(subId));
+            if (localSub) {
+                localSub.status_koreksi = 'sedang_ujian';
+                localSub.jawaban_siswa = curJawaban;
+                localSub.cheatAttempts = 0;
+                localSub.isLocked = false;
+                localSub.isFocus = true;
+                localSub.isOnline = true;
+            }
+            if (typeof applyQuizResultsFilters === 'function') {
+                applyQuizResultsFilters(true);
+            }
 
             await showCustomModal(`Sesi ujian siswa "${studentName}" berhasil dibuka kembali! Siswa dapat membuka lembar ujian dengan token dan melanjutkan.`, 'alert', 'Ujian Berhasil Dibuka Kembali', '');
             if (activeQuizForResults) {

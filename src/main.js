@@ -1882,7 +1882,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             p_is_focus: isFocus,
             p_is_online: isOnline,
             p_reason: reason
-        }).then(() => {}).catch(() => {});
+        }).then(({ data }) => {
+            if (data && typeof data === 'object') {
+                const srvCheats = Number(data.serverCheatAttempts);
+                // Jika Guru me-reset pelanggaran di server menjadi 0, sinkronkan memori & UI siswa seketika!
+                if (srvCheats === 0 && activeCbtExam.cheatAttempts > 0) {
+                    activeCbtExam.cheatAttempts = 0;
+                    activeCbtExam.cheatLogs = [];
+                    activeCbtExam.isLocked = false;
+                    saveCbtExamStateLocally();
+                    const cheatIndText = document.getElementById('cbt-cheat-count-text');
+                    const cheatIndBox = document.getElementById('cbt-cheat-indicator');
+                    if (cheatIndText) cheatIndText.textContent = `Anti-Cheat: 0 Pelanggaran`;
+                    if (cheatIndBox) {
+                        cheatIndBox.className = "bg-emerald-100 border-2 border-emerald-400 text-emerald-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+                    }
+                    const warningOverlay = document.getElementById('cheat-warning-overlay');
+                    if (warningOverlay) warningOverlay.classList.add('hidden');
+                    const lockedOverlay = document.getElementById('cheat-locked-overlay');
+                    if (lockedOverlay) lockedOverlay.classList.add('hidden');
+                }
+            }
+        }).catch(() => {});
     }
 
     function reportExamPresence(isFocus, reason = '') {
@@ -2838,7 +2859,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const serverLogs = Array.isArray(serverJawaban?.cheatLogs) ? serverJawaban.cheatLogs : [];
         const serverAnswers = serverJawaban?.answers || {};
         const serverDoubtful = serverJawaban?.doubtful || {};
-        const isServerUnlocked = existingSub?.status_koreksi === 'sedang_ujian' && serverCheats === 0 && !!serverJawaban?.unlockedAt;
+        const isServerUnlocked = (existingSub?.status_koreksi === 'sedang_ujian') && (serverCheats === 0 || !!serverJawaban?.unlockedAt);
         const serverRemaining = Number(serverJawaban?.remainingSeconds);
         const serverLastActiveAt = serverJawaban?.lastActiveAt ? new Date(serverJawaban.lastActiveAt).getTime() : 0;
         const serverStartedAt = serverJawaban?.startedAt ? new Date(serverJawaban.startedAt).getTime() : 0;
