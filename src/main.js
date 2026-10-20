@@ -455,21 +455,154 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const subKelasSelect = document.getElementById('sub-kelas');
 
+    let availableClasses = [];
+
+    // Helper Modal & Banner Pemilih Kelas Cepat (Fitur 1, 3, & 4)
+    window.openClassPickerModal = () => {
+        const modal = document.getElementById('class-picker-modal');
+        if (!modal) return;
+        renderClassPickerGrid();
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    };
+
+    window.closeClassPickerModal = () => {
+        const modal = document.getElementById('class-picker-modal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    };
+
+    function renderClassPickerGrid() {
+        const grid = document.getElementById('class-picker-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const currentKelas = getActiveStudentKelas();
+
+        availableClasses.forEach(c => {
+            const isSelected = String(c).trim().toLowerCase() === String(currentKelas).trim().toLowerCase();
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `p-3 sm:p-4 rounded-2xl border-2 border-black font-black transition active:translate-y-0.5 flex flex-col items-center justify-center gap-1 ${
+                isSelected
+                    ? 'bg-black text-yellow-300 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ring-2 ring-yellow-400'
+                    : 'bg-slate-50 hover:bg-yellow-100 text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+            }`;
+            btn.innerHTML = `
+                <span class="text-[10px] opacity-70 uppercase tracking-widest font-extrabold">Kelas</span>
+                <span class="text-base sm:text-xl font-black">${escapeHtml(c)}</span>
+            `;
+            btn.onclick = () => window.selectStudentClass(c);
+            grid.appendChild(btn);
+        });
+
+        // Tombol Tampilkan Semua Kelas
+        const allBtn = document.createElement('button');
+        allBtn.type = 'button';
+        allBtn.className = `col-span-2 sm:col-span-3 py-2.5 px-3 rounded-xl border-2 border-black font-black text-xs text-slate-700 bg-white hover:bg-slate-100 uppercase tracking-wider transition active:translate-y-0.5 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] mt-1 ${
+            !currentKelas ? 'ring-2 ring-black font-black bg-slate-100' : ''
+        }`;
+        allBtn.textContent = '🌐 Tampilkan Semua Kelas (Tanpa Filter)';
+        allBtn.onclick = () => window.selectStudentClass('');
+        grid.appendChild(allBtn);
+    }
+
+    function renderStudentClassBanner(kelas) {
+        const bannerContainer = document.getElementById('student-class-alert-banner');
+        if (!bannerContainer) return;
+
+        const currentKelas = kelas !== undefined ? kelas : getActiveStudentKelas();
+
+        if (!currentKelas) {
+            // Skenario A: Belum Memilih Kelas (Peringatan Amber & Tombol Aksi)
+            bannerContainer.innerHTML = `
+                <div class="bg-amber-300 border-[3px] border-black rounded-2xl md:rounded-[24px] p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center font-black text-xl shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            ⚠️
+                        </div>
+                        <div>
+                            <div class="font-black text-xs md:text-sm text-black uppercase tracking-wide">Kamu Belum Memilih Kelas!</div>
+                            <div class="text-[11px] md:text-xs font-bold text-slate-800">Tugas, materi, dan ujian belum disaring. Pilih kelasmu agar langsung pas.</div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="window.openClassPickerModal()" class="w-full sm:w-auto px-4 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2 shrink-0">
+                        <span>Pilih Kelas Saya</span>
+                        <span>🎯</span>
+                    </button>
+                </div>
+            `;
+        } else {
+            // Skenario B: Sudah Memilih Kelas (Konfirmasi Hijau & Solusi jika Siswa Salah Pilih Kelas)
+            bannerContainer.innerHTML = `
+                <div class="bg-emerald-100 border-[3px] border-black rounded-2xl md:rounded-[24px] p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                    <div class="flex items-center gap-2.5">
+                        <span class="inline-flex items-center justify-center w-7 h-7 bg-emerald-500 border-2 border-black text-white rounded-lg font-black text-xs shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] shrink-0">
+                            ✓
+                        </span>
+                        <div class="text-xs font-black text-slate-900 leading-tight">
+                            Menampilkan konten untuk:
+                            <span class="bg-black text-yellow-300 px-2.5 py-0.5 rounded-lg text-xs font-black tracking-wider uppercase ml-1 border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                                Kelas ${escapeHtml(currentKelas)}
+                            </span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="window.openClassPickerModal()" class="w-full sm:w-auto px-3.5 py-1.5 bg-white hover:bg-slate-100 text-black font-black text-[11px] uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0 flex items-center justify-center gap-1.5">
+                        <span>Bukan Kelas ${escapeHtml(currentKelas)}?</span>
+                        <span class="text-indigo-600 underline font-black">Ganti Kelas ✏️</span>
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    window.selectStudentClass = async (selectedKelas) => {
+        const cleanKelas = (selectedKelas || '').trim();
+        if (cleanKelas) {
+            localStorage.setItem('student_kelas', cleanKelas);
+        } else {
+            localStorage.removeItem('student_kelas');
+        }
+        if (globalKelasSelect) globalKelasSelect.value = cleanKelas;
+        updateStudentProfileUI(cleanKelas);
+        renderStudentClassBanner(cleanKelas);
+        renderClassPickerGrid();
+        window.closeClassPickerModal();
+
+        // Re-fetch dan render konten otomatis seketika
+        await loadStudentAssignments();
+        await loadStudentMaterials();
+        renderStudentQuizzes();
+        await updatePortalOverviewStats();
+    };
+
     async function loadClassOptions() {
-        let classes = [];
         try {
             const { data } = await supabase.from('options').select('name').eq('type', 'kelas');
             if (data && data.length > 0) {
-                classes = data.map(o => o.name);
+                availableClasses = data.map(o => o.name);
             }
         } catch (e) {
             console.warn("Could not load classes from database", e);
         }
 
+        // Fallback jika database options kosong
+        if (availableClasses.length === 0) {
+            try {
+                const { data: roster } = await supabase.from('students').select('kelas');
+                if (roster && roster.length > 0) {
+                    availableClasses = [...new Set(roster.map(r => r.kelas).filter(Boolean))].sort();
+                }
+            } catch (err) {
+                console.warn("Could not load classes from students roster", err);
+            }
+        }
+
         const populate = (el, includeAll = false) => {
             if (!el) return;
             el.innerHTML = includeAll ? '<option value="">Semua Kelas</option>' : '<option value="" disabled selected>Pilih Kelas</option>';
-            classes.forEach(c => {
+            availableClasses.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c;
                 opt.textContent = `Kelas ${c}`;
@@ -479,12 +612,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         populate(globalKelasSelect, true);
         populate(subKelasSelect, false);
+        renderClassPickerGrid();
     }
 
     await loadClassOptions();
 
-    // Pulihkan filter kelas siswa dari localStorage
-    const savedKelas = localStorage.getItem('student_kelas') || '';
+    // Fitur 1: Deteksi Parameter Kelas dari Link WhatsApp (?kelas=8A atau ?k=8A)
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryKelasRaw = (urlParams.get('kelas') || urlParams.get('k') || '').trim();
+    let savedKelas = localStorage.getItem('student_kelas') || '';
+
+    if (queryKelasRaw) {
+        // Cocokkan secara fleksibel dengan opsi kelas yang tersedia
+        const matched = availableClasses.find(c => c.toLowerCase() === queryKelasRaw.toLowerCase()) || queryKelasRaw;
+        savedKelas = matched;
+        localStorage.setItem('student_kelas', matched);
+    }
 
     if (savedKelas && globalKelasSelect) {
         globalKelasSelect.value = savedKelas;
@@ -507,13 +650,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     updateStudentProfileUI(savedKelas);
+    renderStudentClassBanner(savedKelas);
 
-    // Event listener langsung saat siswa mengganti kelas (otomatis tanpa tombol Simpan)
+    // Fitur 3: Pop-up Otomatis saat pertama kali buka web jika belum ada kelas tersimpan & bukan dari link URL
+    if (!savedKelas && !queryKelasRaw) {
+        setTimeout(() => {
+            window.openClassPickerModal();
+        }, 350);
+    }
+
+    // Event listener langsung saat siswa mengganti kelas melalui dropdown
     if (globalKelasSelect) {
         globalKelasSelect.addEventListener('change', async () => {
             const kelas = globalKelasSelect.value;
-            localStorage.setItem('student_kelas', kelas);
+            if (kelas) {
+                localStorage.setItem('student_kelas', kelas);
+            } else {
+                localStorage.removeItem('student_kelas');
+            }
             updateStudentProfileUI(kelas);
+            renderStudentClassBanner(kelas);
+            renderClassPickerGrid();
 
             // Re-fetch dan render konten otomatis seketika
             await loadStudentAssignments();
@@ -522,6 +679,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             updatePortalOverviewStats();
         });
     }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            window.closeClassPickerModal();
+        }
+    });
 
     // ==========================================
     // 2. Tab Portal Switcher
@@ -2823,7 +2986,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (kelasInput) kelasInput.value = studentKelas;
 
         if (globalNameInput) globalNameInput.value = studentName;
-        if (globalKelasSelect && studentKelas) globalKelasSelect.value = studentKelas;
+        if (studentKelas) {
+            if (globalKelasSelect) globalKelasSelect.value = studentKelas;
+            localStorage.setItem('student_kelas', studentKelas);
+            updateStudentProfileUI(studentKelas);
+            renderStudentClassBanner(studentKelas);
+        }
     };
 
     window.openExamTokenModal = async (quizId) => {

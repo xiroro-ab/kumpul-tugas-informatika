@@ -59,10 +59,16 @@
                 <!-- Dropdown Filter Kelas Cepat Langsung Aktif -->
                 <div class="flex items-center gap-2 w-full sm:w-auto">
                     <div class="w-full sm:w-56">
-                        <label for="global-student-kelas" class="block text-[10px] font-black uppercase text-slate-500 mb-1">Pilih Kelas Siswa:</label>
+                        <label for="global-student-kelas" class="block text-[10px] font-black uppercase text-slate-500 mb-1">Filter Kelas Siswa:</label>
                         <select id="global-student-kelas" class="w-full h-11 px-3 border-2 border-black rounded-xl font-black text-xs bg-slate-50 hover:bg-white focus:bg-white outline-none cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition">
                             <option value="">Semua Kelas (Tampilkan Semua)</option>
                         </select>
+                    </div>
+                    <div class="pt-4 hidden sm:block">
+                        <button type="button" onclick="window.openClassPickerModal()" title="Pilih Kelas Lebih Cepat" class="h-11 px-3 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5 shrink-0">
+                            <span>Ubah</span>
+                            <span>🎯</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -107,6 +113,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- Banner Peringatan / Status Kelas Aktif Siswa (Fitur 4) -->
+        <div id="student-class-alert-banner" class="mb-5 transition-all duration-300"></div>
 
         <!-- Mode Navigasi Siswa (Bento Tabs) -->
         <div id="portal-student-tabs" class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 mb-6">
@@ -782,6 +791,42 @@
             </div>
             <p id="custom-modal-message" class="text-black font-bold text-xs md:text-sm leading-relaxed whitespace-pre-line"></p>
             <div id="custom-modal-actions" class="flex gap-2.5 justify-end mt-2 pt-2 border-t border-slate-200"></div>
+        </div>
+    </div>
+
+    <!-- Modal Pemilih Kelas Cepat Siswa (Fitur 3 & Responsif) -->
+    <div id="class-picker-modal" onclick="if(event.target === this) window.closeClassPickerModal()" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] max-w-lg w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden my-auto max-h-[90vh]">
+            <!-- Header Modal -->
+            <div class="p-5 md:p-6 border-b-2 border-black bg-yellow-300">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center text-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0">
+                            🏫
+                        </span>
+                        <div>
+                            <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Pilih Kelas Kamu</h3>
+                            <p class="text-[11px] md:text-xs font-bold text-slate-800">Pilih agar tugas, materi & ujian langsung sesuai kelasmu.</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="window.closeClassPickerModal()" id="btn-close-class-picker" title="Tutup Modal" class="w-9 h-9 bg-white hover:bg-slate-100 border-2 border-black rounded-xl font-black text-sm flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0">
+                        ✕
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body Grid Tombol Kelas -->
+            <div class="p-5 md:p-6 overflow-y-auto space-y-3">
+                <p class="text-[11px] font-black text-slate-500 uppercase tracking-wider">Tap pada kelas Anda:</p>
+                <div id="class-picker-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <!-- Diisi otomatis dari database -->
+                </div>
+            </div>
+
+            <!-- Footer Modal -->
+            <div class="p-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between text-[11px] font-bold text-slate-600">
+                <span>💡 Kamu bisa mengubah kelas kapan saja lewat banner di atas.</span>
+            </div>
         </div>
     </div>
 
