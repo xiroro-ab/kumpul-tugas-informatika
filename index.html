@@ -467,14 +467,9 @@
                 <form id="submission-form" class="space-y-3">
                     <input type="hidden" id="sub-assignment-id" value="">
 
-                    <div class="space-y-1">
-                        <label for="sub-nama" class="text-xs font-black uppercase text-black ml-1">Nama Lengkap Siswa</label>
-                        <input type="text" id="sub-nama" required placeholder="Contoh: Muhammad Rizky Pratama" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none focus:bg-white">
-                    </div>
-
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div class="space-y-1">
-                            <label for="sub-kelas" class="text-xs font-black uppercase text-black ml-1">Kelas</label>
+                            <label for="sub-kelas" class="text-xs font-black uppercase text-black ml-1">1. Pilih Kelas</label>
                             <select id="sub-kelas" required class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none cursor-pointer">
                                 <option value="" disabled selected>Pilih Kelas</option>
                             </select>
@@ -495,6 +490,20 @@
                                 <option value="Prakarya">Prakarya</option>
                             </select>
                         </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between">
+                            <label for="sub-student-select" class="text-xs font-black uppercase text-black ml-1">2. Nama Lengkap Siswa</label>
+                            <button type="button" id="sub-toggle-manual-btn" onclick="window.toggleSubNameMode()" class="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 underline cursor-pointer">
+                                Ketik nama manual
+                            </button>
+                        </div>
+                        <select id="sub-student-select" onchange="window.onSubStudentSelectChange(this)" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none cursor-pointer">
+                            <option value="">Pilih nama siswa dari daftar resmi...</option>
+                        </select>
+                        <input type="text" id="sub-nama" required placeholder="Contoh: Muhammad Rizky Pratama" class="hidden w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none focus:bg-white">
+                        <input type="hidden" id="sub-student-id" value="">
                     </div>
 
                     <div class="space-y-1">

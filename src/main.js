@@ -981,12 +981,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h4 class="font-black text-lg md:text-xl text-black mb-1.5">${a.judul_tugas}</h4>
                     <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line">${hasQuestions ? (parsed.petunjuk || 'Silakan buka dan kerjakan lembar soal interaktif online.') : a.deskripsi}</p>
 
-                    ${a.rubrik_ai ? `
-                        <div class="bg-purple-50 border border-purple-200 rounded-xl p-3 text-[11px] font-bold text-purple-900 mb-3">
-                            <strong>Rubrik Penilaian AI:</strong> ${a.rubrik_ai}
-                        </div>
-                    ` : ''}
-
                     ${mySubmission && mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '' ? `
                         <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 text-xs mb-3">
                             <div class="flex justify-between items-center mb-1">
@@ -1040,6 +1034,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     const linkNoteInput = document.getElementById('sub-link-note');
     const platformBadge = document.getElementById('platformBadge');
     const subSubmitBtn = document.getElementById('sub-btn-submit');
+    const subStudentSelect = document.getElementById('sub-student-select');
+    const subStudentIdInput = document.getElementById('sub-student-id');
+    const subToggleManualBtn = document.getElementById('sub-toggle-manual-btn');
+    let isSubManualName = false;
+
+    window.toggleSubNameMode = (forceManual) => {
+        isSubManualName = forceManual !== undefined ? forceManual : !isSubManualName;
+        if (isSubManualName) {
+            if (subNamaInput) subNamaInput.classList.remove('hidden');
+            if (subStudentSelect) subStudentSelect.classList.add('hidden');
+            if (subToggleManualBtn) subToggleManualBtn.textContent = 'Pilih dari daftar nama resmi';
+        } else {
+            if (subNamaInput) subNamaInput.classList.add('hidden');
+            if (subStudentSelect) subStudentSelect.classList.remove('hidden');
+            if (subToggleManualBtn) subToggleManualBtn.textContent = 'Ketik nama manual';
+        }
+    };
+
+    window.onSubStudentSelectChange = (sel) => {
+        if (!sel || !sel.value) {
+            if (subNamaInput) subNamaInput.value = '';
+            if (subStudentIdInput) subStudentIdInput.value = '';
+            return;
+        }
+        const opt = sel.options[sel.selectedIndex];
+        const studentName = opt ? (opt.getAttribute('data-name') || sel.value) : sel.value;
+        const studentId = opt ? (opt.getAttribute('data-id') || '') : '';
+        if (subNamaInput) subNamaInput.value = studentName;
+        if (subStudentIdInput) subStudentIdInput.value = studentId;
+
+        localStorage.setItem('student_nama', studentName);
+        if (subKelasSelect && subKelasSelect.value) {
+            localStorage.setItem('student_kelas', subKelasSelect.value);
+            updateStudentProfileUI(subKelasSelect.value);
+        }
+    };
+
+    async function populateSubStudentSelect(kelas, preselectedName = '') {
+        if (!subStudentSelect) return;
+        if (!rosterStudents || rosterStudents.length === 0) {
+            try {
+                rosterStudents = await fetchStudentsFromDB();
+            } catch (_) {}
+        }
+
+        const filtered = (rosterStudents || [])
+            .filter(s => !kelas || String(s.kelas).trim().toLowerCase() === String(kelas).trim().toLowerCase())
+            .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
+
+        if (filtered.length === 0) {
+            subStudentSelect.innerHTML = '<option value="">(Belum ada data roster di kelas ini)</option>';
+            window.toggleSubNameMode(true);
+            return;
+        }
+
+        subStudentSelect.innerHTML = '<option value="">-- Pilih Nama Siswa (Sesuai Roster Resmi) --</option>' + 
+            filtered.map(s => {
+                const nisnText = s.nisn ? ` (NISN: ${s.nisn})` : '';
+                return `<option value="${escapeHtml(s.nama)}" data-name="${escapeHtml(s.nama)}" data-id="${escapeHtml(s.id || '')}">${escapeHtml(s.nama)}${nisnText}</option>`;
+            }).join('');
+
+        window.toggleSubNameMode(false);
+
+        const currentName = preselectedName || getActiveStudentName();
+        if (currentName) {
+            const match = filtered.find(s => s.nama.toLowerCase().trim() === currentName.toLowerCase().trim());
+            if (match) {
+                subStudentSelect.value = match.nama;
+                if (subNamaInput) subNamaInput.value = match.nama;
+                if (subStudentIdInput) subStudentIdInput.value = match.id || '';
+            } else {
+                if (subNamaInput) subNamaInput.value = currentName;
+            }
+        }
+    }
+
+    if (subKelasSelect) {
+        subKelasSelect.addEventListener('change', () => {
+            populateSubStudentSelect(subKelasSelect.value);
+        });
+    }
 
     // Live word & character counter for web form answers
     if (subTextAnswerInput) {
@@ -1072,16 +1147,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const rubrikEl = document.getElementById('modal-banner-rubrik');
         if (rubrikEl) {
-            if (assignment.rubrik_ai) {
-                rubrikEl.innerHTML = `<strong>Rubrik Penilaian AI:</strong> ${assignment.rubrik_ai}`;
-                rubrikEl.classList.remove('hidden');
-            } else {
-                rubrikEl.classList.add('hidden');
-            }
+            rubrikEl.classList.add('hidden');
         }
 
-        subNamaInput.value = getActiveStudentName();
-        subKelasSelect.value = getActiveStudentKelas() || assignment.kelas || '';
+        const targetK = getActiveStudentKelas() || assignment.kelas || '';
+        if (subKelasSelect) subKelasSelect.value = targetK;
+        populateSubStudentSelect(targetK, getActiveStudentName());
+
         subMapelSelect.value = assignment.mapel || 'Informatika';
         subMateriInput.value = assignment.judul_tugas || '';
         subMateriInput.readOnly = true;
@@ -1227,8 +1299,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (legacySheet) legacySheet.classList.remove('hidden');
         if (modeSwitcher) modeSwitcher.classList.remove('hidden');
 
-        subNamaInput.value = getActiveStudentName();
-        subKelasSelect.value = getActiveStudentKelas() || '';
+        const freeK = getActiveStudentKelas() || '';
+        subKelasSelect.value = freeK;
+        populateSubStudentSelect(freeK, getActiveStudentName());
         subMateriInput.value = '';
         subMateriInput.readOnly = false;
 

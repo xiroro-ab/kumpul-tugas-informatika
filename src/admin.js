@@ -1696,7 +1696,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <h4 class="font-black text-lg text-black mb-1">${escapeHtml(a.judul_tugas)}</h4>
                         <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line line-clamp-3">${escapeHtml(descText)}</p>
-                        ${a.rubrik_ai ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3"><strong>Rubrik AI:</strong> ${escapeHtml(a.rubrik_ai)}</div>` : ''}
+                        ${(a.rubrik_ai && !a.rubrik_ai.includes('Soal #') && !a.rubrik_ai.includes('(')) ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3"><strong>Rubrik Penilaian:</strong> ${escapeHtml(a.rubrik_ai)}</div>` : ''}
                     </div>
                     <div class="pt-3 border-t-2 border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                         <span class="text-xs font-black text-slate-800 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-xl">
@@ -1746,9 +1746,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (descEl) descEl.textContent = a.deskripsi || 'Tidak ada petunjuk khusus.';
         if (rubrikEl) {
-            rubrikEl.innerHTML = a.rubrik_ai 
-                ? `<strong>Rubrik Penilaian AI:</strong> ${escapeHtml(a.rubrik_ai)}` 
-                : '<strong>Rubrik Penilaian:</strong> Kesesuaian tugas, kelengkapan pengerjaan, dan kerapian penyajian.';
+            if (a.rubrik_ai && !a.rubrik_ai.includes('Soal #') && !a.rubrik_ai.includes('(')) {
+                rubrikEl.innerHTML = `<strong>Rubrik Penilaian:</strong> ${escapeHtml(a.rubrik_ai)}`;
+                rubrikEl.classList.remove('hidden');
+            } else {
+                rubrikEl.classList.add('hidden');
+            }
         }
 
         renderAssignmentSubmissionsTable(a);
@@ -2444,10 +2447,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 questions: formBuilderQuestions
             });
 
-            const rubrikSummary = formBuilderQuestions
-                .filter(q => q.kunci)
-                .map((q, idx) => `Soal #${idx + 1} (${q.tipe}): ${q.kunci}`)
-                .join('; ');
+            const cleanRubrik = 'Kesesuaian pemahaman konsep materi, kelengkapan uraian nalar, dan ketepatan pengerjaan butir soal.';
 
             if (editingAssignmentId) {
                 const { error } = await supabase.from('assignments').update({
@@ -2455,7 +2455,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     kelas,
                     judul_tugas: judul,
                     deskripsi: payloadDeskripsi,
-                    rubrik_ai: rubrikSummary || 'Kesesuaian jawaban dengan konsep materi dan kelengkapan pembahasan.',
+                    rubrik_ai: cleanRubrik,
                     deadline: deadline || null
                 }).eq('id', editingAssignmentId);
 
@@ -2471,7 +2471,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     kelas,
                     judul_tugas: judul,
                     deskripsi: payloadDeskripsi,
-                    rubrik_ai: rubrikSummary || 'Kesesuaian jawaban dengan konsep materi dan kelengkapan pembahasan.',
+                    rubrik_ai: cleanRubrik,
                     deadline: deadline || null
                 }]);
 
