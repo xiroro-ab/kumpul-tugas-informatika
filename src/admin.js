@@ -742,14 +742,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return '';
     }
 
-    window.downloadSubmissionFile = async (url, filename) => {
+    window.downloadSubmissionFile = async (idOrUrl, filename) => {
         try {
+            let url = idOrUrl;
+            let downloadName = filename || 'berkas_tugas_siswa';
+
+            const item = pendingFiles.find(f => String(f.id) === String(idOrUrl));
+            if (item) {
+                const { data: publicUrlData } = supabase.storage.from('uploads').getPublicUrl(item.storage_path);
+                url = publicUrlData.publicUrl;
+                downloadName = item.filename || 'berkas_tugas_siswa';
+            }
+
             const res = await fetch(url);
             const blob = await res.blob();
             const blobUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = blobUrl;
-            a.download = filename || 'berkas_tugas_siswa';
+            a.download = downloadName;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -874,7 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
                 downloadBtnHtml = `
-                    <button onclick="downloadSubmissionFile('${targetUrl}', '${f.filename.replace(/'/g, "\\'")}')" title="Unduh Berkas Siswa ke Komputer" class="inline-flex items-center bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-slate-300">
+                    <button onclick="downloadSubmissionFile('${f.id}')" title="Unduh Berkas Siswa ke Komputer" class="inline-flex items-center bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-slate-300">
                         Unduh
                     </button>
                 `;
@@ -896,13 +906,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             tr.innerHTML = `
-                <td class="px-3 py-3 whitespace-nowrap font-black text-black border-b-2 border-black border-r-2 text-xs">${f.kelas}</td>
+                <td class="px-3 py-3 whitespace-nowrap font-black text-black border-b-2 border-black border-r-2 text-xs">${escapeHtml(f.kelas)}</td>
                 <td class="px-3 py-3 font-bold text-black border-b-2 border-black border-r-2 text-xs align-middle">
                     <div class="min-w-[160px] max-w-[280px] whitespace-normal break-words leading-relaxed text-slate-900">
                         ${escapeHtml(f.materi)}
                     </div>
                 </td>
-                <td class="px-3 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs">${f.nama}</td>
+                <td class="px-3 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs">${escapeHtml(f.nama)}</td>
                 <td class="px-3 py-3 font-medium text-black border-b-2 border-black border-r-2 min-w-[160px]">${detailCell}</td>
                 <td class="px-3 py-3 text-center border-b-2 border-black border-r-2">${gradeBadge}</td>
                 <td class="px-3 py-3 whitespace-nowrap font-black text-xs border-b-2 border-black">
@@ -911,7 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             Koreksi
                         </button>
                         ${downloadBtnHtml}
-                        <button onclick="deleteFile('${f.id}', '${f.storage_path}', ${isLink || isText})" class="inline-flex items-center bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-red-300">
+                        <button onclick="deleteFile('${f.id}')" class="inline-flex items-center bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1.5 rounded-lg uppercase tracking-wider text-xs font-black transition-colors border border-red-300">
                             Hapus
                         </button>
                     </div>
@@ -1683,24 +1693,38 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBtn.innerText = "Simpan Nilai & Evaluasi";
     };
 
-    window.deleteFile = async (id, path, isLink = false) => {
-        const confirmed = await showCustomModal('Apakah Anda yakin ingin menghapus tugas ini secara permanen?', 'confirm');
+    window.deleteFile = async (id, legacyPath = '', legacyIsLink = false) => {
+        const item = pendingFiles.find(f => String(f.id) === String(id));
+        const studentName = item?.nama || 'Siswa ini';
+        const taskTitle = item?.materi || 'tugas ini';
+
+        const confirmed = await showCustomModal(
+            `Apakah Anda yakin ingin menghapus pengumpulan tugas "${taskTitle}" dari "${studentName}" secara permanen?`,
+            'confirm',
+            'Konfirmasi Hapus Tugas',
+            ''
+        );
         if (!confirmed) return;
         
         try {
-            if (!isLink && path && !path.startsWith('LINK:')) {
-                const { error: storageError } = await supabase.storage.from('uploads').remove([path]);
+            const rawPath = item?.storage_path || legacyPath;
+            const isLink = item ? (item.tipe === 'link' || (rawPath && rawPath.startsWith('LINK:'))) : legacyIsLink;
+            const isTextOrForm = item ? (item.tipe === 'form' || item.tipe === 'text' || (rawPath && (rawPath.startsWith('FORM:') || rawPath.startsWith('TEXT:')))) : false;
+
+            // Hapus berkas fisik di storage Supabase hanya jika file upload nyata (bukan form/text/link)
+            if (!isLink && !isTextOrForm && rawPath && !rawPath.startsWith('FORM:') && !rawPath.startsWith('TEXT:') && !rawPath.startsWith('LINK:')) {
+                const { error: storageError } = await supabase.storage.from('uploads').remove([rawPath]);
                 if (storageError) console.warn("Storage removal warning:", storageError);
             }
 
             const { error: dbError } = await supabase.from('files').delete().eq('id', id);
             if (dbError) throw dbError;
 
-            await showCustomModal('Tugas berhasil dihapus.');
-            loadFilesTable();
+            await showCustomModal(`Tugas "${taskTitle}" dari "${studentName}" berhasil dihapus.`, 'alert', 'Tugas Dihapus', '');
+            await loadFilesTable();
         } catch (e) {
             console.error(e);
-            await showCustomModal('Gagal menghapus tugas: ' + e.message);
+            await showCustomModal('Gagal menghapus tugas: ' + e.message, 'alert', 'Gagal Menghapus', '');
         }
     };
 
@@ -5985,13 +6009,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-3 py-3 text-center border-r-2 border-black font-black text-xs text-purple-900 bg-purple-50/50">${escapeHtml(s.kelas)}</td>
                     <td class="px-3 py-3 text-center">
                         <div class="flex items-center justify-center gap-1.5">
-                            <button onclick="openStudentReportModal('${escapeHtml(s.nama)}', '${escapeHtml(s.kelas)}', '${escapeHtml(s.nisn || '')}')" title="Lihat Rapor Portofolio Siswa" class="px-2.5 py-1 bg-emerald-300 hover:bg-emerald-400 text-black border border-black rounded-lg text-[11px] font-black uppercase active:translate-y-0.5 transition cursor-pointer">
+                            <button onclick="openStudentReportModal('${escapeHtml(s.id)}')" title="Lihat Rapor Portofolio Siswa" class="px-2.5 py-1 bg-emerald-300 hover:bg-emerald-400 text-black border border-black rounded-lg text-[11px] font-black uppercase active:translate-y-0.5 transition cursor-pointer">
                                 Rapor
                             </button>
                             <button onclick="openEditStudentModal('${escapeHtml(s.id)}')" title="Ubah Data Siswa" class="px-2.5 py-1 bg-yellow-300 hover:bg-yellow-400 text-black border border-black rounded-lg text-[11px] font-black uppercase active:translate-y-0.5 transition cursor-pointer">
                                 Edit
                             </button>
-                            <button onclick="deleteStudentAction('${escapeHtml(s.id)}', '${escapeHtml(s.nama)}')" title="Hapus Siswa" class="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg text-[11px] font-black uppercase active:translate-y-0.5 transition cursor-pointer">
+                            <button onclick="deleteStudentAction('${escapeHtml(s.id)}')" title="Hapus Siswa" class="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 rounded-lg text-[11px] font-black uppercase active:translate-y-0.5 transition cursor-pointer">
                                 Hapus
                             </button>
                         </div>
@@ -6036,7 +6060,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('student-modal').classList.add('hidden');
     };
 
-    window.openStudentReportModal = async (studentName, studentKelas, studentNisn = '') => {
+    window.openStudentReportModal = async (studentIdOrName, studentKelas = '', studentNisn = '') => {
+        const student = (stateStudents || []).find(s => String(s.id) === String(studentIdOrName));
+        let studentName = studentIdOrName;
+        if (student) {
+            studentName = student.nama;
+            studentKelas = student.kelas;
+            studentNisn = student.nisn || '';
+        }
+
         const modal = document.getElementById('student-report-modal');
         const nameEl = document.getElementById('admin-report-student-name');
         const metaEl = document.getElementById('admin-report-student-meta');
@@ -6316,7 +6348,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.deleteStudentAction = async (studentId, studentName) => {
+    window.deleteStudentAction = async (studentId, fallbackName = '') => {
+        const student = (stateStudents || []).find(s => String(s.id) === String(studentId));
+        const studentName = student?.nama || fallbackName || 'Siswa ini';
         const confirmed = await showCustomModal(
             `Apakah Anda yakin ingin menghapus siswa "${studentName}" dari master data sekolah?\n\nPerhatian: Siswa yang dihapus tidak akan dapat login ke ujian CBT.`,
             'confirm',
@@ -6327,10 +6361,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             await deleteStudentFromDB(studentId);
-            showCustomModal(`Siswa "${studentName}" berhasil dihapus.`);
+            await showCustomModal(`Siswa "${studentName}" berhasil dihapus.`, 'alert', 'Siswa Dihapus', '');
             await loadStudentsRoster();
         } catch (err) {
-            showCustomModal("Gagal menghapus siswa: " + err.message);
+            await showCustomModal("Gagal menghapus siswa: " + err.message, 'alert', 'Gagal Menghapus', '');
         }
     };
 
