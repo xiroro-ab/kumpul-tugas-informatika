@@ -2477,7 +2477,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (error) throw error;
 
-                await supabase.from('options').insert([{ type: 'materi', name: judul }]).catch(() => {});
+                try {
+                    await supabase.from('options').insert([{ type: 'materi', name: judul }]);
+                } catch (_) {}
 
                 closeAssignmentModal();
                 loadAssignments();
