@@ -260,6 +260,7 @@ AS $$
 DECLARE
   v_quiz public.quizzes;
   v_sub public.quiz_submissions;
+  v_expected_token TEXT;
   v_req BOOLEAN;
   v_key TEXT;
   v_resumed BOOLEAN := false;
@@ -269,9 +270,21 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'Ujian tidak ditemukan atau sudah tidak aktif.');
   END IF;
 
-  v_req := (coalesce(v_quiz.token_required, (nullif(btrim(coalesce(v_quiz.token,'')),'') IS NOT NULL))) AND (nullif(btrim(coalesce(v_quiz.token,'')),'') IS NOT NULL);
+  -- Ekstrak token resmi dari kolom token atau dari config petunjuk jika kolom kosong/belum sync
+  v_expected_token := coalesce(
+    nullif(btrim(coalesce(v_quiz.token,'')), ''),
+    substring(coalesce(v_quiz.petunjuk,'') from '"token"\s*:\s*"([^"]+)"'),
+    ''
+  );
+
+  v_req := coalesce(
+    v_quiz.token_required,
+    (substring(coalesce(v_quiz.petunjuk,'') from '"token_required"\s*:\s*(true|false)'))::boolean,
+    (nullif(btrim(v_expected_token), '') IS NOT NULL)
+  ) AND (nullif(btrim(v_expected_token), '') IS NOT NULL);
+
   IF v_req THEN
-    IF upper(btrim(coalesce(v_quiz.token,''))) <> upper(btrim(coalesce(p_token,''))) THEN
+    IF upper(btrim(v_expected_token)) <> upper(btrim(coalesce(p_token,''))) THEN
       RETURN jsonb_build_object('ok', false, 'error', 'Token ujian salah atau tidak valid.');
     END IF;
   END IF;

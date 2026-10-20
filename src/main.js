@@ -694,10 +694,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const content = document.getElementById(`view-${t}`);
             if (t === viewName) {
                 if (btn) btn.className = "portal-nav-item py-2 px-1.5 md:py-2.5 md:px-4 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 font-black text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] bg-black text-yellow-300 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-                if (content) content.classList.remove('hidden');
+                if (content) {
+                    content.classList.remove('hidden', '!hidden');
+                    content.style.display = 'block';
+                }
             } else {
                 if (btn) btn.className = "portal-nav-item py-2 px-1.5 md:py-2.5 md:px-4 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100";
-                if (content) content.classList.add('hidden');
+                if (content) {
+                    content.classList.add('hidden');
+                    content.classList.remove('!hidden');
+                    content.style.display = 'none';
+                }
             }
         });
 
@@ -2139,12 +2146,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const footer = document.querySelector('footer');
         const pageContainer = document.getElementById('portal-page-container');
 
-        [header, profileCard, classBanner, navbar, tabs, landing, footer].forEach(el => {
+        [header, profileCard, classBanner, navbar, landing, footer].forEach(el => {
             if (el) {
                 el.classList.remove('hidden', '!hidden');
                 el.style.display = '';
             }
         });
+        if (tabs) {
+            tabs.classList.add('hidden', '!hidden');
+            tabs.style.display = 'none';
+        }
 
         if (pageContainer) {
             pageContainer.classList.add('pb-20');
@@ -2156,7 +2167,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         document.querySelectorAll('.portal-view').forEach(v => {
-            v.style.display = '';
+            if (v.id === 'view-ujian') {
+                v.classList.remove('hidden', '!hidden');
+                v.style.display = 'block';
+            } else {
+                v.classList.add('hidden');
+                v.classList.remove('!hidden');
+                v.style.display = 'none';
+            }
         });
 
         try {
@@ -2473,7 +2491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (lockedOverlay) lockedOverlay.classList.add('hidden');
         exitExamMode();
         activeCbtExam = null;
-        loadStudentQuizzes();
+        switchStudentPortal('ujian');
     };
 
     function saveCbtExamStateLocally() {
@@ -2929,7 +2947,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             activeCbtExam = null;
             exitExamMode();
-            loadStudentQuizzes();
+            switchStudentPortal('ujian');
+            await loadStudentQuizzes();
 
         } catch (e) {
             if (activeCbtExam) activeCbtExam.isSubmitting = false;
@@ -3007,6 +3026,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (kelasInput) kelasInput.value = studentKelas;
 
         if (globalNameInput) globalNameInput.value = studentName;
+        if (studentName) {
+            localStorage.setItem('student_nama', studentName);
+        }
         if (studentKelas) {
             if (globalKelasSelect) globalKelasSelect.value = studentKelas;
             localStorage.setItem('student_kelas', studentKelas);
@@ -3062,7 +3084,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 applicableClasses.map(k => `<option value="${escapeHtml(k)}">Kelas ${escapeHtml(k)}</option>`).join('');
 
             // Pilih otomatis kelas siswa jika sebelumnya sudah dipilih atau gunakan kelas pertama yang berhak
-            const preferredClass = (globalKelasSelect?.value || '').trim();
+            const preferredClass = getActiveStudentKelas();
             if (preferredClass && applicableClasses.includes(preferredClass)) {
                 kelasSelect.value = preferredClass;
             } else if (applicableClasses.length > 0) {
@@ -3086,7 +3108,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (modal) {
             modal.classList.remove('hidden');
             if (isTokenRequired && tokenInput) {
-                setTimeout(() => tokenInput.focus(), 150);
+                setTimeout(() => {
+                    tokenInput.focus();
+                    tokenInput.select();
+                }, 150);
             }
         }
     };
@@ -3112,10 +3137,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const config = quiz.parsedConfig || {};
         const isTokenRequired = config.token_required !== false;
-        const enteredToken = (document.getElementById('exam-token-input')?.value || '').trim();
+        const enteredToken = (document.getElementById('exam-token-input')?.value || '').trim().toUpperCase().replace(/\s+/g, '');
 
         if (isTokenRequired && !enteredToken) {
             await showCustomModal("Silakan masukkan Token Ujian yang diberikan oleh Guru Pengawas kelas Anda!", 'alert', 'Token Wajib Diisi', '');
+            const inputEl = document.getElementById('exam-token-input');
+            if (inputEl) inputEl.focus();
             return;
         }
 
@@ -3137,8 +3164,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!data || data.error) {
                 if (btn) { btn.disabled = false; btn.innerText = "Mulai Kerjakan Ujian"; }
-                closeExamTokenModal();
                 const msg = data?.error || 'Gagal memulai ujian. Hubungi guru pengawas.';
+                const isTokenErr = msg.toLowerCase().includes('token');
+                if (!isTokenErr) {
+                    closeExamTokenModal();
+                } else {
+                    const inputEl = document.getElementById('exam-token-input');
+                    if (inputEl) {
+                        setTimeout(() => {
+                            inputEl.focus();
+                            inputEl.select();
+                        }, 200);
+                    }
+                }
                 const title = data?.code === 'locked' ? 'Ujian Terkunci (Pelanggaran)'
                     : data?.code === 'finished' ? 'Ujian Selesai (1x Pengerjaan)' : 'Gagal Memulai Ujian';
                 await showCustomModal(msg, 'alert', title, '');

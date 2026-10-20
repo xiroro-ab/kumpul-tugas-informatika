@@ -770,7 +770,11 @@
                             <label class="block text-xs font-black uppercase text-black">Masukkan Token Ujian</label>
                             <span class="text-[10px] font-black text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded uppercase">Diberikan Guru</span>
                         </div>
-                        <input type="text" id="exam-token-input" maxlength="12" placeholder="CONTOH: CBT58X" class="w-full h-11 sm:h-12 px-3 sm:px-4 border-2 border-black rounded-xl font-mono font-black text-base sm:text-xl text-center uppercase tracking-widest bg-yellow-50 focus:bg-yellow-100 outline-none placeholder:text-slate-400">
+                        <input type="text" id="exam-token-input" maxlength="12" placeholder="CONTOH: CBT58X"
+                               autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                               oninput="this.value = this.value.toUpperCase().replace(/\s+/g, '')"
+                               onkeydown="if(event.key==='Enter'){event.preventDefault(); verifyAndStartExam();}"
+                               class="w-full h-11 sm:h-12 px-3 sm:px-4 border-2 border-black rounded-xl font-mono font-black text-base sm:text-xl text-center uppercase tracking-widest bg-yellow-50 focus:bg-yellow-100 outline-none placeholder:text-slate-400">
                         <p class="text-[10px] sm:text-[11px] text-slate-500 font-bold mt-1">Minta token ujian aktif kepada Guru Pengawas kelas Anda.</p>
                     </div>
 
