@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         allBtn.className = `col-span-2 sm:col-span-3 py-2.5 px-3 rounded-xl border-2 border-black font-black text-xs text-slate-700 bg-white hover:bg-slate-100 uppercase tracking-wider transition active:translate-y-0.5 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] mt-1 ${
             !currentKelas ? 'ring-2 ring-black font-black bg-slate-100' : ''
         }`;
-        allBtn.textContent = '🌐 Tampilkan Semua Kelas (Tanpa Filter)';
+        allBtn.textContent = 'Tampilkan Semua Kelas';
         allBtn.onclick = () => window.selectStudentClass('');
         grid.appendChild(allBtn);
     }
@@ -515,42 +515,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         const currentKelas = kelas !== undefined ? kelas : getActiveStudentKelas();
 
         if (!currentKelas) {
-            // Skenario A: Belum Memilih Kelas (Peringatan Amber & Tombol Aksi)
+            // Skenario A: Belum Memilih Kelas
             bannerContainer.innerHTML = `
                 <div class="bg-amber-300 border-[3px] border-black rounded-2xl md:rounded-[24px] p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center font-black text-xl shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                            ⚠️
+                        <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center font-black text-black shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <svg class="w-5 h-5 text-black" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"></path></svg>
                         </div>
                         <div>
-                            <div class="font-black text-xs md:text-sm text-black uppercase tracking-wide">Kamu Belum Memilih Kelas!</div>
-                            <div class="text-[11px] md:text-xs font-bold text-slate-800">Tugas, materi, dan ujian belum disaring. Pilih kelasmu agar langsung pas.</div>
+                            <div class="font-black text-xs md:text-sm text-black uppercase tracking-wide">Kelas Belum Dipilih</div>
+                            <div class="text-[11px] md:text-xs font-bold text-slate-800">Pilih kelas untuk menampilkan materi, tugas, dan ujian yang sesuai.</div>
                         </div>
                     </div>
-                    <button type="button" onclick="window.openClassPickerModal()" class="w-full sm:w-auto px-4 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2 shrink-0">
-                        <span>Pilih Kelas Saya</span>
-                        <span>🎯</span>
+                    <button type="button" onclick="window.openClassPickerModal()" class="w-full sm:w-auto px-4 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0">
+                        Pilih Kelas
                     </button>
                 </div>
             `;
         } else {
-            // Skenario B: Sudah Memilih Kelas (Konfirmasi Hijau & Solusi jika Siswa Salah Pilih Kelas)
+            // Skenario B: Sudah Memilih Kelas
             bannerContainer.innerHTML = `
                 <div class="bg-emerald-100 border-[3px] border-black rounded-2xl md:rounded-[24px] p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                     <div class="flex items-center gap-2.5">
                         <span class="inline-flex items-center justify-center w-7 h-7 bg-emerald-500 border-2 border-black text-white rounded-lg font-black text-xs shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] shrink-0">
-                            ✓
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg>
                         </span>
                         <div class="text-xs font-black text-slate-900 leading-tight">
-                            Menampilkan konten untuk:
+                            Menampilkan konten:
                             <span class="bg-black text-yellow-300 px-2.5 py-0.5 rounded-lg text-xs font-black tracking-wider uppercase ml-1 border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
                                 Kelas ${escapeHtml(currentKelas)}
                             </span>
                         </div>
                     </div>
-                    <button type="button" onclick="window.openClassPickerModal()" class="w-full sm:w-auto px-3.5 py-1.5 bg-white hover:bg-slate-100 text-black font-black text-[11px] uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0 flex items-center justify-center gap-1.5">
-                        <span>Bukan Kelas ${escapeHtml(currentKelas)}?</span>
-                        <span class="text-indigo-600 underline font-black">Ganti Kelas ✏️</span>
+                    <button type="button" onclick="window.openClassPickerModal()" class="w-full sm:w-auto px-3.5 py-1.5 bg-white hover:bg-slate-100 text-black font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0">
+                        Ganti Kelas
                     </button>
                 </div>
             `;
