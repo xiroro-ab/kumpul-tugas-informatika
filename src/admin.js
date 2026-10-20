@@ -351,14 +351,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.getElementById(`tab-btn-${t}`);
             const content = document.getElementById(`tab-content-${t}`);
             if (t === tabName) {
-                if (btn) btn.className = "lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
+                if (btn) {
+                    if (t === 'approval') {
+                        btn.className = "lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-black text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] bg-purple-700 text-yellow-300 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer";
+                    } else {
+                        btn.className = "lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-black text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] bg-black text-yellow-300 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer";
+                    }
+                }
                 if (content) content.classList.remove('hidden');
             } else {
                 if (btn) {
                     if (t === 'approval') {
-                        btn.className = "lms-tab-btn col-span-2 sm:col-span-5 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300";
+                        btn.className = "lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] bg-purple-100 text-purple-900 border border-purple-300 hover:bg-purple-200 cursor-pointer";
                     } else {
-                        btn.className = "lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100";
+                        btn.className = "lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100 cursor-pointer";
                     }
                 }
                 if (content) content.classList.add('hidden');
@@ -550,15 +556,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Jika Superadmin, aktifkan tab Persetujuan Guru
             const approvalTabBtn = document.getElementById('tab-btn-approval');
+            const tabsGrid = document.getElementById('lms-tabs-grid');
             const roleBadge = document.getElementById('teacher-role-badge');
             if (teacher.role === 'superadmin') {
                 if (approvalTabBtn) {
                     approvalTabBtn.classList.remove('hidden');
                     approvalTabBtn.classList.add('flex');
                 }
+                if (tabsGrid) {
+                    tabsGrid.classList.remove('grid-cols-5');
+                    tabsGrid.classList.add('grid-cols-6');
+                }
                 if (roleBadge) roleBadge.classList.remove('hidden');
             } else {
-                if (approvalTabBtn) approvalTabBtn.classList.add('hidden');
+                if (approvalTabBtn) {
+                    approvalTabBtn.classList.add('hidden');
+                    approvalTabBtn.classList.remove('flex');
+                }
+                if (tabsGrid) {
+                    tabsGrid.classList.remove('grid-cols-6');
+                    tabsGrid.classList.add('grid-cols-5');
+                }
                 if (roleBadge) roleBadge.classList.add('hidden');
             }
 
@@ -879,9 +897,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             tr.innerHTML = `
                 <td class="px-3 py-3 whitespace-nowrap font-black text-black border-b-2 border-black border-r-2 text-xs">${f.kelas}</td>
-                <td class="px-3 py-3 font-bold text-black border-b-2 border-black border-r-2 text-xs max-w-[220px] break-words line-clamp-2" title="${escapeHtml(f.materi)}">${escapeHtml(f.materi)}</td>
+                <td class="px-3 py-3 font-bold text-black border-b-2 border-black border-r-2 text-xs align-middle">
+                    <div class="min-w-[160px] max-w-[280px] whitespace-normal break-words leading-relaxed text-slate-900">
+                        ${escapeHtml(f.materi)}
+                    </div>
+                </td>
                 <td class="px-3 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs">${f.nama}</td>
-                <td class="px-3 py-3 font-medium text-black border-b-2 border-black border-r-2 min-w-[200px]">${detailCell}</td>
+                <td class="px-3 py-3 font-medium text-black border-b-2 border-black border-r-2 min-w-[160px]">${detailCell}</td>
                 <td class="px-3 py-3 text-center border-b-2 border-black border-r-2">${gradeBadge}</td>
                 <td class="px-3 py-3 whitespace-nowrap font-black text-xs border-b-2 border-black">
                     <div class="flex items-center gap-1.5">

@@ -111,7 +111,7 @@
         </div>
 
         <!-- Dashboard Section Guru (Aktif setelah Disetujui Admin) -->
-        <div id="dashboard-section" class="hidden space-y-6 w-full max-w-5xl">
+        <div id="dashboard-section" class="hidden space-y-6 w-full max-w-5xl pb-24 md:pb-6">
             
             <!-- Profil Guru Bar -->
             <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] p-4 md:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -143,27 +143,46 @@
                 </div>
             </div>
 
-            <!-- LMS Navigation Tabs (Neobrutalism Style) -->
-            <div id="lms-tabs-bar" class="grid grid-cols-2 sm:grid-cols-5 gap-2 md:gap-3">
-                <button onclick="switchTab('penugasan')" id="tab-btn-penugasan" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer">
-                    Kelola Tugas/PR
-                </button>
-                <button onclick="switchTab('materi')" id="tab-btn-materi" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100 cursor-pointer">
-                    Materi Ajar
-                </button>
-                <button onclick="switchTab('kuis')" id="tab-btn-kuis" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100 cursor-pointer">
-                    Bank Soal & Ujian
-                </button>
-                <button onclick="switchTab('siswa')" id="tab-btn-siswa" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100 cursor-pointer">
-                    Data Siswa
-                </button>
-                <button onclick="switchTab('setting')" id="tab-btn-setting" class="lms-tab-btn py-3 px-2 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-[3px] border-black hover:bg-slate-100 cursor-pointer">
-                    Pengaturan AI
-                </button>
-                <button onclick="switchTab('approval')" id="tab-btn-approval" class="lms-tab-btn col-span-2 sm:col-span-5 py-3 px-3 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider transition-all hidden items-center justify-center gap-1.5 bg-purple-400 text-black border-[3px] border-black hover:bg-purple-300 cursor-pointer">
-                    Persetujuan Guru
-                </button>
-            </div>
+            <!-- Navigasi Utama Guru (Navbar Fixed Bottom di HP, Bar di Tablet & Desktop) -->
+            <nav id="lms-tabs-bar" class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-black shadow-[0_-4px_0px_0px_rgba(0,0,0,1)] px-1.5 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:static md:border-2 md:border-[3px] md:rounded-2xl md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:mb-6 md:p-2 md:pb-2" aria-label="Navigasi Menu Guru">
+                <div id="lms-tabs-grid" class="grid grid-cols-5 gap-1 md:gap-2.5 max-w-lg md:max-w-none mx-auto">
+                    <!-- 1. Tugas / PR -->
+                    <button onclick="switchTab('penugasan')" id="tab-btn-penugasan" class="lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-black text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] bg-black text-yellow-300 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path></svg>
+                        <span>Tugas<span class="hidden md:inline"> / PR</span></span>
+                    </button>
+
+                    <!-- 2. Materi Ajar -->
+                    <button onclick="switchTab('materi')" id="tab-btn-materi" class="lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100 cursor-pointer">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"></path></svg>
+                        <span>Materi<span class="hidden md:inline"> Ajar</span></span>
+                    </button>
+
+                    <!-- 3. Bank Soal & Ujian -->
+                    <button onclick="switchTab('kuis')" id="tab-btn-kuis" class="lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100 cursor-pointer">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span>Ujian<span class="hidden md:inline"> Online</span></span>
+                    </button>
+
+                    <!-- 4. Data Siswa -->
+                    <button onclick="switchTab('siswa')" id="tab-btn-siswa" class="lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100 cursor-pointer">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"></path></svg>
+                        <span>Siswa<span class="hidden md:inline"> & Roster</span></span>
+                    </button>
+
+                    <!-- 5. Pengaturan AI -->
+                    <button onclick="switchTab('setting')" id="tab-btn-setting" class="lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100 cursor-pointer">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"></path></svg>
+                        <span>AI<span class="hidden md:inline"> Guru</span></span>
+                    </button>
+
+                    <!-- 6. Persetujuan Guru (Khusus Superadmin) -->
+                    <button onclick="switchTab('approval')" id="tab-btn-approval" class="lms-tab-btn py-2 px-1 md:py-2.5 md:px-3 rounded-xl hidden flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] bg-purple-100 text-purple-900 border border-purple-300 hover:bg-purple-200 cursor-pointer">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-2.182-7.5a6.002 6.002 0 00-11.236 3.5c0 4.08 2.053 7.76 5.218 10.026.54.387 1.18.574 1.818.574.638 0 1.278-.187 1.818-.574 3.165-2.266 5.218-5.946 5.218-10.026a6.002 6.002 0 00-2.836-5.026z"></path></svg>
+                        <span>Guru<span class="hidden md:inline"> Approval</span></span>
+                    </button>
+                </div>
+            </nav>
 
             <!-- ======================================================= -->
             <!-- TAB 1: KELOLA TUGAS / PR & MEJA KOREKSI LENGKAP         -->
@@ -242,11 +261,11 @@
                                 <thead class="bg-slate-100">
                                     <tr>
                                         <th class="w-20 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Kelas</th>
-                                        <th class="w-32 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Judul Tugas</th>
-                                        <th class="w-40 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Siswa</th>
-                                        <th class="px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2 min-w-[220px]">Rincian Tugas</th>
-                                        <th class="w-24 px-3 py-3 text-center text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Nilai</th>
-                                        <th class="w-44 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black">Aksi Guru</th>
+                                        <th class="min-w-[180px] sm:min-w-[220px] px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Judul Tugas</th>
+                                        <th class="w-36 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Siswa</th>
+                                        <th class="min-w-[160px] px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Rincian Tugas</th>
+                                        <th class="w-20 px-3 py-3 text-center text-xs font-black text-black uppercase tracking-wider border-b-2 border-black border-r-2">Nilai</th>
+                                        <th class="w-40 px-3 py-3 text-left text-xs font-black text-black uppercase tracking-wider border-b-2 border-black">Aksi Guru</th>
                                     </tr>
                                 </thead>
                                 <tbody id="files-tbody" class="bg-white divide-y-2 divide-black">
@@ -1878,9 +1897,9 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="mt-12 py-6 text-center border-t-2 border-black bg-white w-full">
-        <p class="text-black font-bold uppercase tracking-widest text-xs">
+    <!-- Footer & Copyright Info -->
+    <footer class="mt-12 py-6 text-center border-t-2 border-black bg-white w-full pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-6">
+        <p class="text-black font-bold uppercase tracking-widest text-xs px-4">
             &copy; 2026 LMS SMP Negeri 58 Palembang &bull; Dikembangkan oleh <a href="#" onclick="window.showAboutCreator(); return false;" class="hover:underline hover:text-indigo-600 transition-colors font-black">Aris Bermansyah</a>.
         </p>
     </footer>
