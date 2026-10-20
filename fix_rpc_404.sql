@@ -613,8 +613,23 @@ REVOKE EXECUTE ON FUNCTION public.sanitized_questions(BIGINT) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.exam_config(TEXT,BOOLEAN) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.sanitize_question(public.quiz_questions) FROM anon;
 
--- 12. RELOAD POSTGREST CACHE (Agar endpoint RPC langsung aktif tanpa delay)
+-- 12. PASTIKAN REALTIME AKTIF PADA TABEL QUIZ_SUBMISSIONS (Untuk Sinkronisasi Seketika Siswa & Admin)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+     WHERE pubname = 'supabase_realtime' 
+       AND schemaname = 'public' 
+       AND tablename = 'quiz_submissions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.quiz_submissions;
+  END IF;
+END $$;
+
+ALTER TABLE public.quiz_submissions REPLICA IDENTITY FULL;
+
+-- 13. RELOAD POSTGREST CACHE (Agar endpoint RPC langsung aktif tanpa delay)
 SELECT pg_notify('pgrst', 'reload schema');
 
--- 13. VERIFIKASI
+-- 14. VERIFIKASI
 SELECT 'SUCCESS: SEMUA RPC UJIAN AKTIF!' AS status, count(*)::text || ' ujian ditemukan' AS keterangan FROM public.quizzes;

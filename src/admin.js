@@ -3744,6 +3744,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeQuizForResults = null;
     let activeQuizSubmissions = [];
     let resultsLiveRefreshInterval = null;
+    let resultsRealtimeChannel = null;
 
     window.openQuizResultsModal = async (quizId) => {
         const quiz = quizzesList.find(q => String(q.id) === String(quizId));
@@ -3765,7 +3766,29 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fetch submissions
         await fetchAndRenderQuizSubmissions(quizId);
 
-        // Start auto-refresh interval (polling live status every 3 seconds)
+        // Berlangganan event Realtime Supabase untuk monitoring seketika (0 delay)
+        if (resultsRealtimeChannel) {
+            try { supabase.removeChannel(resultsRealtimeChannel); } catch (_) {}
+            resultsRealtimeChannel = null;
+        }
+        try {
+            resultsRealtimeChannel = supabase.channel(`admin_quiz_${quizId}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'quiz_submissions',
+                        filter: `quiz_id=eq.${quizId}`
+                    },
+                    () => {
+                        refreshQuizSubmissionsDataSilently();
+                    }
+                )
+                .subscribe();
+        } catch (_) {}
+
+        // Tetap pasang interval refresh berkala sebagai fallback cadangan
         if (resultsLiveRefreshInterval) clearInterval(resultsLiveRefreshInterval);
         resultsLiveRefreshInterval = setInterval(() => {
             refreshQuizSubmissionsDataSilently();
@@ -4321,6 +4344,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (resultsLiveRefreshInterval) {
             clearInterval(resultsLiveRefreshInterval);
             resultsLiveRefreshInterval = null;
+        }
+        if (resultsRealtimeChannel) {
+            try { supabase.removeChannel(resultsRealtimeChannel); } catch (_) {}
+            resultsRealtimeChannel = null;
         }
         document.getElementById('quiz-results-modal').classList.add('hidden');
         activeQuizForResults = null;

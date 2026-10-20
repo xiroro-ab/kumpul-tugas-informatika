@@ -1806,6 +1806,116 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ========================================================
     let activeCbtExam = null;
     let isWarningActive = false;
+    let cbtRealtimeChannel = null;
+    let lockedPollingInterval = null;
+
+    function updateStudentViolationUI(cheatCount, isLocked = false) {
+        const cheatIndText = document.getElementById('cbt-cheat-count-text');
+        const cheatIndBox = document.getElementById('cbt-cheat-indicator');
+        if (cheatIndText) {
+            cheatIndText.textContent = `Anti-Cheat: ${cheatCount} Pelanggaran`;
+        }
+        if (cheatIndBox) {
+            if (isLocked || cheatCount >= (activeCbtExam?.violationLimit || 3)) {
+                cheatIndBox.className = "bg-rose-100 border-2 border-rose-500 text-rose-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+            } else if (cheatCount > 0) {
+                cheatIndBox.className = "bg-amber-100 border-2 border-amber-500 text-amber-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+            } else {
+                cheatIndBox.className = "bg-emerald-100 border-2 border-emerald-400 text-emerald-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+            }
+        }
+    }
+
+    function handleServerExamUpdate(sub) {
+        if (!activeCbtExam || !sub) return;
+        let jawaban = sub.jawaban_siswa;
+        if (typeof jawaban === 'string') {
+            try { jawaban = JSON.parse(jawaban); } catch (_) { jawaban = {}; }
+        }
+        const serverCheats = Number(jawaban?.cheatAttempts || 0);
+
+        // 1. Jika guru klik PAKSA SELESAI
+        if (sub.status_koreksi === 'selesai') {
+            showCustomModal("Ujian Anda telah diselesaikan oleh Guru Pengawas.", "alert", "Ujian Selesai", "");
+            window.confirmSubmitCbtExam({ skipConfirm: true, teacherForceSubmit: true });
+            return;
+        }
+
+        // 2. Jika guru me-RESET PELANGGARAN atau MEMBUKA KUNCI
+        if (sub.status_koreksi === 'sedang_ujian' && (serverCheats === 0 || !!jawaban?.unlockedAt)) {
+            activeCbtExam.cheatAttempts = 0;
+            activeCbtExam.cheatLogs = [];
+            activeCbtExam.isLocked = false;
+            isWarningActive = false;
+            saveCbtExamStateLocally();
+
+            updateStudentViolationUI(0, false);
+
+            const warningOverlay = document.getElementById('cheat-warning-overlay');
+            if (warningOverlay) warningOverlay.classList.add('hidden');
+            const lockedOverlay = document.getElementById('cheat-locked-overlay');
+            if (lockedOverlay) lockedOverlay.classList.add('hidden');
+
+            resumeCbtTimerIfNeeded();
+        }
+    }
+
+    function subscribeToStudentExamRealtime(submissionId) {
+        if (cbtRealtimeChannel) {
+            try { supabase.removeChannel(cbtRealtimeChannel); } catch (_) {}
+            cbtRealtimeChannel = null;
+        }
+        if (!submissionId) return;
+
+        try {
+            cbtRealtimeChannel = supabase.channel(`student_exam_${submissionId}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'quiz_submissions',
+                        filter: `id=eq.${submissionId}`
+                    },
+                    (payload) => {
+                        handleServerExamUpdate(payload.new);
+                    }
+                )
+                .subscribe();
+        } catch (_) {}
+    }
+
+    function resumeCbtTimerIfNeeded() {
+        if (!activeCbtExam) return;
+        if (lockedPollingInterval) {
+            clearInterval(lockedPollingInterval);
+            lockedPollingInterval = null;
+        }
+        if (!activeCbtExam.timerInterval) {
+            const timerEl = document.getElementById('quiz-timer');
+            activeCbtExam.timerInterval = setInterval(() => {
+                activeCbtExam.timerSeconds--;
+                const m = Math.floor(activeCbtExam.timerSeconds / 60);
+                const s = activeCbtExam.timerSeconds % 60;
+                if (timerEl) {
+                    timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                }
+
+                // Kirim sinkronisasi status live setiap 2 detik
+                if (activeCbtExam.timerSeconds % 2 === 0) {
+                    const hasFocus = !document.hidden && document.hasFocus();
+                    reportExamPresence(hasFocus);
+                }
+
+                if (activeCbtExam.timerSeconds <= 0) {
+                    activeCbtExam.timerSeconds = 0;
+                    clearInterval(activeCbtExam.timerInterval);
+                    window.confirmSubmitCbtExam({ skipConfirm: true });
+                }
+            }, 1000);
+            addAntiCheatListeners();
+        }
+    }
 
     function enterExamMode() {
         const header = document.getElementById('portal-global-header');
@@ -1828,6 +1938,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function exitExamMode() {
+        if (cbtRealtimeChannel) {
+            try { supabase.removeChannel(cbtRealtimeChannel); } catch (_) {}
+            cbtRealtimeChannel = null;
+        }
+        if (lockedPollingInterval) {
+            clearInterval(lockedPollingInterval);
+            lockedPollingInterval = null;
+        }
         const header = document.getElementById('portal-global-header');
         const profileCard = document.getElementById('portal-student-profile-card');
         const tabs = document.getElementById('portal-student-tabs');
@@ -1884,23 +2002,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             p_reason: reason
         }).then(({ data }) => {
             if (data && typeof data === 'object') {
+                if (data.status === 'selesai') {
+                    showCustomModal("Ujian Anda telah diselesaikan oleh Guru Pengawas.", "alert", "Ujian Selesai", "");
+                    window.confirmSubmitCbtExam({ skipConfirm: true, teacherForceSubmit: true });
+                    return;
+                }
                 const srvCheats = Number(data.serverCheatAttempts);
                 // Jika Guru me-reset pelanggaran di server menjadi 0, sinkronkan memori & UI siswa seketika!
                 if (srvCheats === 0 && activeCbtExam.cheatAttempts > 0) {
                     activeCbtExam.cheatAttempts = 0;
                     activeCbtExam.cheatLogs = [];
                     activeCbtExam.isLocked = false;
+                    isWarningActive = false;
                     saveCbtExamStateLocally();
-                    const cheatIndText = document.getElementById('cbt-cheat-count-text');
-                    const cheatIndBox = document.getElementById('cbt-cheat-indicator');
-                    if (cheatIndText) cheatIndText.textContent = `Anti-Cheat: 0 Pelanggaran`;
-                    if (cheatIndBox) {
-                        cheatIndBox.className = "bg-emerald-100 border-2 border-emerald-400 text-emerald-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-                    }
+                    updateStudentViolationUI(0, false);
                     const warningOverlay = document.getElementById('cheat-warning-overlay');
                     if (warningOverlay) warningOverlay.classList.add('hidden');
                     const lockedOverlay = document.getElementById('cheat-locked-overlay');
                     if (lockedOverlay) lockedOverlay.classList.add('hidden');
+                    resumeCbtTimerIfNeeded();
                 }
             }
         }).catch(() => {});
@@ -1919,10 +2039,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!activeCbtExam || !activeCbtExam.fullscreenEnabled) return;
         const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
         if (!isFull) {
-            reportExamPresence(false, "Keluar mode Fullscreen");
-            if (!isWarningActive) {
-                handleViolation("Meninggalkan mode layar penuh (Fullscreen) dilarang!");
-            }
+            handleViolation("Meninggalkan mode layar penuh (Fullscreen) dilarang!");
         } else {
             reportExamPresence(true, "Kembali ke mode Fullscreen");
         }
@@ -1931,10 +2048,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function onVisibilityChange() {
         if (!activeCbtExam) return;
         if (document.hidden) {
-            reportExamPresence(false, "Berpindah tab atau meminimalkan browser");
-            if (!isWarningActive) {
-                handleViolation("Berpindah tab atau meminimalkan browser terdeteksi!");
-            }
+            handleViolation("Berpindah tab atau meminimalkan browser terdeteksi!");
         } else {
             reportExamPresence(true, "Kembali ke tab ujian");
         }
@@ -1942,10 +2056,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function onWindowBlur() {
         if (!activeCbtExam) return;
-        reportExamPresence(false, "Jendela ujian kehilangan fokus");
-        if (!isWarningActive) {
-            handleViolation("Jendela ujian kehilangan fokus (membuka aplikasi lain / split screen)!");
-        }
+        handleViolation("Jendela ujian kehilangan fokus (membuka aplikasi lain / split screen)!");
     }
 
     function onWindowFocus() {
@@ -2041,19 +2152,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             time: new Date().toISOString()
         });
 
-        // 1. SIMPAN SEKETIKA KE STORAGE LOKAL & SUPABASE! (Blokir eksploitasi reload browser)
+        // 1. SIMPAN SEKETIKA KE STORAGE LOKAL
         saveCbtExamStateLocally();
 
-        const cheatIndText = document.getElementById('cbt-cheat-count-text');
-        const cheatIndBox = document.getElementById('cbt-cheat-indicator');
-        if (cheatIndText) {
-            cheatIndText.textContent = `Anti-Cheat: ${activeCbtExam.cheatAttempts} Pelanggaran`;
-        }
-        if (cheatIndBox) {
-            cheatIndBox.className = "bg-amber-100 border-2 border-amber-500 text-amber-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-        }
+        // 2. UPDATE BADGE & WARNA INDIKATOR DI TAB SISWA SEKETIKA (REALTIME 0 DELAY!)
+        updateStudentViolationUI(activeCbtExam.cheatAttempts, false);
 
-        // 2. CEK BATAS LIMIT PELANGGARAN SEGERA!
+        // 3. PUSH LANGSUNG KE SERVER SUPABASE (0 DELAY)
+        pushExamProgressToServer({ isFocus: false, isOnline: true, reason });
+
+        // 4. CEK BATAS LIMIT PELANGGARAN SEGERA!
         // Sesuai sistem CBT: Jika limit tercapai, BEKUKAN LANGSUNG. Jangan tunggu countdown selesai!
         if (activeCbtExam.violationLimit > 0 && activeCbtExam.cheatAttempts >= activeCbtExam.violationLimit) {
             isWarningActive = false;
@@ -2096,10 +2204,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function lockExamDueToCheating() {
         if (!activeCbtExam) return;
         const exam = activeCbtExam;
+        activeCbtExam.isLocked = true;
         removeAntiCheatListeners();
         exitFullscreenLock();
         if (exam.timerInterval) clearInterval(exam.timerInterval);
+        exam.timerInterval = null;
         if (exam.warningCountdownInterval) clearInterval(exam.warningCountdownInterval);
+        exam.warningCountdownInterval = null;
+
+        updateStudentViolationUI(exam.cheatAttempts, true);
 
         try {
             if (exam.submissionId) {
@@ -2127,6 +2240,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const lockedOverlay = document.getElementById('cheat-locked-overlay');
         if (lockedOverlay) lockedOverlay.classList.remove('hidden');
+
+        // Polling darurat jika WebSocket tertunda: cek status buka kunci dari guru setiap 1.5 detik
+        if (lockedPollingInterval) clearInterval(lockedPollingInterval);
+        lockedPollingInterval = setInterval(async () => {
+            if (!activeCbtExam || !activeCbtExam.submissionId) {
+                if (lockedPollingInterval) clearInterval(lockedPollingInterval);
+                return;
+            }
+            try {
+                const { data } = await supabase
+                    .from('quiz_submissions')
+                    .select('id, status_koreksi, jawaban_siswa')
+                    .eq('id', activeCbtExam.submissionId)
+                    .single();
+                if (data && data.status_koreksi === 'sedang_ujian') {
+                    let jw = data.jawaban_siswa;
+                    if (typeof jw === 'string') {
+                        try { jw = JSON.parse(jw); } catch (_) { jw = {}; }
+                    }
+                    if (jw?.cheatAttempts === 0 || !!jw?.unlockedAt) {
+                        if (lockedPollingInterval) clearInterval(lockedPollingInterval);
+                        lockedPollingInterval = null;
+                        handleServerExamUpdate(data);
+                    }
+                }
+            } catch (_) {}
+        }, 1500);
     }
 
     window.closeLockedExamAndReturn = () => {
@@ -2942,6 +3082,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             timerSeconds: initialTimerSeconds
         };
 
+        // Berlangganan event realtime perubahan sesi ujian dari guru pengawas
+        subscribeToStudentExamRealtime(submissionId);
+
         // Jika terdeteksi terkunci atau kecurangan telah mencapai/melampaui limit, langsung bekukan!
         if (existingSub?.status_koreksi === 'terkunci_curang' || (!isServerUnlocked && (isLocalLocked || (violationLimit > 0 && effectiveCheats >= violationLimit)))) {
             enterExamMode();
@@ -2966,16 +3109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const studentTag = document.getElementById('cbt-student-tag');
         if (studentTag) studentTag.textContent = `Siswa: ${studentName}`;
 
-        const cheatIndText = document.getElementById('cbt-cheat-count-text');
-        const cheatIndBox = document.getElementById('cbt-cheat-indicator');
-        if (cheatIndText) {
-            cheatIndText.textContent = `Anti-Cheat: ${activeCbtExam.cheatAttempts} Pelanggaran`;
-        }
-        if (cheatIndBox) {
-            cheatIndBox.className = activeCbtExam.cheatAttempts > 0
-                ? "bg-amber-100 border-2 border-amber-500 text-amber-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                : "bg-emerald-100 border-2 border-emerald-400 text-emerald-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-        }
+        updateStudentViolationUI(activeCbtExam.cheatAttempts, false);
 
         window.renderCbtQuestion(0);
 
@@ -2990,8 +3124,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
             }
 
-            // Simpan lokal dan kirim status live setiap 3 detik
-            if (activeCbtExam.timerSeconds % 3 === 0) {
+            // Simpan lokal dan kirim status live setiap 2 detik
+            if (activeCbtExam.timerSeconds % 2 === 0) {
                 const hasFocus = !document.hidden && document.hasFocus();
                 reportExamPresence(hasFocus);
             }
