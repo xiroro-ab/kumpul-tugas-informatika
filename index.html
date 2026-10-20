@@ -320,8 +320,9 @@
                                 Selanjutnya
                             </button>
 
-                            <button type="button" id="btn-submit-exam" onclick="confirmSubmitCbtExam()" class="hidden col-span-2 sm:col-span-1 sm:ml-auto px-5 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-1.5 text-center">
-                                Kumpulkan Ujian Selesai
+                            <button type="button" id="btn-submit-exam" onclick="confirmSubmitCbtExam()" class="hidden col-span-2 sm:col-span-1 sm:ml-auto px-5 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-1.5 text-center min-h-[44px]">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg>
+                                <span>Selesai Ujian</span>
                             </button>
                         </div>
 
@@ -363,10 +364,11 @@
                             </div>
                         </div>
 
-                        <!-- Exit Exam Button -->
-                        <div class="pt-1.5">
-                            <button type="button" onclick="cancelExam()" class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-700 border-2 border-red-300 font-black text-[11px] uppercase rounded-xl transition">
-                                Batalkan & Keluar
+                        <!-- Tombol Selesai Ujian (Merekam Jawaban ke Database) -->
+                        <div class="pt-2">
+                            <button type="button" onclick="confirmSubmitCbtExam()" class="w-full py-2.5 sm:py-3 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-1.5 min-h-[44px]">
+                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg>
+                                <span>Selesai Ujian</span>
                             </button>
                         </div>
                     </div>

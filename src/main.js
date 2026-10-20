@@ -2875,11 +2875,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalQ = activeCbtExam.questions.length;
 
         const msg = answeredCount < totalQ 
-            ? `Perhatian: Anda baru menjawab ${answeredCount} dari total ${totalQ} butir soal.\n\nApakah Anda yakin ingin menyelesaikan dan mengumpulkan lembar ujian sekarang?`
-            : `Semua ${totalQ} butir soal telah terjawab!\n\nApakah Anda yakin ingin menyelesaikan dan mengirim ujian ini?`;
+            ? `Perhatian: Anda baru menjawab ${answeredCount} dari total ${totalQ} butir soal.\n\nApakah Anda yakin ingin menyelesaikan dan mengumpulkan lembar ujian ke database sekarang?`
+            : `Semua ${totalQ} butir soal telah terjawab!\n\nApakah Anda yakin ingin menyelesaikan dan mengumpulkan ujian ini sekarang?`;
 
         if (!options.skipConfirm) {
-            const conf = await showCustomModal(msg, 'confirm', 'Kumpulkan Ujian', '');
+            const conf = await showCustomModal(msg, 'confirm', 'Selesai Ujian', '');
             if (!conf) return;
         }
 
@@ -2938,21 +2938,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.cancelExam = async () => {
-        const confExit = await showCustomModal("Apakah Anda yakin ingin membatalkan dan keluar dari ujian? Lembar pengerjaan sesi Anda akan ditutup.", 'confirm', 'Keluar Ujian', '');
-        if (confExit && activeCbtExam) {
-            removeAntiCheatListeners();
-            exitFullscreenLock();
-            if (activeCbtExam.timerInterval) clearInterval(activeCbtExam.timerInterval);
-            if (activeCbtExam.warningCountdownInterval) clearInterval(activeCbtExam.warningCountdownInterval);
-            try {
-                const key = `cbt_exam_${activeCbtExam.quizData.id}_${encodeURIComponent(activeCbtExam.studentName)}`;
-                localStorage.removeItem(key);
-                sessionStorage.removeItem('cbt_active_exam_session');
-            } catch (_) {}
-            activeCbtExam = null;
-            exitExamMode();
-            loadStudentQuizzes();
-        }
+        // Tidak ada opsi keluar-masuk bebas tab ujian. Tombol dialihkan langsung ke konfirmasi selesai ujian agar terekam di database.
+        await window.confirmSubmitCbtExam();
     };
 
     let pendingExamQuiz = null;
