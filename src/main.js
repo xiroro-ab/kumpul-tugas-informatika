@@ -693,10 +693,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const btn = document.getElementById(`nav-btn-${t}`);
             const content = document.getElementById(`view-${t}`);
             if (t === viewName) {
-                if (btn) btn.className = "portal-tab-btn w-full py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-black text-white border-2 sm:border-[3px] border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] min-h-[44px]";
+                if (btn) btn.className = "portal-nav-item py-2 px-1.5 md:py-2.5 md:px-4 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 font-black text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] bg-black text-yellow-300 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
                 if (content) content.classList.remove('hidden');
             } else {
-                if (btn) btn.className = "portal-tab-btn w-full py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-white text-black border-2 sm:border-[3px] border-black hover:bg-slate-100 min-h-[44px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+                if (btn) btn.className = "portal-nav-item py-2 px-1.5 md:py-2.5 md:px-4 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100";
                 if (content) content.classList.add('hidden');
             }
         });
@@ -2084,17 +2084,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         const header = document.getElementById('portal-global-header');
         const profileCard = document.getElementById('portal-student-profile-card');
         const classBanner = document.getElementById('student-class-alert-banner');
+        const navbar = document.getElementById('portal-student-navbar');
         const tabs = document.getElementById('portal-student-tabs');
         const landing = document.getElementById('quiz-portal-landing');
         const room = document.getElementById('quiz-room-container');
         const footer = document.querySelector('footer');
+        const pageContainer = document.getElementById('portal-page-container');
 
-        [header, profileCard, classBanner, tabs, landing, footer].forEach(el => {
+        [header, profileCard, classBanner, navbar, tabs, landing, footer].forEach(el => {
             if (el) {
                 el.classList.add('hidden', '!hidden');
                 el.style.display = 'none';
             }
         });
+
+        if (pageContainer) {
+            pageContainer.classList.remove('pb-20');
+        }
 
         if (room) {
             room.classList.remove('hidden', '!hidden');
@@ -2126,17 +2132,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         const header = document.getElementById('portal-global-header');
         const profileCard = document.getElementById('portal-student-profile-card');
         const classBanner = document.getElementById('student-class-alert-banner');
+        const navbar = document.getElementById('portal-student-navbar');
         const tabs = document.getElementById('portal-student-tabs');
         const landing = document.getElementById('quiz-portal-landing');
         const room = document.getElementById('quiz-room-container');
         const footer = document.querySelector('footer');
+        const pageContainer = document.getElementById('portal-page-container');
 
-        [header, profileCard, classBanner, tabs, landing, footer].forEach(el => {
+        [header, profileCard, classBanner, navbar, tabs, landing, footer].forEach(el => {
             if (el) {
                 el.classList.remove('hidden', '!hidden');
                 el.style.display = '';
             }
         });
+
+        if (pageContainer) {
+            pageContainer.classList.add('pb-20');
+        }
 
         if (room) {
             room.classList.add('hidden', '!hidden');
