@@ -797,7 +797,17 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-6 text-center text-slate-500 font-bold uppercase tracking-widest border-b-2 border-black animate-pulse">Memuat tugas siswa...</td></tr>';
         
         try {
-            const { data, error } = await supabase.from('files').select('*').order('created_at', { ascending: false });
+            const isSuperadmin = currentTeacher?.role === 'superadmin';
+            let filesQuery = supabase.from('files').select('*').order('created_at', { ascending: false });
+            if (!isSuperadmin && currentTeacher?.id) {
+                const tIds = (assignmentsList || []).map(a => a.id).filter(Boolean);
+                if (tIds.length > 0) {
+                    filesQuery = filesQuery.or(`guru_id.eq.${currentTeacher.id},assignment_id.in.(${tIds.join(',')})`);
+                } else {
+                    filesQuery = filesQuery.eq('guru_id', currentTeacher.id);
+                }
+            }
+            const { data, error } = await filesQuery;
             if (error) throw error;
             
             pendingFiles = data || [];
@@ -1957,16 +1967,40 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = '<div class="col-span-2 text-center py-6 font-bold text-black uppercase animate-pulse">Memuat daftar tugas siswa...</div>';
 
         try {
-            const { data, error } = await supabase.from('assignments').select('*').order('created_at', { ascending: false });
+            const isSuperadmin = currentTeacher?.role === 'superadmin';
+            let assignQuery = supabase.from('assignments').select('*').order('created_at', { ascending: false });
+            if (!isSuperadmin && currentTeacher?.id) {
+                assignQuery = assignQuery.or(`guru_id.eq.${currentTeacher.id}`);
+            }
+            const { data, error } = await assignQuery;
             if (error) throw error;
             assignmentsList = data || [];
             const pBadge = document.getElementById('penugasan-count-badge');
             if (pBadge) pBadge.textContent = assignmentsList.length;
 
+            if (filterAssignmentSelect) {
+                filterAssignmentSelect.innerHTML = '<option value="">Semua Penugasan</option>';
+                assignmentsList.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.id;
+                    opt.textContent = `${a.judul_tugas} — Kelas ${a.kelas}`;
+                    filterAssignmentSelect.appendChild(opt);
+                });
+            }
+
             // Pastikan data pengumpulan siswa termutakhir tersedia untuk penghitungan
             if (!pendingFiles || pendingFiles.length === 0) {
                 try {
-                    const { data: fileData } = await supabase.from('files').select('*').order('created_at', { ascending: false });
+                    let filesQ = supabase.from('files').select('*').order('created_at', { ascending: false });
+                    if (!isSuperadmin && currentTeacher?.id) {
+                        const tIds = assignmentsList.map(a => a.id).filter(Boolean);
+                        if (tIds.length > 0) {
+                            filesQ = filesQ.or(`guru_id.eq.${currentTeacher.id},assignment_id.in.(${tIds.join(',')})`);
+                        } else {
+                            filesQ = filesQ.eq('guru_id', currentTeacher.id);
+                        }
+                    }
+                    const { data: fileData } = await filesQ;
                     if (fileData) pendingFiles = fileData;
                 } catch (_) {}
             }
@@ -2901,7 +2935,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     judul_tugas: judul,
                     deskripsi: payloadDeskripsi,
                     rubrik_ai: cleanRubrik,
-                    deadline: deadline || null
+                    deadline: deadline || null,
+                    guru_id: currentTeacher?.id || currentSession?.user?.id,
+                    teacher_id: currentSession?.user?.id
                 }).eq('id', editingAssignmentId);
 
                 if (error) throw error;
@@ -2911,7 +2947,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showCustomModal(`Tugas "${judul}" berhasil diperbarui!`);
             } else {
                 const { error } = await supabase.from('assignments').insert([{
-                    teacher_id: currentSession?.user?.id,
+                    /* teacher_id removed */
+                    guru_id: currentTeacher?.id || currentSession?.user?.id,
                     mapel,
                     kelas,
                     judul_tugas: judul,
@@ -2948,7 +2985,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const conf = await showCustomModal("Hapus penugasan ini?", "confirm");
         if (!conf) return;
         try {
-            const { error } = await supabase.from('assignments').delete().eq('id', id);
+            const isSuperadmin = currentTeacher?.role === 'superadmin';
+            let delQuery = supabase.from('assignments').delete().eq('id', id);
+            if (!isSuperadmin && currentTeacher?.id) {
+                delQuery = delQuery.or(`guru_id.eq.${currentTeacher.id}`);
+            }
+            const { error } = await delQuery;
             if (error) throw error;
             loadAssignments();
         } catch (e) {
@@ -3256,7 +3298,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const { error } = await supabase.from('materials').insert([{
-                teacher_id: currentSession?.user?.id,
+                /* teacher_id removed */
                 mapel,
                 kelas,
                 judul,
@@ -3687,7 +3729,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let quizData = null;
             try {
                 const { data: qd, error: qErr } = await supabase.from('quizzes').insert([{
-                    teacher_id: currentSession?.user?.id,
+                    /* teacher_id removed */
                     mapel,
                     kelas,
                     judul_kuis: judul,
@@ -3701,7 +3743,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 quizData = qd;
             } catch (_) {
                 const { data: qd2, error: qErr2 } = await supabase.from('quizzes').insert([{
-                    teacher_id: currentSession?.user?.id,
+                    /* teacher_id removed */
                     mapel,
                     kelas,
                     judul_kuis: judul,
@@ -4488,7 +4530,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let quizError = null;
                 try {
                     const { data: qd, error: qErr } = await supabase.from('quizzes').insert([{
-                        teacher_id: currentSession?.user?.id,
+                        /* teacher_id removed */
                         mapel,
                         kelas,
                         judul_kuis: judul,
@@ -4502,7 +4544,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     quizData = qd;
                 } catch (_) {
                     const { data: qd2, error: qErr2 } = await supabase.from('quizzes').insert([{
-                        teacher_id: currentSession?.user?.id,
+                        /* teacher_id removed */
                         mapel,
                         kelas,
                         judul_kuis: judul,

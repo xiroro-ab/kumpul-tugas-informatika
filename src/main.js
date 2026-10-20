@@ -13,6 +13,7 @@ let activeQuizData = null;
 let quizTimerInterval = null;
 let currentSubmissionMode = 'file';
 let currentFormQuestions = [];
+let currentActiveAssignment = null;
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -1251,6 +1252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Buka Modal Terkait Tugas Tertentu
     window.openAssignmentSubmissionModal = async (assignment) => {
+        currentActiveAssignment = assignment || null;
         const parsed = parseAssignmentQuestions(assignment);
         currentFormQuestions = parsed.questions || [];
 
@@ -1539,6 +1541,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.closeSubmissionModal = () => {
+        currentActiveAssignment = null;
         subModal.classList.add('hidden');
         subModal.classList.remove('flex');
     };
@@ -1767,6 +1770,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             let submittedDetail = '';
+            const relatedAssign = currentActiveAssignment || (assignmentId ? allAssignments.find(a => Number(a.id) === Number(assignmentId)) : null);
+            const assignGuruId = relatedAssign?.guru_id || relatedAssign?.teacher_id || null;
 
             if (currentSubmissionMode === 'text') {
                 if (currentFormQuestions && currentFormQuestions.length > 0) {
@@ -1929,6 +1934,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         materi,
                         mapel,
                         assignment_id: assignmentId,
+                        guru_id: assignGuruId,
                         filename: displayFilename,
                         storage_path: `FORM:${JSON.stringify(studentAnswers)}`,
                         link_url: null,
@@ -1953,6 +1959,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         materi,
                         mapel,
                         assignment_id: assignmentId,
+                        guru_id: assignGuruId,
                         filename: displayFilename,
                         storage_path: `TEXT:${textAnswer}`,
                         link_url: null,
@@ -1983,6 +1990,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         materi,
                         mapel,
                         assignment_id: assignmentId,
+                        guru_id: assignGuruId,
                         filename: file.name,
                         storage_path: uploadData.path,
                         tipe: 'file',
@@ -2006,6 +2014,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     materi,
                     mapel,
                     assignment_id: assignmentId,
+                    guru_id: assignGuruId,
                     filename: displayFilename,
                     storage_path: `LINK:${linkUrl}`,
                     link_url: linkUrl,
