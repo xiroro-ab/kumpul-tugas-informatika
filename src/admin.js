@@ -812,26 +812,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const searchInput = document.getElementById('search-tugas');
     const filterKelasSelect = document.getElementById('filter-kelas-tugas');
-    const filterMateriSelect = document.getElementById('filter-materi-tugas');
+    const filterAssignmentSelect = document.getElementById('filter-assignment-tugas');
 
     function applyFilters() {
         const term = searchInput ? searchInput.value.toLowerCase() : '';
         const kelasVal = filterKelasSelect ? filterKelasSelect.value : '';
-        const materiVal = filterMateriSelect ? filterMateriSelect.value : '';
+        const assignVal = filterAssignmentSelect ? filterAssignmentSelect.value : '';
 
         const filtered = pendingFiles.filter(f => {
             const matchTerm = (f.nama && f.nama.toLowerCase().includes(term)) ||
                               (f.filename && f.filename.toLowerCase().includes(term));
             const matchKelas = kelasVal === '' || isClassMatch(kelasVal, f.kelas);
-            const matchMateri = materiVal === '' || f.materi === materiVal;
-            return matchTerm && matchKelas && matchMateri;
+            const matchAssignment = assignVal === '' || (
+                (f.assignment_id && String(f.assignment_id) === assignVal) ||
+                (assignmentsList.find(a => String(a.id) === assignVal)?.judul_tugas?.toLowerCase().trim() === (f.materi || '').toLowerCase().trim())
+            );
+            return matchTerm && matchKelas && matchAssignment;
         });
         renderFilesTable(filtered);
     }
 
     if (searchInput) searchInput.addEventListener('input', applyFilters);
     if (filterKelasSelect) filterKelasSelect.addEventListener('change', applyFilters);
-    if (filterMateriSelect) filterMateriSelect.addEventListener('change', applyFilters);
+    if (filterAssignmentSelect) filterAssignmentSelect.addEventListener('change', applyFilters);
 
     function renderFilesTable(filesToRender) {
         const tbody = document.getElementById('files-tbody');
@@ -5912,15 +5915,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 populateTargetClassSelect(filterKelasSelect, '', true);
             }
 
-            const materiSet = new Set(pendingFiles.map(f => f.materi));
-            if (filterMateriSelect) {
-                filterMateriSelect.innerHTML = '<option value="">Semua Judul Tugas</option>';
-                materiSet.forEach(m => {
-                    if (m) {
-                        const opt = document.createElement('option');
-                        opt.value = m; opt.textContent = m;
-                        filterMateriSelect.appendChild(opt);
-                    }
+            if (filterAssignmentSelect) {
+                filterAssignmentSelect.innerHTML = '<option value="">Semua Penugasan</option>';
+                assignmentsList.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.id;
+                    opt.textContent = `${a.judul_tugas} — Kelas ${a.kelas}`;
+                    filterAssignmentSelect.appendChild(opt);
                 });
             }
         }
