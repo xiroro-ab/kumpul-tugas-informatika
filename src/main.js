@@ -942,7 +942,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const card = document.createElement('div');
-            card.className = "bg-white border-[3px] border-black rounded-[28px] p-5 md:p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
+            card.className = "bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] p-4 sm:p-5 md:p-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
             card.innerHTML = `
                 <div>
                     <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
@@ -982,9 +982,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ` : ''}
                 </div>
 
-                <div class="pt-3 border-t-2 border-slate-100 flex items-center justify-between gap-2">
-                    <div>${submissionBadge}</div>
-                    <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')})" class="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 ${actionBtnClass}">
+                <div class="pt-3 border-t-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div class="w-full sm:w-auto">${submissionBadge}</div>
+                    <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')})" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center ${actionBtnClass}">
                         ${actionBtnText}
                     </button>
                 </div>
@@ -1723,7 +1723,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         filtered.forEach(m => {
             const card = document.createElement('div');
-            card.className = "bg-white border-[3px] border-black rounded-[28px] p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
+            card.className = "bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] p-4 sm:p-5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
             card.innerHTML = `
                 <div>
                     <div class="flex items-center gap-2 mb-2">
@@ -1887,7 +1887,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </span>
                     `;
                     actionBtnHtml = `
-                        <button type="button" onclick="showMyQuizResult('${mySub.id}')" class="px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                        <button type="button" onclick="showMyQuizResult('${mySub.id}')" class="w-full sm:w-auto px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-900 border-2 border-red-500 font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0">
                             Status Pelanggaran
                         </button>
                     `;
@@ -1898,7 +1898,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </span>
                     `;
                     actionBtnHtml = `
-                        <button type="button" onclick="openExamTokenModal('${q.id}')" class="px-5 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                        <button type="button" onclick="openExamTokenModal('${q.id}')" class="w-full sm:w-auto px-5 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0">
                             Lanjutkan Ujian
                         </button>
                     `;
@@ -1910,7 +1910,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </span>
                     `;
                     actionBtnHtml = `
-                        <button type="button" onclick="showMyQuizResult('${mySub.id}')" class="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                        <button type="button" onclick="showMyQuizResult('${mySub.id}')" class="w-full sm:w-auto px-4 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0">
                             Lihat Skor Nilai
                         </button>
                     `;
@@ -1922,7 +1922,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </span>
                 `;
                 actionBtnHtml = `
-                    <button type="button" onclick="openExamTokenModal('${q.id}')" class="px-5 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5">
+                    <button type="button" onclick="openExamTokenModal('${q.id}')" class="w-full sm:w-auto px-5 py-2.5 bg-black hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0">
                         Mulai Ujian
                     </button>
                 `;
@@ -1931,7 +1931,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isTokenRequired = config.token_required !== false;
 
             const card = document.createElement('div');
-            card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4";
+            card.className = "bg-white border-2 sm:border-[3px] border-black rounded-2xl p-4 sm:p-5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 sm:gap-4";
             card.innerHTML = `
                 <div>
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
@@ -3396,7 +3396,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 fileGrades.forEach(g => {
                     const card = document.createElement('div');
-                    card.className = "bg-slate-50 border-2 border-black rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3";
+                    card.className = "bg-slate-50 border-2 border-black rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3";
                     
                     const hasGrade = g.nilai !== null && g.nilai !== undefined;
                     const gradeBadge = hasGrade 
@@ -3418,7 +3418,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${g.catatan_guru ? `<div class="mt-2 text-xs bg-white p-2.5 rounded-xl border border-slate-300 font-medium text-slate-800"><strong>Catatan Guru:</strong> ${g.catatan_guru}</div>` : ''}
                             ${g.ai_feedback ? `<div class="mt-1.5 text-xs bg-purple-50 p-2.5 rounded-xl border border-purple-200 font-medium text-purple-900"><strong>Evaluasi AI:</strong> ${g.ai_feedback}</div>` : ''}
                         </div>
-                        <div class="flex items-center gap-2 self-end md:self-center shrink-0">
+                        <div class="flex items-center gap-2 self-start sm:self-center shrink-0">
                             ${gradeBadge}
                         </div>
                     `;
@@ -3435,7 +3435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 quizGrades.forEach(q => {
                     const card = document.createElement('div');
-                    card.className = "bg-amber-50 border-2 border-black rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3";
+                    card.className = "bg-amber-50 border-2 border-black rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3";
                     
                     card.innerHTML = `
                         <div class="flex-grow">
@@ -3454,7 +3454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                             ${q.catatan_guru ? `<div class="mt-2 text-xs bg-white p-2.5 rounded-xl border border-slate-300 font-medium text-slate-800"><strong>Catatan Guru:</strong> ${q.catatan_guru}</div>` : ''}
                         </div>
-                        <div class="text-right shrink-0">
+                        <div class="text-left sm:text-right shrink-0">
                             ${q.status_koreksi === 'belum_dikoreksi' ? `
                                 <span class="bg-amber-200 text-amber-900 font-black text-xs px-3 py-1.5 rounded-xl border-2 border-amber-500 inline-block">Menunggu Koreksi</span>
                             ` : `
