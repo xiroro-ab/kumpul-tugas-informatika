@@ -445,6 +445,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     const globalNameInput = document.getElementById('global-student-name');
     const globalKelasSelect = document.getElementById('global-student-kelas');
+    const getActiveStudentName = () => (globalNameInput?.value || '').trim() || localStorage.getItem('student_nama') || '';
+    const getActiveStudentKelas = () => (globalKelasSelect?.value || '').trim() || localStorage.getItem('student_kelas') || '';
     const btnSaveProfile = document.getElementById('btn-save-profile');
     const greetingEl = document.getElementById('student-greeting');
     const metaEl = document.getElementById('student-meta');
@@ -542,7 +544,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (viewName === 'materi') loadStudentMaterials();
         if (viewName === 'ujian') loadStudentQuizzes();
         if (viewName === 'nilai') {
-            const curName = globalNameInput.value.trim();
+            const curName = getActiveStudentName();
             if (curName) {
                 if (checkNameInput) checkNameInput.value = curName;
                 checkStudentGrades();
@@ -554,8 +556,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 3. Ringkasan Statistik Portal LMS
     // ==========================================
     async function updatePortalOverviewStats() {
-        const studentKelas = globalKelasSelect ? globalKelasSelect.value : (localStorage.getItem('student_kelas') || '');
-        const studentName = (globalNameInput ? globalNameInput.value.trim() : '') || localStorage.getItem('student_nama') || '';
+        const studentKelas = getActiveStudentKelas();
+        const studentName = getActiveStudentName();
 
         // Count assignments
         const relevantAssignments = allAssignments.filter(a => !studentKelas || isClassMatch(a.kelas, studentKelas));
@@ -610,7 +612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             allAssignments = assignments || [];
 
             // Fetch student uploads to check submission status
-            const studentName = globalNameInput.value.trim();
+            const studentName = getActiveStudentName();
             if (studentName) {
                 const { data: files } = await supabase
                     .from('files')
@@ -901,8 +903,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        subNamaInput.value = globalNameInput.value.trim();
-        subKelasSelect.value = globalKelasSelect.value || assignment.kelas || '';
+        subNamaInput.value = getActiveStudentName();
+        subKelasSelect.value = getActiveStudentKelas() || assignment.kelas || '';
         subMapelSelect.value = assignment.mapel || 'Informatika';
         subMateriInput.value = assignment.judul_tugas || '';
         subMateriInput.readOnly = true;
@@ -1048,8 +1050,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (legacySheet) legacySheet.classList.remove('hidden');
         if (modeSwitcher) modeSwitcher.classList.remove('hidden');
 
-        subNamaInput.value = globalNameInput.value.trim();
-        subKelasSelect.value = globalKelasSelect.value || '';
+        subNamaInput.value = getActiveStudentName();
+        subKelasSelect.value = getActiveStudentKelas() || '';
         subMateriInput.value = '';
         subMateriInput.readOnly = false;
 
@@ -1194,9 +1196,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Simpan ke localStorage siswa
         localStorage.setItem('student_nama', nama);
         localStorage.setItem('student_kelas', kelas);
-        globalNameInput.value = nama;
-        globalKelasSelect.value = kelas;
-        updateStudentProfileUI(nama, kelas);
+        if (globalNameInput) globalNameInput.value = nama;
+        if (globalKelasSelect) globalKelasSelect.value = kelas;
+        updateStudentProfileUI(kelas);
 
         // Database level check: Cegah siswa mengirimkan jawaban lebih dari 1 kali
         if (assignmentId) {
@@ -1619,7 +1621,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             allQuizzes = quizList;
 
             // Riwayat submit kuis siswa aktif (data aman, tanpa kunci jawaban)
-            const studentName = globalNameInput?.value?.trim();
+            const studentName = getActiveStudentName();
             if (studentName) {
                 let mySubs = [];
                 const { data: rpcSubs, error: subErr } = await supabase.rpc('get_student_exam_submissions', {
@@ -2792,7 +2794,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return `<option value="${escapeHtml(s.id)}" data-name="${escapeHtml(s.nama)}" data-nisn="${escapeHtml(s.nisn || '')}" data-kelas="${escapeHtml(s.kelas)}">${escapeHtml(s.nama)}${nisnText}</option>`;
             }).join('');
 
-        const savedName = (globalNameInput?.value || '').trim().toLowerCase();
+        const savedName = getActiveStudentName().toLowerCase();
         if (savedName) {
             const matched = filtered.find(s => s.nama.toLowerCase() === savedName);
             if (matched) {
