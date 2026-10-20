@@ -807,16 +807,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (_) {}
                 const qCount = formItems.length || 0;
                 detailCell = `
-                    <div class="flex flex-col gap-1 py-0.5 w-full pr-2">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="inline-flex items-center shrink-0 bg-emerald-100 text-emerald-900 text-[10px] font-black px-1.5 py-0.5 rounded border border-emerald-300 uppercase">
-                                FORM ONLINE (${qCount} SOAL)
-                            </span>
-                            <span class="font-bold text-xs text-slate-800 break-words">${escapeHtml(f.filename || 'Lembar Jawaban Form')}</span>
-                        </div>
-                        <button type="button" onclick="openGradeModal('${f.id}')" class="text-indigo-600 hover:text-indigo-900 font-bold text-xs underline text-left cursor-pointer">
-                            Periksa & Koreksi Lembar Jawaban Siswa ↗
-                        </button>
+                    <div class="inline-flex items-center gap-1.5 py-0.5">
+                        <span class="inline-flex items-center bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded border border-emerald-300 uppercase">
+                            FORM ONLINE
+                        </span>
+                        <span class="text-xs font-bold text-slate-700">${qCount} Soal</span>
                     </div>
                 `;
             } else if (isText) {
@@ -884,7 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             tr.innerHTML = `
                 <td class="px-3 py-3 whitespace-nowrap font-black text-black border-b-2 border-black border-r-2 text-xs">${f.kelas}</td>
-                <td class="px-3 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs">${f.materi}</td>
+                <td class="px-3 py-3 font-bold text-black border-b-2 border-black border-r-2 text-xs max-w-[220px] break-words line-clamp-2" title="${escapeHtml(f.materi)}">${escapeHtml(f.materi)}</td>
                 <td class="px-3 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs">${f.nama}</td>
                 <td class="px-3 py-3 font-medium text-black border-b-2 border-black border-r-2 min-w-[200px]">${detailCell}</td>
                 <td class="px-3 py-3 text-center border-b-2 border-black border-r-2">${gradeBadge}</td>
@@ -1168,6 +1163,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const { text: cleanPertanyaan, gambar_url: qImg } = splitQuestionImage(q.pertanyaan || '');
                     const imgUrl = q.gambar_url || qImg;
+                    const isObjectiveLocked = isPg || isPgk || isBs || isMatch || (isSingkat && isCorrect);
+
+                    let gradingControlHtml = '';
+                    if (isObjectiveLocked) {
+                        gradingControlHtml = `
+                            <input type="hidden" id="grade-item-score-${idx}" value="${initialScore}">
+                            <input type="hidden" id="grade-item-feedback-${idx}" value="${escapeHtml(initialFeedback)}">
+                            <div class="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2 font-bold text-slate-700">
+                                    <span class="text-[10px] font-black uppercase text-slate-400">Skor Butir:</span>
+                                    <span class="px-2.5 py-0.5 rounded-lg border font-black ${Number(initialScore) > 0 ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-red-100 text-red-900 border-red-300'}">
+                                        ${initialScore} / ${itemMaxScore} Poin (Terkunci Sesuai Kunci)
+                                    </span>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-400 italic">Otomatis Terkoreksi</span>
+                            </div>
+                        `;
+                    } else {
+                        gradingControlHtml = `
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2.5 items-center border-t border-slate-200 mt-2">
+                                <div class="sm:col-span-3">
+                                    <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Nilai Esai (0 - ${itemMaxScore})</label>
+                                    <input type="number" id="grade-item-score-${idx}" value="${initialScore !== '' ? initialScore : ''}" min="0" max="${itemMaxScore}" oninput="window.recalcGradeFormTotalScore()" placeholder="0" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white text-center">
+                                </div>
+                                <div class="sm:col-span-6">
+                                    <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Catatan / Evaluasi Guru</label>
+                                    <input type="text" id="grade-item-feedback-${idx}" value="${escapeHtml(initialFeedback)}" placeholder="Catatan evaluasi guru..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
+                                </div>
+                                <div class="sm:col-span-3 flex items-end">
+                                    <button type="button" onclick="window.runAiGradeSingleItem(${idx})" class="w-full h-9 bg-purple-100 hover:bg-purple-200 text-purple-900 border-2 border-purple-400 rounded-lg font-black text-[10px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                                        Koreksi AI Butir
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
 
                     return `
                         <div class="border-2 border-black rounded-2xl p-4 bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] space-y-2.5">
@@ -1195,21 +1226,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             ${answerComparisonHtml}
 
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2.5 items-center border-t border-slate-200 mt-2">
-                                <div class="sm:col-span-3">
-                                    <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Skor (0 - ${itemMaxScore})</label>
-                                    <input type="number" id="grade-item-score-${idx}" value="${initialScore !== '' ? initialScore : ''}" min="0" max="${itemMaxScore}" oninput="window.recalcGradeFormTotalScore()" placeholder="0" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white text-center">
-                                </div>
-                                <div class="sm:col-span-6">
-                                    <label class="block text-[10px] font-black uppercase text-slate-700 mb-0.5">Catatan Evaluasi Butir</label>
-                                    <input type="text" id="grade-item-feedback-${idx}" value="${escapeHtml(initialFeedback)}" placeholder="Catatan evaluasi butir..." class="w-full h-9 px-3 border-2 border-black rounded-lg font-bold text-xs bg-white">
-                                </div>
-                                <div class="sm:col-span-3 flex items-end">
-                                    <button type="button" onclick="window.runAiGradeSingleItem(${idx})" class="w-full h-9 bg-purple-100 hover:bg-purple-200 text-purple-900 border-2 border-purple-400 rounded-lg font-black text-[10px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
-                                        Koreksi AI Butir
-                                    </button>
-                                </div>
-                            </div>
+                            ${gradingControlHtml}
                         </div>
                     `;
                 }).join('');
@@ -2014,13 +2031,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (_) {}
                 const qCount = formItems.length || 0;
                 detailHtml = `
-                    <div class="space-y-1 py-1 max-w-xs md:max-w-sm">
-                        <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded border border-emerald-300 uppercase">
-                            Form Web (${qCount} Soal)
+                    <div class="inline-flex items-center gap-1.5 py-1">
+                        <span class="inline-flex items-center bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded border border-emerald-300 uppercase">
+                            Form Web
                         </span>
-                        <button type="button" onclick="openGradeModal('${f.id}')" class="text-indigo-600 hover:text-indigo-900 font-bold text-xs underline block truncate text-left cursor-pointer" title="Periksa lembar jawaban">
-                            ${escapeHtml(f.filename || 'Lembar Jawaban Form')} ↗
-                        </button>
+                        <span class="text-xs font-bold text-slate-700">${qCount} Soal Terjawab</span>
                     </div>
                 `;
             } else if (isText) {
