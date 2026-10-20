@@ -1060,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const { data: existingSub } = await supabase
                     .from('files')
-                    .select('id, created_at, nilai, catatan_guru')
+                    .select('id, created_at, nilai, catatan_guru, storage_path')
                     .eq('assignment_id', Number(curAssignId))
                     .ilike('nama', studentName.trim())
                     .maybeSingle();
@@ -1082,6 +1082,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p class="text-[11px] text-slate-700 font-bold mt-1">Siswa (${studentName}) tercatat sudah mengumpulkan tugas ini (${subDate}). Tanggapan dibatasi 1 kali.</p>
                         `;
                     }
+                    if (currentFormQuestions && currentFormQuestions.length > 0 && existingSub.storage_path && existingSub.storage_path.startsWith('FORM:')) {
+                        try {
+                            const parsed = JSON.parse(existingSub.storage_path.replace('FORM:', ''));
+                            const prevMap = {};
+                            if (Array.isArray(parsed)) parsed.forEach(ans => { prevMap[ans.nomor] = ans.jawaban_siswa; });
+                            renderStudentFormQuestions(currentFormQuestions, prevMap, true);
+                        } catch (_) {}
+                    }
                 } else {
                     if (subSubmitBtn) {
                         subSubmitBtn.disabled = false;
@@ -1090,6 +1098,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     if (statusEl) {
                         statusEl.classList.add('hidden');
+                    }
+                    if (currentFormQuestions && currentFormQuestions.length > 0) {
+                        renderStudentFormQuestions(currentFormQuestions, {}, false);
                     }
                 }
             } catch (_) {}
@@ -1267,7 +1278,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             subSubmitBtn.innerText = 'KIRIM JAWABAN TUGAS';
         }
 
-        const isLocked = false;
+        let mySubmission = null;
+        let isLocked = false;
 
         const formSheet = document.getElementById('task-google-form-sheet');
         const legacySheet = document.getElementById('task-legacy-text-sheet');
