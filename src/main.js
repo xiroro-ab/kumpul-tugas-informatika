@@ -1036,21 +1036,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const subSubmitBtn = document.getElementById('sub-btn-submit');
     const subStudentSelect = document.getElementById('sub-student-select');
     const subStudentIdInput = document.getElementById('sub-student-id');
-    const subToggleManualBtn = document.getElementById('sub-toggle-manual-btn');
-    let isSubManualName = false;
-
-    window.toggleSubNameMode = (forceManual) => {
-        isSubManualName = forceManual !== undefined ? forceManual : !isSubManualName;
-        if (isSubManualName) {
-            if (subNamaInput) subNamaInput.classList.remove('hidden');
-            if (subStudentSelect) subStudentSelect.classList.add('hidden');
-            if (subToggleManualBtn) subToggleManualBtn.textContent = 'Pilih dari daftar nama resmi';
-        } else {
-            if (subNamaInput) subNamaInput.classList.add('hidden');
-            if (subStudentSelect) subStudentSelect.classList.remove('hidden');
-            if (subToggleManualBtn) subToggleManualBtn.textContent = 'Ketik nama manual';
-        }
-    };
 
     window.onSubStudentSelectChange = (sel) => {
         if (!sel || !sel.value) {
@@ -1085,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (filtered.length === 0) {
             subStudentSelect.innerHTML = '<option value="">(Belum ada data roster di kelas ini)</option>';
-            window.toggleSubNameMode(true);
+            if (subNamaInput) subNamaInput.value = '';
             return;
         }
 
@@ -1095,8 +1080,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return `<option value="${escapeHtml(s.nama)}" data-name="${escapeHtml(s.nama)}" data-id="${escapeHtml(s.id || '')}">${escapeHtml(s.nama)}${nisnText}</option>`;
             }).join('');
 
-        window.toggleSubNameMode(false);
-
         const currentName = preselectedName || getActiveStudentName();
         if (currentName) {
             const match = filtered.find(s => s.nama.toLowerCase().trim() === currentName.toLowerCase().trim());
@@ -1105,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (subNamaInput) subNamaInput.value = match.nama;
                 if (subStudentIdInput) subStudentIdInput.value = match.id || '';
             } else {
-                if (subNamaInput) subNamaInput.value = currentName;
+                if (subNamaInput) subNamaInput.value = '';
             }
         }
     }
@@ -1150,11 +1133,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             rubrikEl.classList.add('hidden');
         }
 
-        const targetK = getActiveStudentKelas() || assignment.kelas || '';
-        if (subKelasSelect) subKelasSelect.value = targetK;
+        const targetK = assignment.kelas && assignment.kelas !== 'Semua' && assignment.kelas !== 'Semua Kelas'
+            ? assignment.kelas 
+            : (getActiveStudentKelas() || '');
+
+        if (subKelasSelect) {
+            subKelasSelect.value = targetK;
+            if (assignment.kelas && assignment.kelas !== 'Semua' && assignment.kelas !== 'Semua Kelas') {
+                subKelasSelect.disabled = true;
+                subKelasSelect.classList.add('cursor-not-allowed', 'bg-slate-100');
+            } else {
+                subKelasSelect.disabled = false;
+                subKelasSelect.classList.remove('cursor-not-allowed', 'bg-slate-100');
+            }
+        }
         populateSubStudentSelect(targetK, getActiveStudentName());
 
-        subMapelSelect.value = assignment.mapel || 'Informatika';
+        if (subMapelSelect) {
+            subMapelSelect.value = assignment.mapel || 'Informatika';
+            subMapelSelect.readOnly = true;
+        }
         subMateriInput.value = assignment.judul_tugas || '';
         subMateriInput.readOnly = true;
 
@@ -1300,8 +1298,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (modeSwitcher) modeSwitcher.classList.remove('hidden');
 
         const freeK = getActiveStudentKelas() || '';
-        subKelasSelect.value = freeK;
+        if (subKelasSelect) {
+            subKelasSelect.value = freeK;
+            subKelasSelect.disabled = false;
+            subKelasSelect.classList.remove('cursor-not-allowed', 'bg-slate-100');
+        }
         populateSubStudentSelect(freeK, getActiveStudentName());
+        if (subMapelSelect) {
+            subMapelSelect.value = 'Informatika';
+            subMapelSelect.readOnly = false;
+        }
         subMateriInput.value = '';
         subMateriInput.readOnly = false;
 
@@ -1432,14 +1438,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     subForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const nama = subNamaInput.value.trim();
+        const nama = (subNamaInput.value || subStudentSelect?.value || '').trim();
         const kelas = subKelasSelect.value;
         const mapel = subMapelSelect.value;
         const materi = subMateriInput.value.trim();
         const assignmentId = subAssignIdInput.value ? Number(subAssignIdInput.value) : null;
 
         if (!nama || !kelas || !materi) {
-            await showCustomModal('Lengkapi Nama Siswa, Kelas, dan Judul Tugas!', 'alert', 'Data Belum Lengkap', '');
+            await showCustomModal('Silakan pilih Kelas dan Nama Lengkap Anda dari daftar resmi peserta didik!', 'alert', 'Data Belum Lengkap', '');
             return;
         }
 
