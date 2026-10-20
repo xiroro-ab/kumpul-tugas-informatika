@@ -2166,17 +2166,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             room.style.display = 'none';
         }
 
-        document.querySelectorAll('.portal-view').forEach(v => {
-            if (v.id === 'view-ujian') {
-                v.classList.remove('hidden', '!hidden');
-                v.style.display = 'block';
-            } else {
-                v.classList.add('hidden');
-                v.classList.remove('!hidden');
-                v.style.display = 'none';
-            }
-        });
-
         try {
             sessionStorage.removeItem('cbt_active_exam_session');
         } catch (_) {}
@@ -2489,9 +2478,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.closeLockedExamAndReturn = () => {
         const lockedOverlay = document.getElementById('cheat-locked-overlay');
         if (lockedOverlay) lockedOverlay.classList.add('hidden');
-        exitExamMode();
         activeCbtExam = null;
-        switchStudentPortal('ujian');
+        exitExamMode();
+        switchStudentPortal('tugas');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     function saveCbtExamStateLocally() {
@@ -2940,15 +2930,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 sessionStorage.removeItem('cbt_active_exam_session');
             } catch (_) {}
 
-            const successMsg = hasSubjective
-                ? `Ujian berhasil dikumpulkan! Nilai instrumen otomatis: ${totalScore}/100. Butir soal uraian/lembar foto Anda akan diperiksa dan dinilai oleh guru.`
-                : `Ujian berhasil dikumpulkan! Nilai akhir Anda: ${totalScore}/100.`;
-            await showCustomModal(successMsg, 'alert', 'Ujian Selesai', '');
-
             activeCbtExam = null;
             exitExamMode();
-            switchStudentPortal('ujian');
-            await loadStudentQuizzes();
+            switchStudentPortal('tugas');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            const successMsg = hasSubjective
+                ? `Ujian berhasil dikumpulkan! Jawaban Anda telah direkam di sistem. Nilai instrumen otomatis: ${totalScore}/100. Butir soal uraian/lembar foto Anda akan diperiksa dan dinilai oleh guru.`
+                : `Ujian berhasil dikumpulkan! Jawaban Anda telah direkam di sistem. Nilai akhir Anda: ${totalScore}/100.`;
+            await showCustomModal(successMsg, 'alert', 'Ujian Selesai', '');
 
         } catch (e) {
             if (activeCbtExam) activeCbtExam.isSubmitting = false;
