@@ -1068,16 +1068,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (_) {}
         }
 
-        const filtered = (rosterStudents || [])
-            .filter(s => !kelas || String(s.kelas).trim().toLowerCase() === String(kelas).trim().toLowerCase())
-            .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
-
-        if (filtered.length === 0) {
-            subStudentSelect.innerHTML = '<option value="">(Belum ada data roster di kelas ini)</option>';
+        if (!kelas) {
+            subStudentSelect.disabled = true;
+            subStudentSelect.innerHTML = '<option value="">-- Pilih Kelas Terlebih Dahulu --</option>';
             if (subNamaInput) subNamaInput.value = '';
+            if (subStudentIdInput) subStudentIdInput.value = '';
             return;
         }
 
+        const filtered = (rosterStudents || [])
+            .filter(s => String(s.kelas).trim().toLowerCase() === String(kelas).trim().toLowerCase())
+            .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
+
+        if (filtered.length === 0) {
+            subStudentSelect.disabled = true;
+            subStudentSelect.innerHTML = '<option value="">(Belum ada data roster di kelas ini)</option>';
+            if (subNamaInput) subNamaInput.value = '';
+            if (subStudentIdInput) subStudentIdInput.value = '';
+            return;
+        }
+
+        subStudentSelect.disabled = false;
         subStudentSelect.innerHTML = '<option value="">-- Pilih Nama Siswa (Sesuai Roster Resmi) --</option>' + 
             filtered.map(s => {
                 const nisnText = s.nisn ? ` (NISN: ${s.nisn})` : '';
@@ -1093,6 +1104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (subStudentIdInput) subStudentIdInput.value = match.id || '';
             } else {
                 if (subNamaInput) subNamaInput.value = '';
+                if (subStudentIdInput) subStudentIdInput.value = '';
             }
         }
     }
@@ -1115,7 +1127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Buka Modal Terkait Tugas Tertentu
-    window.openAssignmentSubmissionModal = (assignment) => {
+    window.openAssignmentSubmissionModal = async (assignment) => {
         const parsed = parseAssignmentQuestions(assignment);
         currentFormQuestions = parsed.questions || [];
 
@@ -1138,21 +1150,62 @@ document.addEventListener('DOMContentLoaded', async () => {
             rubrikEl.classList.add('hidden');
         }
 
-        const targetK = assignment.kelas && assignment.kelas !== 'Semua' && assignment.kelas !== 'Semua Kelas'
-            ? assignment.kelas 
-            : (getActiveStudentKelas() || '');
+        if (!rosterStudents || rosterStudents.length === 0) {
+            try {
+                rosterStudents = await fetchStudentsFromDB();
+            } catch (_) {}
+        }
+
+        const allRosterClasses = [...new Set((rosterStudents || []).map(s => String(s.kelas).trim()))].filter(Boolean).sort();
+        const allClassesList = allRosterClasses.length > 0 ? allRosterClasses : availableClasses;
+
+        const rawK = String(assignment.kelas || '').trim();
+        let applicableClasses = allClassesList;
+        let isSingleExactClass = false;
+
+        const exactMatch = allClassesList.find(c => c.toLowerCase() === rawK.toLowerCase());
+        if (exactMatch) {
+            applicableClasses = [exactMatch];
+            isSingleExactClass = true;
+        } else if (rawK && rawK !== 'Semua' && rawK !== 'Semua Kelas') {
+            if (rawK.includes('9') || rawK.toUpperCase().includes('IX')) {
+                applicableClasses = allClassesList.filter(c => c.startsWith('9.') || c.startsWith('9') || c.toUpperCase().includes('IX'));
+            } else if (rawK.includes('8') || rawK.toUpperCase().includes('VIII')) {
+                applicableClasses = allClassesList.filter(c => c.startsWith('8.') || c.startsWith('8') || c.toUpperCase().includes('VIII'));
+            } else if (rawK.includes('7') || rawK.toUpperCase().includes('VII')) {
+                applicableClasses = allClassesList.filter(c => c.startsWith('7.') || c.startsWith('7') || c.toUpperCase().includes('VII'));
+            }
+        }
+
+        if (applicableClasses.length === 0) {
+            applicableClasses = allClassesList;
+        }
 
         if (subKelasSelect) {
-            subKelasSelect.value = targetK;
-            if (assignment.kelas && assignment.kelas !== 'Semua' && assignment.kelas !== 'Semua Kelas') {
+            subKelasSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+            subKelasSelect.innerHTML = '<option value="">-- Pilih Kelas Anda --</option>' +
+                applicableClasses.map(k => `<option value="${escapeHtml(k)}">Kelas ${escapeHtml(k)}</option>`).join('');
+
+            const savedK = getActiveStudentKelas();
+
+            if (isSingleExactClass) {
+                subKelasSelect.value = applicableClasses[0];
                 subKelasSelect.disabled = true;
                 subKelasSelect.classList.add('cursor-not-allowed', 'bg-slate-100');
             } else {
                 subKelasSelect.disabled = false;
                 subKelasSelect.classList.remove('cursor-not-allowed', 'bg-slate-100');
+                if (savedK && applicableClasses.includes(savedK)) {
+                    subKelasSelect.value = savedK;
+                } else if (applicableClasses.length === 1) {
+                    subKelasSelect.value = applicableClasses[0];
+                } else {
+                    subKelasSelect.value = '';
+                }
             }
+
+            populateSubStudentSelect(subKelasSelect.value, getActiveStudentName());
         }
-        populateSubStudentSelect(targetK, getActiveStudentName());
 
         if (subMapelSelect) {
             subMapelSelect.value = assignment.mapel || 'Informatika';
@@ -1286,7 +1339,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // Buka Modal Tugas Mandiri / Bebas
-    window.openFreeSubmissionModal = () => {
+    window.openFreeSubmissionModal = async () => {
         currentFormQuestions = [];
         subAssignIdInput.value = '';
         document.getElementById('modal-banner-mapel').textContent = 'Tugas Mandiri';
@@ -1302,13 +1355,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (legacySheet) legacySheet.classList.remove('hidden');
         if (modeSwitcher) modeSwitcher.classList.remove('hidden');
 
-        const freeK = getActiveStudentKelas() || '';
+        if (!rosterStudents || rosterStudents.length === 0) {
+            try {
+                rosterStudents = await fetchStudentsFromDB();
+            } catch (_) {}
+        }
+        const allRosterClasses = [...new Set((rosterStudents || []).map(s => String(s.kelas).trim()))].filter(Boolean).sort();
+        const allClassesList = allRosterClasses.length > 0 ? allRosterClasses : availableClasses;
+
         if (subKelasSelect) {
-            subKelasSelect.value = freeK;
+            subKelasSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
             subKelasSelect.disabled = false;
             subKelasSelect.classList.remove('cursor-not-allowed', 'bg-slate-100');
+            subKelasSelect.innerHTML = '<option value="">-- Pilih Kelas Anda --</option>' +
+                allClassesList.map(k => `<option value="${escapeHtml(k)}">Kelas ${escapeHtml(k)}</option>`).join('');
+
+            const savedK = getActiveStudentKelas();
+            if (savedK && allClassesList.includes(savedK)) {
+                subKelasSelect.value = savedK;
+            } else {
+                subKelasSelect.value = '';
+            }
+            populateSubStudentSelect(subKelasSelect.value, getActiveStudentName());
         }
-        populateSubStudentSelect(freeK, getActiveStudentName());
         if (subMapelSelect) {
             subMapelSelect.value = 'Informatika';
             subMapelSelect.readOnly = false;
