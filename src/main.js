@@ -1049,6 +1049,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (subNamaInput) subNamaInput.value = studentName;
         if (subStudentIdInput) subStudentIdInput.value = studentId;
 
+        if (subStudentSelect) {
+            subStudentSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+        }
+
         localStorage.setItem('student_nama', studentName);
         if (subKelasSelect && subKelasSelect.value) {
             localStorage.setItem('student_kelas', subKelasSelect.value);
@@ -1095,6 +1099,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (subKelasSelect) {
         subKelasSelect.addEventListener('change', () => {
+            subKelasSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
             populateSubStudentSelect(subKelasSelect.value);
         });
     }
@@ -1439,15 +1444,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
 
         const nama = (subNamaInput.value || subStudentSelect?.value || '').trim();
-        const kelas = subKelasSelect.value;
-        const mapel = subMapelSelect.value;
-        const materi = subMateriInput.value.trim();
+        const kelas = subKelasSelect?.value || '';
+        const mapel = subMapelSelect?.value || '';
+        const materi = subMateriInput?.value?.trim() || '';
         const assignmentId = subAssignIdInput.value ? Number(subAssignIdInput.value) : null;
 
-        if (!nama || !kelas || !materi) {
-            await showCustomModal('Silakan pilih Kelas dan Nama Lengkap Anda dari daftar resmi peserta didik!', 'alert', 'Data Belum Lengkap', '');
+        if (!kelas) {
+            if (subKelasSelect) {
+                subKelasSelect.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+                subKelasSelect.focus();
+            }
+            await showCustomModal('Peringatan: Kelas belum dipilih!\n\nSilakan pilih Kelas Anda terlebih dahulu pada formulir.', 'alert', 'Kelas Belum Dipilih', '');
             return;
         }
+
+        if (!nama) {
+            if (subStudentSelect) {
+                subStudentSelect.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+                subStudentSelect.focus();
+                subStudentSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            await showCustomModal('Peringatan: Nama Siswa Belum Dipilih!\n\nSilakan pilih nama Anda dari daftar peserta didik resmi di atas sebelum mengirim jawaban tugas.', 'alert', 'Nama Belum Dipilih', '');
+            return;
+        }
+
+        if (!materi) {
+            if (subMateriInput) subMateriInput.focus();
+            await showCustomModal('Judul atau topik tugas belum terisi.', 'alert', 'Data Belum Lengkap', '');
+            return;
+        }
+
+        // Konfirmasi identitas siswa sebelum submit agar tidak salah kirim atas nama siswa lain
+        const isConfirmed = await showCustomModal(
+            `Konfirmasi Pengiriman Tugas:\n\n👤 Nama Siswa: ${nama}\n🏫 Kelas: ${kelas}\n📚 Mapel: ${mapel}\n📝 Tugas: ${materi}\n\nPastikan identitas nama Anda sudah sesuai karena tanggapan tugas hanya dapat dikirim 1 kali. Lanjutkan pengiriman?`,
+            'confirm',
+            'Konfirmasi Pengiriman',
+            ''
+        );
+        if (!isConfirmed) return;
 
         // Simpan ke localStorage siswa
         localStorage.setItem('student_nama', nama);

@@ -464,34 +464,34 @@
                     <div id="modal-banner-status" class="hidden bg-emerald-100 border border-emerald-300 rounded-xl p-2 text-xs font-bold text-emerald-950 flex flex-col gap-0.5"></div>
                 </div>
 
-                <form id="submission-form" class="space-y-3">
+                <form id="submission-form" novalidate class="space-y-3">
                     <input type="hidden" id="sub-assignment-id" value="">
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <div class="space-y-1">
                             <label for="sub-kelas" class="text-xs font-black uppercase text-black ml-1">1. Pilih Kelas</label>
-                            <select id="sub-kelas" required class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none cursor-pointer">
+                            <select id="sub-kelas" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none cursor-pointer">
                                 <option value="" disabled selected>Pilih Kelas</option>
                             </select>
                         </div>
                         <div class="space-y-1">
                             <label for="sub-mapel" class="text-xs font-black uppercase text-black ml-1">Mata Pelajaran</label>
-                            <input type="text" id="sub-mapel" readonly required placeholder="Mata Pelajaran" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-100 font-black text-xs text-slate-800 outline-none cursor-not-allowed">
+                            <input type="text" id="sub-mapel" readonly placeholder="Mata Pelajaran" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-100 font-black text-xs text-slate-800 outline-none cursor-not-allowed">
                         </div>
                     </div>
 
                     <div class="space-y-1">
                         <label for="sub-student-select" class="text-xs font-black uppercase text-black ml-1">2. Nama Lengkap Siswa (Sesuai Roster Resmi)</label>
-                        <select id="sub-student-select" required onchange="window.onSubStudentSelectChange(this)" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none cursor-pointer">
+                        <select id="sub-student-select" onchange="window.onSubStudentSelectChange(this)" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none cursor-pointer transition-all">
                             <option value="">Pilih nama siswa dari daftar resmi...</option>
                         </select>
-                        <input type="hidden" id="sub-nama" required value="">
+                        <input type="hidden" id="sub-nama" value="">
                         <input type="hidden" id="sub-student-id" value="">
                     </div>
 
                     <div class="space-y-1">
                         <label for="sub-materi" class="text-xs font-black uppercase text-black ml-1">Judul / Topik Tugas</label>
-                        <input type="text" id="sub-materi" required placeholder="Misal: Laporan Praktikum Jaringan Komputer" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none focus:bg-white">
+                        <input type="text" id="sub-materi" placeholder="Misal: Laporan Praktikum Jaringan Komputer" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none focus:bg-white">
                     </div>
 
                     <!-- Mode Switcher: Form Web vs Berkas vs Tautan -->
