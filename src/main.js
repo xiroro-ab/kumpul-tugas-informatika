@@ -721,6 +721,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (viewName === 'materi') loadStudentMaterials();
         if (viewName === 'ujian') loadStudentQuizzes();
         if (viewName === 'nilai') {
+            if (typeof window.populateRaporKelasSelect === 'function') {
+                window.populateRaporKelasSelect();
+            }
             const curName = getActiveStudentName();
             if (curName) {
                 if (checkNameInput) checkNameInput.value = curName;
@@ -3641,20 +3644,191 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     // 8. TAB 4: CEK RAPOR & BUKU NILAI SISWA
     // ==========================================
-    window.checkStudentGrades = async () => {
-        const nameVal = document.getElementById('check-name-input').value.trim();
-        const resultContainer = document.getElementById('student-grades-result');
-        const summaryBox = document.getElementById('grade-summary-cards');
+    window.populateRaporKelasSelect = () => {
+        const kelasSelect = document.getElementById('rapor-kelas-select');
+        if (!kelasSelect) return;
+        const currentVal = kelasSelect.value;
+        const activeKelas = getActiveStudentKelas();
 
-        if (!nameVal) {
-            await showCustomModal("Silakan masukkan nama lengkap siswa untuk mencari nilai!", 'alert', 'Pemberitahuan', '');
+        const classes = (availableClasses && availableClasses.length > 0)
+            ? availableClasses
+            : ['VII.1', 'VII.2', 'VII.3', 'VII.4', 'VII.5', 'VII.6', 'VIII.1', 'VIII.2', 'VIII.3', 'VIII.4', 'VIII.5', 'VIII.6', 'IX.1', 'IX.2', 'IX.3', 'IX.4', 'IX.5', 'IX.6'];
+
+        kelasSelect.innerHTML = '<option value="">-- Pilih Kelas --</option>' +
+            classes.map(c => `<option value="${escapeHtml(c)}">Kelas ${escapeHtml(c)}</option>`).join('');
+
+        if (currentVal && classes.includes(currentVal)) {
+            kelasSelect.value = currentVal;
+        } else if (activeKelas && classes.includes(activeKelas)) {
+            kelasSelect.value = activeKelas;
+        }
+
+        if (kelasSelect.value) {
+            window.onRaporKelasChange();
+        }
+    };
+
+    window.onRaporKelasChange = async () => {
+        const kelasSelect = document.getElementById('rapor-kelas-select');
+        const studentSelect = document.getElementById('rapor-student-select');
+        if (!kelasSelect || !studentSelect) return;
+
+        const kelas = kelasSelect.value.trim();
+        if (!kelas) {
+            studentSelect.disabled = true;
+            studentSelect.classList.add('bg-slate-100');
+            studentSelect.classList.remove('bg-white');
+            studentSelect.innerHTML = '<option value="">-- Pilih Kelas Terlebih Dahulu --</option>';
             return;
         }
 
-        resultContainer.innerHTML = '<div class="text-center py-8 text-slate-500 font-bold text-xs uppercase animate-pulse">Mencari riwayat nilai di database...</div>';
+        if (!rosterStudents || rosterStudents.length === 0) {
+            try {
+                rosterStudents = await fetchStudentsFromDB();
+            } catch (_) {}
+        }
+
+        const filtered = (rosterStudents || [])
+            .filter(s => String(s.kelas).trim().toLowerCase() === kelas.toLowerCase())
+            .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
+
+        if (filtered.length === 0) {
+            studentSelect.disabled = true;
+            studentSelect.classList.add('bg-slate-100');
+            studentSelect.classList.remove('bg-white');
+            studentSelect.innerHTML = '<option value="">(Belum ada data roster di kelas ini)</option>';
+            return;
+        }
+
+        studentSelect.disabled = false;
+        studentSelect.classList.remove('bg-slate-100');
+        studentSelect.classList.add('bg-white');
+        studentSelect.innerHTML = '<option value="">-- Pilih Nama Siswa (' + filtered.length + ' Siswa) --</option>' +
+            filtered.map(s => {
+                const nisnText = s.nisn ? ` (NISN: ${s.nisn})` : '';
+                return `<option value="${escapeHtml(s.nama)}" data-nisn="${escapeHtml(s.nisn || '')}" data-id="${escapeHtml(s.id || '')}">${escapeHtml(s.nama)}${nisnText}</option>`;
+            }).join('');
+
+        const activeName = getActiveStudentName();
+        if (activeName) {
+            const found = filtered.find(s => s.nama.toLowerCase().trim() === activeName.toLowerCase().trim());
+            if (found) {
+                studentSelect.value = found.nama;
+                window.checkStudentGrades();
+            }
+        }
+    };
+
+    window.onRaporStudentSelectChange = () => {
+        const studentSelect = document.getElementById('rapor-student-select');
+        const nameInput = document.getElementById('check-name-input');
+        if (studentSelect && studentSelect.value) {
+            if (nameInput) nameInput.value = studentSelect.value;
+            window.checkStudentGrades();
+        }
+    };
+
+    window.printStudentReportCard = (nama) => {
+        const reportContainer = document.getElementById('student-grades-result');
+        if (!reportContainer) {
+            window.print();
+            return;
+        }
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        if (!printWindow) {
+            window.print();
+            return;
+        }
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="id">
+            <head>
+                <meta charset="UTF-8">
+                <title>Rapor Portofolio Nilai Siswa - ${escapeHtml(nama)}</title>
+                <script src="https://cdn.tailwindcss.com"></script>
+                <style>
+                    body { font-family: sans-serif; padding: 24px; color: black; }
+                    @media print {
+                        button { display: none !important; }
+                    }
+                </style>
+            </head>
+            <body class="bg-white">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <div class="border-b-4 border-double border-black pb-4 text-center">
+                        <h2 class="text-xs font-black uppercase tracking-widest text-slate-700">Pemerintah Kota Palembang &bull; Dinas Pendidikan</h2>
+                        <h1 class="text-xl sm:text-2xl font-black uppercase text-black tracking-tight mt-0.5">SMP NEGERI 58 PALEMBANG</h1>
+                        <p class="text-xs text-slate-600 font-bold mt-1">Laporan Portofolio Belajar & Buku Nilai Digital Siswa Terpadu</p>
+                    </div>
+                    ${reportContainer.innerHTML}
+                    <div class="pt-8 border-t-2 border-black flex justify-between text-xs font-bold text-center">
+                        <div>
+                            <p class="mb-14">Mengetahui,<br>Orang Tua / Wali Siswa</p>
+                            <p class="border-b border-black w-40 inline-block"></p>
+                        </div>
+                        <div>
+                            <p class="mb-14">Palembang, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br>Guru Mata Pelajaran</p>
+                            <p class="border-b border-black w-40 inline-block font-black">Guru Pengampu LMS</p>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    window.onload = function() {
+                        setTimeout(() => window.print(), 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
+    window.checkStudentGrades = async () => {
+        const studentSelect = document.getElementById('rapor-student-select');
+        const kelasSelect = document.getElementById('rapor-kelas-select');
+        const nameInput = document.getElementById('check-name-input');
+        const resultContainer = document.getElementById('student-grades-result');
+        const summaryBox = document.getElementById('grade-summary-cards');
+
+        let nameVal = (studentSelect?.value || '').trim();
+        if (!nameVal && nameInput) {
+            nameVal = nameInput.value.trim();
+        }
+
+        if (!nameVal) {
+            await showCustomModal("Silakan pilih atau masukkan nama siswa untuk melihat rapor dan buku nilai!", 'alert', 'Nama Belum Dipilih', '');
+            return;
+        }
+
+        // Pastikan roster, assignments, quizzes sudah terload
+        if (!rosterStudents || rosterStudents.length === 0) {
+            try { rosterStudents = await fetchStudentsFromDB(); } catch (_) {}
+        }
+        if (!allAssignments || allAssignments.length === 0) {
+            try {
+                const { data } = await supabase.from('assignments').select('*').order('created_at', { ascending: false });
+                allAssignments = data || [];
+            } catch (_) {}
+        }
+        if (!allQuizzes || allQuizzes.length === 0) {
+            try {
+                const { data } = await supabase.from('quizzes').select('*').order('created_at', { ascending: false });
+                allQuizzes = data || [];
+            } catch (_) {}
+        }
+
+        // Cari info siswa di roster
+        const studentInfo = (rosterStudents || []).find(s => s.nama.toLowerCase().trim() === nameVal.toLowerCase().trim()) || {
+            nama: nameVal,
+            kelas: kelasSelect?.value || getActiveStudentKelas() || '-',
+            nisn: '-'
+        };
+        const studentKelas = (studentInfo.kelas && studentInfo.kelas !== '-') ? studentInfo.kelas : (kelasSelect?.value || getActiveStudentKelas() || '');
+
+        resultContainer.innerHTML = '<div class="text-center py-10 text-slate-500 font-bold text-xs uppercase animate-pulse">Memuat portofolio nilai, tugas, dan ujian siswa dari database...</div>';
 
         try {
-            // 1. Ambil nilai tugas (files)
+            // 1. Ambil nilai tugas siswa ini
             const { data: fileGrades, error: fErr } = await supabase
                 .from('files')
                 .select('*')
@@ -3663,131 +3837,241 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (fErr) throw fErr;
 
-            // 2. Ambil nilai ujian lewat RPC aman (tanpa kunci jawaban / jawaban mentah)
+            // 2. Ambil nilai ujian online lewat RPC
             const { data: quizGradeRows, error: qErr } = await supabase
                 .rpc('get_student_exam_grades', { p_name: nameVal });
 
             if (qErr) throw qErr;
-            // Sesi berjalan/terkunci bukan nilai akhir, jangan tampil sebagai skor.
+
             const quizGrades = (quizGradeRows || []).filter(q =>
                 ['selesai', 'belum_dikoreksi', 'perlu_dinilai'].includes(q.status_koreksi)
             );
 
-            resultContainer.innerHTML = '';
+            // 3. Tentukan Tugas yang ditujukan untuk kelas siswa ini
+            const classAssignments = allAssignments.filter(a => isClassMatch(a.kelas, studentKelas));
+            
+            const submittedAssignIds = new Set((fileGrades || []).map(f => String(f.assignment_id || '')));
+            const submittedAssignTitles = new Set((fileGrades || []).map(f => (f.materi || '').toLowerCase().trim()));
 
-            const hasFiles = fileGrades && fileGrades.length > 0;
-            const hasQuizzes = quizGrades && quizGrades.length > 0;
+            const completedTasks = fileGrades || [];
+            const pendingTasks = classAssignments.filter(a => 
+                !submittedAssignIds.has(String(a.id)) && 
+                !submittedAssignTitles.has((a.judul_tugas || '').toLowerCase().trim())
+            );
 
-            if (!hasFiles && !hasQuizzes) {
-                summaryBox.classList.add('hidden');
-                resultContainer.innerHTML = `
-                    <div class="bg-slate-50 border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase text-xs">
-                        Tidak ditemukan riwayat tugas maupun ujian atas nama "${nameVal}".
-                    </div>
-                `;
-                return;
-            }
+            // 4. Tentukan Ujian yang ditujukan untuk kelas siswa ini
+            const classQuizzes = allQuizzes.filter(q => isClassMatch(q.kelas, studentKelas));
+            const submittedQuizIds = new Set((quizGrades || []).map(q => String(q.quiz_id || q.quizzes?.id || '')));
+            const submittedQuizTitles = new Set((quizGrades || []).map(q => (q.judul_kuis || q.quizzes?.judul_kuis || '').toLowerCase().trim()));
 
-            // Hitung ringkasan rata-rata
-            const gradedFiles = (fileGrades || []).filter(f => f.nilai !== null && f.nilai !== undefined);
+            const completedExams = quizGrades || [];
+            const pendingExams = classQuizzes.filter(q =>
+                !submittedQuizIds.has(String(q.id)) &&
+                !submittedQuizTitles.has((q.judul_kuis || '').toLowerCase().trim())
+            );
+
+            // 5. Hitung rata-rata
+            const gradedFiles = completedTasks.filter(f => f.nilai !== null && f.nilai !== undefined && f.nilai !== '');
             const avgTugas = gradedFiles.length > 0 
                 ? Math.round(gradedFiles.reduce((acc, f) => acc + Number(f.nilai), 0) / gradedFiles.length)
                 : 0;
 
-            const finalQuizGrades = quizGrades.filter(q => q.status_koreksi === 'selesai');
-            const avgUjian = finalQuizGrades.length > 0
-                ? Math.round(finalQuizGrades.reduce((acc, q) => acc + Number(q.total_nilai || 0), 0) / finalQuizGrades.length)
+            const gradedQuizzes = completedExams.filter(q => q.status_koreksi === 'selesai' && q.total_nilai !== null && q.total_nilai !== undefined);
+            const avgUjian = gradedQuizzes.length > 0
+                ? Math.round(gradedQuizzes.reduce((acc, q) => acc + Number(q.total_nilai || 0), 0) / gradedQuizzes.length)
                 : 0;
 
+            // Update Bento summary cards
             document.getElementById('summary-avg-tugas').textContent = gradedFiles.length > 0 ? avgTugas : '-';
-            document.getElementById('summary-avg-ujian').textContent = finalQuizGrades.length > 0 ? avgUjian : '-';
-            document.getElementById('summary-total-items').textContent = `${gradedFiles.length + finalQuizGrades.length} Selesai`;
+            document.getElementById('summary-avg-ujian').textContent = gradedQuizzes.length > 0 ? avgUjian : '-';
+            document.getElementById('summary-tugas-progress').textContent = `${completedTasks.length} / ${classAssignments.length || completedTasks.length} Selesai`;
+            document.getElementById('summary-ujian-progress').textContent = `${completedExams.length} / ${classQuizzes.length || completedExams.length} Selesai`;
             summaryBox.classList.remove('hidden');
 
-            // Render Nilai Tugas
-            if (hasFiles) {
-                const tugasHeader = document.createElement('h4');
-                tugasHeader.className = "font-black text-sm uppercase tracking-wider text-black mt-4 mb-2 flex items-center gap-1.5";
-                tugasHeader.innerHTML = "<span></span> Riwayat Pengumpulan Tugas";
-                resultContainer.appendChild(tugasHeader);
-
-                fileGrades.forEach(g => {
-                    const card = document.createElement('div');
-                    card.className = "bg-slate-50 border-2 border-black rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3";
-                    
-                    const hasGrade = g.nilai !== null && g.nilai !== undefined;
-                    const gradeBadge = hasGrade 
-                        ? `<div class="text-right"><span class="bg-emerald-400 text-black font-black text-xl px-3 py-1.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] inline-block">${g.nilai}</span><span class="block text-[10px] font-bold text-slate-500 uppercase mt-1">Skor Tugas</span></div>`
-                        : `<span class="bg-amber-200 text-amber-900 font-bold text-xs px-2.5 py-1 rounded-lg border border-amber-400">Menunggu Koreksi Guru</span>`;
-
-                    card.innerHTML = `
-                        <div class="flex-grow">
-                            <div class="flex items-center gap-2 mb-1 flex-wrap">
-                                <span class="text-[10px] bg-indigo-100 text-indigo-900 font-black px-2 py-0.5 rounded border border-indigo-300 uppercase">
-                                    ${g.mapel || 'Informatika'} &bull; Kelas ${g.kelas}
-                                </span>
-                                <span class="text-[10px] font-bold text-slate-500">
-                                    ${new Date(g.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            // Render Rapor Lengkap
+            resultContainer.innerHTML = `
+                <!-- Kartu Profil Siswa -->
+                <div class="bg-indigo-600 text-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-yellow-300 text-black border-2 border-black rounded-2xl flex items-center justify-center font-black text-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0">
+                            ${escapeHtml((studentInfo.nama || 'S').charAt(0))}
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="font-black text-lg sm:text-xl uppercase tracking-tight text-white">${escapeHtml(studentInfo.nama)}</h4>
+                                <span class="bg-yellow-300 text-black text-[10px] font-black px-2 py-0.5 rounded border border-black uppercase">
+                                    Kelas ${escapeHtml(studentKelas)}
                                 </span>
                             </div>
-                            <h4 class="font-black text-base text-black">${g.materi}</h4>
-                            <p class="text-xs text-slate-600 font-bold mt-0.5">${g.filename || 'Tautan Tugas'}</p>
-                            ${g.catatan_guru ? `<div class="mt-2 text-xs bg-white p-2.5 rounded-xl border border-slate-300 font-medium text-slate-800"><strong>Catatan Guru:</strong> ${g.catatan_guru}</div>` : ''}
-                            ${g.ai_feedback ? `<div class="mt-1.5 text-xs bg-purple-50 p-2.5 rounded-xl border border-purple-200 font-medium text-purple-900"><strong>Evaluasi AI:</strong> ${g.ai_feedback}</div>` : ''}
+                            <p class="text-xs text-indigo-100 font-bold mt-0.5">NISN: ${escapeHtml(studentInfo.nisn || '-')} &bull; SMP Negeri 58 Palembang</p>
                         </div>
-                        <div class="flex items-center gap-2 self-start sm:self-center shrink-0">
-                            ${gradeBadge}
+                    </div>
+                    <button type="button" onclick="window.printStudentReportCard('${escapeHtml(studentInfo.nama)}')" class="px-4 py-2 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5 shrink-0 cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24-1.077-.42-2.2-.42-3.329 0-4.418 3.582-8 8-8s8 3.582 8 8c0 1.129-.18 2.252-.42 3.329M9 17.25h6m-6 3h6m-9-6.75h12a2.25 2.25 0 012.25 2.25v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25v-2.25A2.25 2.25 0 018.25 10.5z"></path></svg>
+                        <span>Cetak Rapor Siswa</span>
+                    </button>
+                </div>
+
+                <!-- BAGIAN 1: STATUS PENUGASAN (TUGAS & PR) -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center border-b-2 border-black pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500 border border-black"></span>
+                            <h4 class="font-black text-sm uppercase tracking-wider text-black">1. Rekap Pengerjaan Tugas & PR</h4>
                         </div>
-                    `;
-                    resultContainer.appendChild(card);
-                });
-            }
+                        <span class="text-xs font-black px-2.5 py-0.5 bg-slate-100 border border-black rounded-lg text-slate-800">
+                            ${completedTasks.length} dari ${classAssignments.length || completedTasks.length} Tugas Selesai
+                        </span>
+                    </div>
 
-            // Render Nilai Ujian
-            if (hasQuizzes) {
-                const ujianHeader = document.createElement('h4');
-                ujianHeader.className = "font-black text-sm uppercase tracking-wider text-black mt-6 mb-2 flex items-center gap-1.5";
-                ujianHeader.innerHTML = "<span></span> Riwayat Ujian Online";
-                resultContainer.appendChild(ujianHeader);
-
-                quizGrades.forEach(q => {
-                    const card = document.createElement('div');
-                    card.className = "bg-amber-50 border-2 border-black rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3";
-                    
-                    card.innerHTML = `
-                        <div class="flex-grow">
-                            <div class="flex items-center gap-2 mb-1 flex-wrap">
-                                <span class="text-[10px] bg-amber-200 text-amber-900 font-black px-2 py-0.5 rounded border border-amber-400 uppercase">
-                                    ${q.mapel || q.quizzes?.mapel || 'Ujian'} &bull; Kelas ${q.kelas}
-                                </span>
-                                <span class="text-[10px] font-bold text-slate-500">
-                                    ${new Date(q.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </span>
+                    <!-- Tugas Selesai -->
+                    <div class="space-y-2.5">
+                        ${completedTasks.length === 0 ? `
+                            <div class="p-4 bg-slate-50 border-2 border-black rounded-2xl text-center text-xs font-bold text-slate-500 uppercase">
+                                Belum ada tugas yang dikumpulkan oleh siswa ini.
                             </div>
-                            <h4 class="font-black text-base text-black">${q.judul_kuis || q.quizzes?.judul_kuis || 'Ujian Online'}</h4>
-                            <div class="flex items-center gap-3 mt-1 text-xs font-bold text-slate-700">
-                                <span>Skor Objektif: <strong>${q.skor_pg}</strong></span>
-                                <span>Skor Subjektif: <strong>${q.skor_esai}</strong></span>
-                            </div>
-                            ${q.catatan_guru ? `<div class="mt-2 text-xs bg-white p-2.5 rounded-xl border border-slate-300 font-medium text-slate-800"><strong>Catatan Guru:</strong> ${q.catatan_guru}</div>` : ''}
-                        </div>
-                        <div class="text-left sm:text-right shrink-0">
-                            ${q.status_koreksi === 'belum_dikoreksi' ? `
-                                <span class="bg-amber-200 text-amber-900 font-black text-xs px-3 py-1.5 rounded-xl border-2 border-amber-500 inline-block">Menunggu Koreksi</span>
-                            ` : `
-                                <span class="bg-yellow-300 text-black font-black text-xl px-3 py-1.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] inline-block">
-                                    ${q.total_nilai}
-                                </span>
-                                <span class="block text-[10px] font-bold text-slate-500 uppercase mt-1">Total Nilai</span>
-                            `}
-                        </div>
-                    `;
-                    resultContainer.appendChild(card);
-                });
-            }
+                        ` : completedTasks.map(g => {
+                            const hasGrade = g.nilai !== null && g.nilai !== undefined && g.nilai !== '';
+                            const gradeBadge = hasGrade
+                                ? `<div class="text-right"><span class="bg-emerald-400 text-black font-black text-xl px-3 py-1.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] inline-block">${g.nilai}</span><span class="block text-[10px] font-bold text-slate-500 uppercase mt-1">Nilai Tugas</span></div>`
+                                : `<span class="bg-amber-200 text-amber-900 font-black text-xs px-2.5 py-1 rounded-lg border border-amber-400">Menunggu Koreksi</span>`;
 
+                            return `
+                                <div class="bg-white border-2 border-black rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                    <div class="flex-grow">
+                                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                            <span class="text-[10px] bg-emerald-100 text-emerald-900 font-black px-2 py-0.5 rounded border border-emerald-300 uppercase">
+                                                SUDAH DIKUMPULKAN &bull; ${escapeHtml(g.mapel || 'Informatika')}
+                                            </span>
+                                            <span class="text-[10px] font-bold text-slate-500">
+                                                Dikirim: ${new Date(g.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </span>
+                                        </div>
+                                        <h5 class="font-black text-base text-black">${escapeHtml(g.materi)}</h5>
+                                        <p class="text-xs text-slate-600 font-bold mt-0.5">${escapeHtml(g.filename || 'Formulir Jawaban')}</p>
+                                        ${g.catatan_guru ? `<div class="mt-2 text-xs bg-amber-50 p-2.5 rounded-xl border border-amber-300 font-medium text-slate-800"><strong>Catatan Guru:</strong> ${escapeHtml(g.catatan_guru)}</div>` : ''}
+                                        ${g.ai_feedback ? `<div class="mt-1.5 text-xs bg-purple-50 p-2.5 rounded-xl border border-purple-200 font-medium text-purple-900"><strong>Evaluasi AI:</strong> ${escapeHtml(g.ai_feedback)}</div>` : ''}
+                                    </div>
+                                    <div class="shrink-0 self-start sm:self-center">
+                                        ${gradeBadge}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    <!-- Tugas Belum Dikerjakan (Jika Ada) -->
+                    ${pendingTasks.length > 0 ? `
+                        <div class="mt-3 pt-3 border-t border-dashed border-red-300">
+                            <span class="text-[11px] font-black uppercase text-red-700 tracking-wider flex items-center gap-1.5 mb-2">
+                                <span class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+                                Tugas Belum Dikerjakan (${pendingTasks.length} Tugas):
+                            </span>
+                            <div class="space-y-2">
+                                ${pendingTasks.map(t => `
+                                    <div class="bg-red-50 border-2 border-red-300 rounded-2xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="bg-red-200 text-red-900 text-[10px] font-black px-2 py-0.5 rounded border border-red-400 uppercase">
+                                                    BELUM DIKUMPULKAN
+                                                </span>
+                                                <span class="text-[10px] font-bold text-red-700 uppercase">${escapeHtml(t.mapel)}</span>
+                                            </div>
+                                            <h5 class="font-black text-sm text-red-950 mt-1">${escapeHtml(t.judul_tugas)}</h5>
+                                            ${t.deadline ? `<span class="text-[10px] font-bold text-red-600 block mt-0.5">Batas Pengumpulan: ${escapeHtml(t.deadline)}</span>` : ''}
+                                        </div>
+                                        <span class="text-[11px] font-black px-3 py-1 bg-red-600 text-white rounded-xl shadow-sm uppercase shrink-0">
+                                            Tertunda
+                                        </span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- BAGIAN 2: STATUS UJIAN ONLINE (CBT) -->
+                <div class="space-y-3 pt-4">
+                    <div class="flex justify-between items-center border-b-2 border-black pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-purple-500 border border-black"></span>
+                            <h4 class="font-black text-sm uppercase tracking-wider text-black">2. Rekap Ujian Online (CBT)</h4>
+                        </div>
+                        <span class="text-xs font-black px-2.5 py-0.5 bg-slate-100 border border-black rounded-lg text-slate-800">
+                            ${completedExams.length} dari ${classQuizzes.length || completedExams.length} Ujian Diikuti
+                        </span>
+                    </div>
+
+                    <!-- Ujian Selesai -->
+                    <div class="space-y-2.5">
+                        ${completedExams.length === 0 ? `
+                            <div class="p-4 bg-slate-50 border-2 border-black rounded-2xl text-center text-xs font-bold text-slate-500 uppercase">
+                                Belum ada riwayat ujian CBT yang diselesaikan oleh siswa ini.
+                            </div>
+                        ` : completedExams.map(q => {
+                            const isGraded = q.status_koreksi === 'selesai';
+                            const scoreBadge = isGraded
+                                ? `<div class="text-right"><span class="bg-yellow-300 text-black font-black text-xl px-3 py-1.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] inline-block">${q.total_nilai}</span><span class="block text-[10px] font-bold text-slate-500 uppercase mt-1">Nilai Akhir</span></div>`
+                                : `<span class="bg-amber-200 text-amber-900 font-black text-xs px-3 py-1.5 rounded-xl border-2 border-amber-500 inline-block">Menunggu Koreksi Esai</span>`;
+
+                            return `
+                                <div class="bg-white border-2 border-black rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                    <div class="flex-grow">
+                                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                            <span class="text-[10px] bg-purple-100 text-purple-900 font-black px-2 py-0.5 rounded border border-purple-300 uppercase">
+                                                UJIAN SELESAI &bull; ${escapeHtml(q.mapel || q.quizzes?.mapel || 'Ujian')}
+                                            </span>
+                                            <span class="text-[10px] font-bold text-slate-500">
+                                                Waktu: ${new Date(q.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </span>
+                                        </div>
+                                        <h5 class="font-black text-base text-black">${escapeHtml(q.judul_kuis || q.quizzes?.judul_kuis || 'Ujian Online')}</h5>
+                                        <div class="flex items-center gap-3 mt-1.5 text-xs font-bold text-slate-700">
+                                            <span>Skor PG: <strong>${q.skor_pg || 0}</strong></span>
+                                            <span>Skor Esai: <strong>${q.skor_esai || 0}</strong></span>
+                                        </div>
+                                        ${q.catatan_guru ? `<div class="mt-2 text-xs bg-amber-50 p-2.5 rounded-xl border border-amber-300 font-medium text-slate-800"><strong>Catatan Guru:</strong> ${escapeHtml(q.catatan_guru)}</div>` : ''}
+                                    </div>
+                                    <div class="shrink-0 self-start sm:self-center">
+                                        ${scoreBadge}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    <!-- Ujian Belum Diikuti (Jika Ada) -->
+                    ${pendingExams.length > 0 ? `
+                        <div class="mt-3 pt-3 border-t border-dashed border-red-300">
+                            <span class="text-[11px] font-black uppercase text-red-700 tracking-wider flex items-center gap-1.5 mb-2">
+                                <span class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+                                Ujian Belum Diikuti (${pendingExams.length} Ujian):
+                            </span>
+                            <div class="space-y-2">
+                                ${pendingExams.map(u => `
+                                    <div class="bg-red-50 border-2 border-red-300 rounded-2xl p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="bg-red-200 text-red-900 text-[10px] font-black px-2 py-0.5 rounded border border-red-400 uppercase">
+                                                    BELUM MENGIKUTI
+                                                </span>
+                                                <span class="text-[10px] font-bold text-red-700 uppercase">${escapeHtml(u.mapel)}</span>
+                                            </div>
+                                            <h5 class="font-black text-sm text-red-950 mt-1">${escapeHtml(u.judul_kuis)}</h5>
+                                            <span class="text-[10px] font-bold text-red-600 block mt-0.5">Durasi: ${escapeHtml(String(u.durasi_menit || 60))} Menit</span>
+                                        </div>
+                                        <span class="text-[11px] font-black px-3 py-1 bg-red-600 text-white rounded-xl shadow-sm uppercase shrink-0">
+                                            Belum Ujian
+                                        </span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
         } catch (e) {
-            resultContainer.innerHTML = `<div class="text-center text-red-600 font-bold text-xs">Gagal mencari nilai: ${e.message}</div>`;
+            resultContainer.innerHTML = `<div class="bg-red-50 border-2 border-red-400 rounded-2xl p-4 text-center text-xs font-bold text-red-800">Gagal memuat buku nilai: ${escapeHtml(e.message)}</div>`;
         }
     };
 

@@ -5985,6 +5985,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-3 py-3 text-center border-r-2 border-black font-black text-xs text-purple-900 bg-purple-50/50">${escapeHtml(s.kelas)}</td>
                     <td class="px-3 py-3 text-center">
                         <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="openStudentReportModal('${escapeHtml(s.nama)}', '${escapeHtml(s.kelas)}', '${escapeHtml(s.nisn || '')}')" title="Lihat Rapor Portofolio Siswa" class="px-2.5 py-1 bg-emerald-300 hover:bg-emerald-400 text-black border border-black rounded-lg text-[11px] font-black uppercase active:translate-y-0.5 transition cursor-pointer">
+                                Rapor
+                            </button>
                             <button onclick="openEditStudentModal('${escapeHtml(s.id)}')" title="Ubah Data Siswa" class="px-2.5 py-1 bg-yellow-300 hover:bg-yellow-400 text-black border border-black rounded-lg text-[11px] font-black uppercase active:translate-y-0.5 transition cursor-pointer">
                                 Edit
                             </button>
@@ -6031,6 +6034,225 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.closeStudentModal = () => {
         document.getElementById('student-modal').classList.add('hidden');
+    };
+
+    window.openStudentReportModal = async (studentName, studentKelas, studentNisn = '') => {
+        const modal = document.getElementById('student-report-modal');
+        const nameEl = document.getElementById('admin-report-student-name');
+        const metaEl = document.getElementById('admin-report-student-meta');
+        const bodyEl = document.getElementById('admin-report-body');
+        if (!modal) return;
+
+        if (nameEl) nameEl.textContent = studentName;
+        if (metaEl) metaEl.textContent = `Kelas ${studentKelas} • NISN: ${studentNisn || '-'} • SMP Negeri 58 Palembang`;
+        if (bodyEl) bodyEl.innerHTML = '<div class="text-center py-10 text-slate-500 font-bold text-xs uppercase animate-pulse">Memuat riwayat portofolio tugas dan ujian siswa...</div>';
+        
+        modal.classList.remove('hidden');
+
+        try {
+            // Ambil pengumpulan tugas
+            const { data: fileGrades, error: fErr } = await supabase
+                .from('files')
+                .select('*')
+                .ilike('nama', `%${studentName}%`)
+                .order('created_at', { ascending: false });
+            if (fErr) throw fErr;
+
+            // Ambil hasil kuis
+            const { data: quizGradeRows, error: qErr } = await supabase
+                .rpc('get_student_exam_grades', { p_name: studentName });
+            if (qErr) throw qErr;
+
+            const quizGrades = (quizGradeRows || []).filter(q =>
+                ['selesai', 'belum_dikoreksi', 'perlu_dinilai'].includes(q.status_koreksi)
+            );
+
+            // Tugas kelas
+            const classAssignments = assignmentsList.filter(a => isClassMatch(a.kelas, studentKelas));
+            const submittedAssignIds = new Set((fileGrades || []).map(f => String(f.assignment_id || '')));
+            const submittedAssignTitles = new Set((fileGrades || []).map(f => (f.materi || '').toLowerCase().trim()));
+
+            const completedTasks = fileGrades || [];
+            const pendingTasks = classAssignments.filter(a =>
+                !submittedAssignIds.has(String(a.id)) &&
+                !submittedAssignTitles.has((a.judul_tugas || '').toLowerCase().trim())
+            );
+
+            // Ujian kelas
+            const classQuizzes = quizzesList.filter(q => isClassMatch(q.kelas, studentKelas));
+            const submittedQuizIds = new Set((quizGrades || []).map(q => String(q.quiz_id || q.quizzes?.id || '')));
+            const submittedQuizTitles = new Set((quizGrades || []).map(q => (q.judul_kuis || q.quizzes?.judul_kuis || '').toLowerCase().trim()));
+
+            const completedExams = quizGrades || [];
+            const pendingExams = classQuizzes.filter(q =>
+                !submittedQuizIds.has(String(q.id)) &&
+                !submittedQuizTitles.has((q.judul_kuis || '').toLowerCase().trim())
+            );
+
+            // Hitung rata-rata
+            const gradedFiles = completedTasks.filter(f => f.nilai !== null && f.nilai !== undefined && f.nilai !== '');
+            const avgTugas = gradedFiles.length > 0 
+                ? Math.round(gradedFiles.reduce((acc, f) => acc + Number(f.nilai), 0) / gradedFiles.length)
+                : 0;
+
+            const gradedQuizzes = completedExams.filter(q => q.status_koreksi === 'selesai' && q.total_nilai !== null && q.total_nilai !== undefined);
+            const avgUjian = gradedQuizzes.length > 0
+                ? Math.round(gradedQuizzes.reduce((acc, q) => acc + Number(q.total_nilai || 0), 0) / gradedQuizzes.length)
+                : 0;
+
+            bodyEl.innerHTML = `
+                <!-- Bento Summary Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div class="bg-indigo-50 border-2 border-black rounded-2xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black uppercase text-indigo-700 block">Rata-Rata Tugas</span>
+                        <span class="text-xl font-black text-indigo-950 mt-1 block">${gradedFiles.length > 0 ? avgTugas : '-'}</span>
+                    </div>
+                    <div class="bg-purple-50 border-2 border-black rounded-2xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black uppercase text-purple-700 block">Rata-Rata CBT</span>
+                        <span class="text-xl font-black text-purple-950 mt-1 block">${gradedQuizzes.length > 0 ? avgUjian : '-'}</span>
+                    </div>
+                    <div class="bg-emerald-50 border-2 border-black rounded-2xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black uppercase text-emerald-700 block">Tugas Selesai</span>
+                        <span class="text-sm sm:text-base font-black text-emerald-950 mt-1 block">${completedTasks.length} / ${classAssignments.length || completedTasks.length}</span>
+                    </div>
+                    <div class="bg-amber-50 border-2 border-black rounded-2xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black uppercase text-amber-700 block">Ujian Diikuti</span>
+                        <span class="text-sm sm:text-base font-black text-amber-950 mt-1 block">${completedExams.length} / ${classQuizzes.length || completedExams.length}</span>
+                    </div>
+                </div>
+
+                <!-- Bagian 1: Tugas & PR -->
+                <div class="space-y-3 pt-2">
+                    <div class="flex justify-between items-center border-b-2 border-black pb-1.5">
+                        <h4 class="font-black text-xs uppercase tracking-wider text-black flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-black"></span>
+                            Daftar Tugas & PR (${completedTasks.length} Selesai, ${pendingTasks.length} Belum)
+                        </h4>
+                    </div>
+
+                    <div class="space-y-2">
+                        ${completedTasks.length === 0 ? `
+                            <div class="p-4 bg-slate-50 border-2 border-black rounded-xl text-center text-xs font-bold text-slate-500 uppercase">
+                                Belum ada riwayat tugas yang dikumpulkan siswa ini.
+                            </div>
+                        ` : completedTasks.map(g => `
+                            <div class="bg-slate-50 border-2 border-black rounded-xl p-3 flex justify-between items-center gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="bg-emerald-100 text-emerald-900 text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-300 uppercase">SUDAH DIKUMPULKAN</span>
+                                        <span class="text-[10px] font-bold text-slate-500">${new Date(g.created_at).toLocaleDateString('id-ID')}</span>
+                                    </div>
+                                    <h5 class="font-black text-sm text-black mt-0.5">${escapeHtml(g.materi)}</h5>
+                                    ${g.catatan_guru ? `<p class="text-xs text-slate-600 italic mt-0.5">"${escapeHtml(g.catatan_guru)}"</p>` : ''}
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <span class="bg-emerald-300 text-black font-black text-base px-2.5 py-1 rounded-lg border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] inline-block">
+                                        ${g.nilai !== null && g.nilai !== undefined && g.nilai !== '' ? g.nilai : '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        `).join('')}
+
+                        ${pendingTasks.map(t => `
+                            <div class="bg-red-50 border-2 border-red-300 rounded-xl p-2.5 flex justify-between items-center gap-2">
+                                <div>
+                                    <span class="bg-red-200 text-red-900 text-[9px] font-black px-1.5 py-0.5 rounded border border-red-400 uppercase">BELUM MENGUMPULKAN</span>
+                                    <h5 class="font-black text-xs text-red-950 mt-0.5">${escapeHtml(t.judul_tugas)}</h5>
+                                </div>
+                                <span class="text-[10px] font-black text-red-600 shrink-0">Tertunda</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Bagian 2: Ujian Online -->
+                <div class="space-y-3 pt-3">
+                    <div class="flex justify-between items-center border-b-2 border-black pb-1.5">
+                        <h4 class="font-black text-xs uppercase tracking-wider text-black flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-500 border border-black"></span>
+                            Daftar Ujian Online CBT (${completedExams.length} Diikuti, ${pendingExams.length} Belum)
+                        </h4>
+                    </div>
+
+                    <div class="space-y-2">
+                        ${completedExams.length === 0 ? `
+                            <div class="p-4 bg-slate-50 border-2 border-black rounded-xl text-center text-xs font-bold text-slate-500 uppercase">
+                                Belum ada riwayat ujian CBT yang diselesaikan siswa ini.
+                            </div>
+                        ` : completedExams.map(q => `
+                            <div class="bg-slate-50 border-2 border-black rounded-xl p-3 flex justify-between items-center gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="bg-purple-100 text-purple-900 text-[9px] font-black px-1.5 py-0.5 rounded border border-purple-300 uppercase">UJIAN SELESAI</span>
+                                        <span class="text-[10px] font-bold text-slate-500">${new Date(q.created_at).toLocaleDateString('id-ID')}</span>
+                                    </div>
+                                    <h5 class="font-black text-sm text-black mt-0.5">${escapeHtml(q.judul_kuis || q.quizzes?.judul_kuis || 'Ujian')}</h5>
+                                    <div class="text-[10px] font-bold text-slate-600 mt-0.5">PG: ${q.skor_pg || 0} | Esai: ${q.skor_esai || 0}</div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <span class="bg-yellow-300 text-black font-black text-base px-2.5 py-1 rounded-lg border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] inline-block">
+                                        ${q.total_nilai}
+                                    </span>
+                                </div>
+                            </div>
+                        `).join('')}
+
+                        ${pendingExams.map(u => `
+                            <div class="bg-red-50 border-2 border-red-300 rounded-xl p-2.5 flex justify-between items-center gap-2">
+                                <div>
+                                    <span class="bg-red-200 text-red-900 text-[9px] font-black px-1.5 py-0.5 rounded border border-red-400 uppercase">BELUM MENGIKUTI UJIAN</span>
+                                    <h5 class="font-black text-xs text-red-950 mt-0.5">${escapeHtml(u.judul_kuis)}</h5>
+                                </div>
+                                <span class="text-[10px] font-black text-red-600 shrink-0">Belum Ujian</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } catch (err) {
+            bodyEl.innerHTML = `<div class="p-4 bg-red-50 border-2 border-red-300 text-red-800 font-bold text-xs">Gagal memuat rapor: ${escapeHtml(err.message)}</div>`;
+        }
+    };
+
+    window.closeStudentReportModal = () => {
+        const modal = document.getElementById('student-report-modal');
+        if (modal) modal.classList.add('hidden');
+    };
+
+    window.printAdminStudentReportCard = () => {
+        const name = document.getElementById('admin-report-student-name')?.textContent || 'Siswa';
+        const bodyHtml = document.getElementById('admin-report-body')?.innerHTML || '';
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        if (!printWindow) {
+            window.print();
+            return;
+        }
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="id">
+            <head>
+                <meta charset="UTF-8">
+                <title>Rapor Portofolio Nilai Siswa - ${escapeHtml(name)}</title>
+                <script src="https://cdn.tailwindcss.com"></script>
+                <style>body { font-family: sans-serif; padding: 24px; color: black; }</style>
+            </head>
+            <body class="bg-white">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <div class="border-b-4 border-double border-black pb-4 text-center">
+                        <h2 class="text-xs font-black uppercase tracking-widest text-slate-700">Pemerintah Kota Palembang &bull; Dinas Pendidikan</h2>
+                        <h1 class="text-xl sm:text-2xl font-black uppercase text-black tracking-tight mt-0.5">SMP NEGERI 58 PALEMBANG</h1>
+                        <p class="text-xs text-slate-600 font-bold mt-1">Laporan Portofolio Belajar & Buku Nilai Siswa Terpadu</p>
+                    </div>
+                    <div class="border-2 border-black p-4 rounded-xl bg-slate-50 font-black text-lg uppercase">${escapeHtml(name)}</div>
+                    ${bodyHtml}
+                </div>
+                <script>
+                    window.onload = function() { setTimeout(() => window.print(), 500); };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
     };
 
     window.handleSaveStudent = async (e) => {
