@@ -6051,21 +6051,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Ambil pengumpulan tugas
-            const { data: fileGrades, error: fErr } = await supabase
+            const { data: rawFileGrades, error: fErr } = await supabase
                 .from('files')
                 .select('*')
-                .ilike('nama', `%${studentName}%`)
+                .ilike('nama', studentName.trim())
                 .order('created_at', { ascending: false });
             if (fErr) throw fErr;
 
+            // Saring agar hanya tugas di kelas siswa ini (mencegah bentrok nama kembar beda jenjang/kelas)
+            const fileGrades = (rawFileGrades || []).filter(f => {
+                const matchName = (f.nama || '').toLowerCase().trim() === studentName.toLowerCase().trim();
+                if (!matchName) return false;
+                if (studentKelas && studentKelas !== '-' && f.kelas) {
+                    return isClassMatch(f.kelas, studentKelas);
+                }
+                return true;
+            });
+
             // Ambil hasil kuis
             const { data: quizGradeRows, error: qErr } = await supabase
-                .rpc('get_student_exam_grades', { p_name: studentName });
+                .rpc('get_student_exam_grades', { p_name: studentName.trim() });
             if (qErr) throw qErr;
 
-            const quizGrades = (quizGradeRows || []).filter(q =>
-                ['selesai', 'belum_dikoreksi', 'perlu_dinilai'].includes(q.status_koreksi)
-            );
+            // Saring agar hanya ujian di kelas siswa ini (mencegah nama sama beda kelas tertukar)
+            const quizGrades = (quizGradeRows || []).filter(q => {
+                if (!['selesai', 'belum_dikoreksi', 'perlu_dinilai'].includes(q.status_koreksi)) return false;
+                if (studentKelas && studentKelas !== '-') {
+                    if (q.kelas && !isClassMatch(q.kelas, studentKelas)) return false;
+                    const matchedQuiz = quizzesList.find(item => String(item.id) === String(q.quiz_id));
+                    if (matchedQuiz && !isClassMatch(matchedQuiz.kelas, studentKelas)) return false;
+                }
+                return true;
+            });
 
             // Tugas kelas
             const classAssignments = assignmentsList.filter(a => isClassMatch(a.kelas, studentKelas));
@@ -6159,7 +6176,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <span class="bg-red-200 text-red-900 text-[9px] font-black px-1.5 py-0.5 rounded border border-red-400 uppercase">BELUM MENGUMPULKAN</span>
                                     <h5 class="font-black text-xs text-red-950 mt-0.5">${escapeHtml(t.judul_tugas)}</h5>
                                 </div>
-                                <span class="text-[10px] font-black text-red-600 shrink-0">Tertunda</span>
+                                <button type="button" onclick="closeStudentReportModal(); switchTab('tugas');" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-red-700 border border-red-300 rounded-lg text-[10px] font-black uppercase transition shrink-0 cursor-pointer">
+                                    Buka Tab Tugas
+                                </button>
                             </div>
                         `).join('')}
                     </div>
@@ -6202,8 +6221,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div>
                                     <span class="bg-red-200 text-red-900 text-[9px] font-black px-1.5 py-0.5 rounded border border-red-400 uppercase">BELUM MENGIKUTI UJIAN</span>
                                     <h5 class="font-black text-xs text-red-950 mt-0.5">${escapeHtml(u.judul_kuis)}</h5>
+                                    <span class="text-[10px] font-bold text-red-600 block mt-0.5">Durasi: ${escapeHtml(String(u.durasi_menit || 60))} Menit</span>
                                 </div>
-                                <span class="text-[10px] font-black text-red-600 shrink-0">Belum Ujian</span>
+                                <button type="button" onclick="closeStudentReportModal(); switchTab('ujian');" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-purple-700 border border-purple-300 rounded-lg text-[10px] font-black uppercase transition shrink-0 cursor-pointer">
+                                    Buka Tab Ujian
+                                </button>
                             </div>
                         `).join('')}
                     </div>

@@ -2059,23 +2059,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Riwayat submit kuis siswa aktif (data aman, tanpa kunci jawaban)
             const studentName = getActiveStudentName();
+            const studentKelas = getActiveStudentKelas();
             if (studentName) {
                 let mySubs = [];
                 const { data: rpcSubs, error: subErr } = await supabase.rpc('get_student_exam_submissions', {
                     p_student_id: '',
                     p_student_name: studentName,
-                    p_kelas: globalKelasSelect?.value?.trim() || ''
+                    p_kelas: studentKelas || ''
                 });
                 if (subErr) {
                     console.warn('RPC get_student_exam_submissions fallback:', subErr);
-                    const { data: dirSubs } = await supabase
+                    let q = supabase
                         .from('quiz_submissions')
                         .select('id, quiz_id, student_id, nama_siswa, kelas, status_koreksi, skor_pg, skor_esai, total_nilai, created_at')
                         .ilike('nama_siswa', studentName)
                         .order('created_at', { ascending: false });
+                    if (studentKelas) q = q.eq('kelas', studentKelas);
+                    const { data: dirSubs } = await q;
                     mySubs = dirSubs || [];
                 } else {
-                    mySubs = Array.isArray(rpcSubs) ? rpcSubs : [];
+                    mySubs = (Array.isArray(rpcSubs) ? rpcSubs : []).filter(sub => {
+                        if (studentKelas && sub.kelas) return isClassMatch(sub.kelas, studentKelas);
+                        return true;
+                    });
                 }
                 studentQuizSubmissions = mySubs;
             } else {
@@ -3706,7 +3712,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         studentSelect.innerHTML = '<option value="">-- Pilih Nama Siswa (' + filtered.length + ' Siswa) --</option>' +
             filtered.map(s => {
                 const nisnText = s.nisn ? ` (NISN: ${s.nisn})` : '';
-                return `<option value="${escapeHtml(s.nama)}" data-nisn="${escapeHtml(s.nisn || '')}" data-id="${escapeHtml(s.id || '')}">${escapeHtml(s.nama)}${nisnText}</option>`;
+                return `<option value="${escapeHtml(s.nama)}" data-nisn="${escapeHtml(s.nisn || '')}" data-kelas="${escapeHtml(s.kelas || '')}" data-id="${escapeHtml(s.id || '')}">${escapeHtml(s.nama)}${nisnText}</option>`;
             }).join('');
 
         const activeName = getActiveStudentName();
@@ -3783,6 +3789,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         printWindow.document.close();
     };
 
+    window.navigateToAssignment = (assignId) => {
+        if (typeof switchStudentPortal === 'function') {
+            switchStudentPortal('tugas');
+        }
+        const target = (allAssignments || []).find(a => String(a.id) === String(assignId));
+        if (target && typeof window.openAssignmentSubmissionModal === 'function') {
+            window.openAssignmentSubmissionModal(target);
+        } else {
+            setTimeout(() => {
+                const el = document.getElementById(`assignment-card-${assignId}`) || document.querySelector(`[data-assignment-id="${assignId}"]`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+    };
+
+    window.navigateToExam = async (quizId) => {
+        if (typeof switchStudentPortal === 'function') {
+            switchStudentPortal('ujian');
+        }
+        if (typeof window.openExamTokenModal === 'function') {
+            await window.openExamTokenModal(quizId);
+        } else {
+            setTimeout(() => {
+                const el = document.getElementById(`quiz-card-${quizId}`) || document.querySelector(`[data-quiz-id="${quizId}"]`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+    };
+
     window.checkStudentGrades = async () => {
         const studentSelect = document.getElementById('rapor-student-select');
         const kelasSelect = document.getElementById('rapor-kelas-select');
@@ -3817,35 +3852,76 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (_) {}
         }
 
-        // Cari info siswa di roster
-        const studentInfo = (rosterStudents || []).find(s => s.nama.toLowerCase().trim() === nameVal.toLowerCase().trim()) || {
-            nama: nameVal,
-            kelas: kelasSelect?.value || getActiveStudentKelas() || '-',
-            nisn: '-'
-        };
-        const studentKelas = (studentInfo.kelas && studentInfo.kelas !== '-') ? studentInfo.kelas : (kelasSelect?.value || getActiveStudentKelas() || '');
+        const selectedOpt = studentSelect?.selectedOptions?.[0];
+        const optKelas = selectedOpt?.dataset?.kelas || '';
+        const optNisn = selectedOpt?.dataset?.nisn || '';
+        const selectedKelas = (kelasSelect?.value || '').trim();
+        const activeKelas = getActiveStudentKelas();
+
+        const effectiveKelas = optKelas || selectedKelas || activeKelas || '';
+
+        // Cari info siswa di roster dengan mencocokkan nama DAN kelas (mencegah nama kembar beda jenjang/kelas tertukar)
+        let studentInfo = null;
+        if (effectiveKelas) {
+            studentInfo = (rosterStudents || []).find(s => 
+                s.nama.toLowerCase().trim() === nameVal.toLowerCase().trim() &&
+                isClassMatch(s.kelas, effectiveKelas)
+            );
+        }
+        if (!studentInfo && optNisn) {
+            studentInfo = (rosterStudents || []).find(s => String(s.nisn).trim() === optNisn.trim());
+        }
+        if (!studentInfo) {
+            studentInfo = (rosterStudents || []).find(s => s.nama.toLowerCase().trim() === nameVal.toLowerCase().trim());
+        }
+        if (!studentInfo) {
+            studentInfo = {
+                nama: nameVal,
+                kelas: effectiveKelas || '-',
+                nisn: optNisn || '-'
+            };
+        }
+
+        const studentKelas = effectiveKelas || (studentInfo.kelas && studentInfo.kelas !== '-' ? studentInfo.kelas : '');
 
         resultContainer.innerHTML = '<div class="text-center py-10 text-slate-500 font-bold text-xs uppercase animate-pulse">Memuat portofolio nilai, tugas, dan ujian siswa dari database...</div>';
 
         try {
             // 1. Ambil nilai tugas siswa ini
-            const { data: fileGrades, error: fErr } = await supabase
+            const { data: rawFileGrades, error: fErr } = await supabase
                 .from('files')
                 .select('*')
-                .ilike('nama', `%${nameVal}%`)
+                .ilike('nama', nameVal.trim())
                 .order('created_at', { ascending: false });
 
             if (fErr) throw fErr;
 
+            // Saring agar hanya tugas di kelas siswa ini (mencegah nama sama beda kelas tertukar)
+            const fileGrades = (rawFileGrades || []).filter(f => {
+                const matchName = (f.nama || '').toLowerCase().trim() === nameVal.toLowerCase().trim();
+                if (!matchName) return false;
+                if (studentKelas && studentKelas !== '-' && f.kelas) {
+                    return isClassMatch(f.kelas, studentKelas);
+                }
+                return true;
+            });
+
             // 2. Ambil nilai ujian online lewat RPC
             const { data: quizGradeRows, error: qErr } = await supabase
-                .rpc('get_student_exam_grades', { p_name: nameVal });
+                .rpc('get_student_exam_grades', { p_name: nameVal.trim() });
 
             if (qErr) throw qErr;
 
-            const quizGrades = (quizGradeRows || []).filter(q =>
-                ['selesai', 'belum_dikoreksi', 'perlu_dinilai'].includes(q.status_koreksi)
-            );
+            // Saring agar HANYA ujian di kelas siswa ini (mencegah nama kembar beda jenjang/kelas tertukar)
+            const quizGrades = (quizGradeRows || []).filter(q => {
+                if (!['selesai', 'belum_dikoreksi', 'perlu_dinilai'].includes(q.status_koreksi)) return false;
+                if (studentKelas && studentKelas !== '-') {
+                    if (q.kelas && !isClassMatch(q.kelas, studentKelas)) return false;
+                    const matchedQuiz = allQuizzes.find(item => String(item.id) === String(q.quiz_id));
+                    if (matchedQuiz && !isClassMatch(matchedQuiz.kelas, studentKelas)) return false;
+                }
+                return true;
+            });
 
             // 3. Tentukan Tugas yang ditujukan untuk kelas siswa ini
             const classAssignments = allAssignments.filter(a => isClassMatch(a.kelas, studentKelas));
@@ -3980,9 +4056,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                                             <h5 class="font-black text-sm text-red-950 mt-1">${escapeHtml(t.judul_tugas)}</h5>
                                             ${t.deadline ? `<span class="text-[10px] font-bold text-red-600 block mt-0.5">Batas Pengumpulan: ${escapeHtml(t.deadline)}</span>` : ''}
                                         </div>
-                                        <span class="text-[11px] font-black px-3 py-1 bg-red-600 text-white rounded-xl shadow-sm uppercase shrink-0">
-                                            Tertunda
-                                        </span>
+                                        <div class="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                                            <button type="button" onclick="window.navigateToAssignment('${escapeHtml(String(t.id))}')" class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5 cursor-pointer">
+                                                <span>Kerjakan Tugas</span>
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -4060,9 +4139,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                                             <h5 class="font-black text-sm text-red-950 mt-1">${escapeHtml(u.judul_kuis)}</h5>
                                             <span class="text-[10px] font-bold text-red-600 block mt-0.5">Durasi: ${escapeHtml(String(u.durasi_menit || 60))} Menit</span>
                                         </div>
-                                        <span class="text-[11px] font-black px-3 py-1 bg-red-600 text-white rounded-xl shadow-sm uppercase shrink-0">
-                                            Belum Ujian
-                                        </span>
+                                        <div class="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                                            <button type="button" onclick="window.navigateToExam('${escapeHtml(String(u.id))}')" class="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5 cursor-pointer">
+                                                <span>Ikuti Ujian</span>
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
