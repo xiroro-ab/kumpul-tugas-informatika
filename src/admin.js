@@ -192,19 +192,24 @@ export function parseQuizConfig(petunjukRaw, quizObj = {}) {
 
 export function parseAssignmentQuestions(assignment) {
     if (!assignment || !assignment.deskripsi) {
-        return { petunjuk: '', questions: [] };
+        return { petunjuk: '', questions: [], tipe_pengumpulan: 'bebas' };
     }
     const raw = String(assignment.deskripsi).trim();
+    let tipePengumpulan = '';
+    let petunjuk = '';
+    let qList = [];
+
     if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
             const parsed = JSON.parse(raw);
-            let qList = [];
-            let petunjuk = '';
             if (Array.isArray(parsed)) {
                 qList = parsed;
-            } else if (parsed.questions && Array.isArray(parsed.questions)) {
+            } else if (parsed && typeof parsed === 'object') {
                 petunjuk = parsed.petunjuk || '';
-                qList = parsed.questions;
+                tipePengumpulan = parsed.tipe_pengumpulan || '';
+                if (Array.isArray(parsed.questions)) {
+                    qList = parsed.questions;
+                }
             }
             if (qList.length > 0) {
                 qList.forEach(q => {
@@ -216,14 +221,30 @@ export function parseAssignmentQuestions(assignment) {
                         }
                     }
                 });
-                return { petunjuk, questions: qList };
             }
         } catch (_) {}
+    } else {
+        const s = splitQuestionImage(raw);
+        petunjuk = s.text;
     }
-    const s = splitQuestionImage(raw);
-    return {
-        petunjuk: s.text,
-        questions: [
+
+    // Auto-deteksi tipe pengumpulan jika belum tersimpan di JSON
+    if (!tipePengumpulan) {
+        const combined = `${assignment.judul_tugas || ''} ${petunjuk || ''} ${raw}`.toLowerCase();
+        if (combined.includes('hanya menerima link') || combined.includes('kirim link') || combined.includes('tautan link') || combined.includes('link tugas')) {
+            tipePengumpulan = 'link';
+        } else if (combined.includes('unggah berkas') || combined.includes('upload file') || combined.includes('upload berkas')) {
+            tipePengumpulan = 'file';
+        } else if (qList.length > 0 && !(qList.length === 1 && (!qList[0].pertanyaan || qList[0].pertanyaan.trim() === ''))) {
+            tipePengumpulan = 'form';
+        } else {
+            tipePengumpulan = 'bebas';
+        }
+    }
+
+    if (qList.length === 0 && tipePengumpulan === 'form') {
+        const s = splitQuestionImage(raw);
+        qList = [
             {
                 id: 1,
                 nomor: 1,
@@ -233,8 +254,10 @@ export function parseAssignmentQuestions(assignment) {
                 kunci: assignment.rubrik_ai || '',
                 bobot: 100
             }
-        ]
-    };
+        ];
+    }
+
+    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -972,11 +995,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     const isPgk = tipe === 'pg_kompleks' || tipe === 'pilihan_ganda_kompleks';
                     const isBs = tipe === 'benar_salah';
                     const isFoto = tipe === 'upload_foto';
+                    const isLink = tipe === 'link';
                     const isMatch = tipe === 'menjodohkan';
                     const isSingkat = tipe === 'singkat' || tipe === 'isian_singkat';
 
                     let typeLabel = 'Soal Esai';
                     let typeBadgeClass = 'text-purple-900 bg-purple-100 border-purple-300';
+                    if (isLink) {
+                        typeLabel = 'Tautan Link URL';
+                        typeBadgeClass = 'text-pink-900 bg-pink-100 border-pink-300';
+                    }
                     let statusBadge = '';
 
                     const itemMaxScore = Number(q.bobot) || 10;
@@ -1172,6 +1200,30 @@ document.addEventListener('DOMContentLoaded', () => {
                                             </a>
                                         </div>
                                     ` : `<span class="text-slate-500 italic font-semibold">(Siswa tidak melampirkan berkas foto)</span>`}
+                                </div>
+                            </div>
+                        `;
+                    } else if (isLink) {
+                        const linkUrl = q.jawaban_siswa;
+                        const isUrlValid = linkUrl && (String(linkUrl).startsWith('http://') || String(linkUrl).startsWith('https://'));
+                        answerComparisonHtml = `
+                            <div class="space-y-2">
+                                ${q.kunci ? `
+                                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-2.5 text-xs text-indigo-950 font-medium">
+                                        <span class="block text-[10px] font-black uppercase text-indigo-900 mb-0.5">Kriteria Tautan yang Diharapkan:</span>
+                                        <div class="leading-relaxed font-semibold">${escapeHtml(q.kunci)}</div>
+                                    </div>
+                                ` : ''}
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-300 text-xs">
+                                    <span class="font-black uppercase text-slate-500 text-[10px] block mb-1.5">Tautan Tugas Siswa:</span>
+                                    ${isUrlValid ? `
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <a href="${escapeHtml(linkUrl)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-black text-white border-2 border-black rounded-lg text-xs font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                                                Buka Tautan Siswa ↗
+                                            </a>
+                                            <span class="text-xs font-bold text-indigo-700 underline break-all">${escapeHtml(linkUrl)}</span>
+                                        </div>
+                                    ` : `<span class="text-slate-500 italic font-semibold">${escapeHtml(linkUrl || '(Siswa tidak menyertakan tautan)')}</span>`}
                                 </div>
                             </div>
                         `;
@@ -1934,8 +1986,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 const gradedCount = matchingSubs.filter(f => f.nilai !== null && f.nilai !== undefined && f.nilai !== '').length;
 
                 const parsed = parseAssignmentQuestions(a);
-                const descText = parsed.petunjuk || 'Formulir tugas online interaktif';
-                const qCount = parsed.questions ? parsed.questions.length : 1;
+                const descText = parsed.petunjuk || 'Petunjuk penugasan siswa';
+                const qCount = parsed.questions ? parsed.questions.length : 0;
+                const tipePengumpulan = parsed.tipe_pengumpulan || 'bebas';
+
+                let tipeBadgeHtml = '';
+                if (tipePengumpulan === 'form') {
+                    tipeBadgeHtml = `<span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Form Soal (${qCount} Butir)</span>`;
+                } else if (tipePengumpulan === 'link') {
+                    tipeBadgeHtml = `<span class="bg-pink-100 text-pink-900 border border-pink-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Tautan Link</span>`;
+                } else if (tipePengumpulan === 'file') {
+                    tipeBadgeHtml = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Berkas</span>`;
+                } else if (tipePengumpulan === 'text') {
+                    tipeBadgeHtml = `<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Form Web</span>`;
+                } else {
+                    tipeBadgeHtml = `<span class="bg-teal-100 text-teal-900 border border-teal-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Pengumpulan Bebas</span>`;
+                }
 
                 card.innerHTML = `
                     <div>
@@ -1944,9 +2010,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                                     Kelas ${escapeHtml(a.kelas)} &bull; ${escapeHtml(a.mapel)}
                                 </span>
-                                <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                    ${qCount} Butir Soal
-                                </span>
+                                ${tipeBadgeHtml}
                             </div>
                             <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                                 Batas: ${deadlineText}
@@ -1962,11 +2026,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         </span>
                         <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                             <button type="button" onclick="editAssignment('${a.id}')" class="h-9 px-3 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
-                                Edit Soal
+                                ${tipePengumpulan === 'form' ? 'Edit Soal' : 'Edit Tugas'}
                             </button>
-                            <button type="button" onclick="addQuestionToExistingAssignment('${a.id}')" class="h-9 px-3 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
-                                Tambah Soal
-                            </button>
+                            ${tipePengumpulan === 'form' ? `
+                                <button type="button" onclick="addQuestionToExistingAssignment('${a.id}')" class="h-9 px-3 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
+                                    Tambah Soal
+                                </button>
+                            ` : ''}
                             <button type="button" onclick="openAssignmentSubmissionsModal('${a.id}')" class="h-9 px-3.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center col-span-2 sm:col-span-1">
                                 Periksa (${matchingSubs.length})
                             </button>
@@ -2319,16 +2385,51 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 3. Modul Kelola Penugasan Siswa
     // ==========================================
+    window.onAssignTipePengumpulanChange = (type) => {
+        const section = document.getElementById('assign-form-builder-section');
+        const notice = document.getElementById('assign-non-form-notice');
+        const badge = document.getElementById('assign-notice-badge');
+        const title = document.getElementById('assign-notice-title');
+        const desc = document.getElementById('assign-notice-desc');
+
+        if (type === 'form') {
+            if (section) section.classList.remove('hidden');
+            if (notice) notice.classList.add('hidden');
+        } else {
+            if (section) section.classList.add('hidden');
+            if (notice) notice.classList.remove('hidden');
+
+            if (type === 'link') {
+                if (badge) { badge.textContent = 'Khusus Tautan Link'; badge.className = 'px-2.5 py-1 rounded-lg bg-pink-600 text-white font-black text-[10px] uppercase border border-black'; }
+                if (title) title.textContent = 'Siswa Mengumpulkan Berupa Tautan Link URL';
+                if (desc) desc.textContent = 'Siswa akan langsung diarahkan ke form input tautan link (Instagram Reels, TikTok, YouTube, presentasi Canva, atau Google Drive) dengan deteksi platform otomatis. Anda tidak perlu menyusun butir soal per nomor.';
+            } else if (type === 'file') {
+                if (badge) { badge.textContent = 'Khusus Unggah Berkas'; badge.className = 'px-2.5 py-1 rounded-lg bg-amber-600 text-white font-black text-[10px] uppercase border border-black'; }
+                if (title) title.textContent = 'Siswa Mengumpulkan Berupa File Dokumen / Foto';
+                if (desc) desc.textContent = 'Siswa akan langsung diarahkan ke kotak dropzone upload berkas untuk mengunggah dokumen PDF, Word, Excel, ataupun foto bukti praktik. Anda tidak perlu menyusun butir soal per nomor.';
+            } else if (type === 'text') {
+                if (badge) { badge.textContent = 'Khusus Teks Web'; badge.className = 'px-2.5 py-1 rounded-lg bg-blue-600 text-white font-black text-[10px] uppercase border border-black'; }
+                if (title) title.textContent = 'Siswa Mengumpulkan Berupa Teks / Esai Terbuka di Browser';
+                if (desc) desc.textContent = 'Siswa akan langsung diberikan lembar pengetikan online di browser untuk mengetik resume, jawaban esai terbuka, atau laporan mandiri. Anda tidak perlu menyusun butir soal per nomor.';
+            } else {
+                // 'bebas'
+                if (badge) { badge.textContent = 'Bebas / Fleksibel'; badge.className = 'px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-black text-[10px] uppercase border border-black'; }
+                if (title) title.textContent = 'Siswa Bebas Memilih Metode Pengumpulan';
+                if (desc) desc.textContent = 'Siswa dapat bebas memilih salah satu dari 3 cara pengumpulan yang paling sesuai: Mengetik Form Web, Mengunggah Berkas (PDF/Foto), atau Menyisipkan Tautan Link URL.';
+            }
+        }
+    };
+
     window.openAssignmentModal = (assignment = null) => {
         editingAssignmentId = assignment ? assignment.id : null;
 
         const titleEl = document.getElementById('assignment-modal-title');
         if (titleEl) {
-            titleEl.innerText = assignment ? "Edit Formulir Tugas Interaktif" : "Buat Formulir Tugas Baru (Google Form Style)";
+            titleEl.innerText = assignment ? "Kelola & Edit Formulir Tugas" : "Buat Penugasan Siswa Baru";
         }
         const saveBtnText = document.getElementById('btn-save-assignment-text');
         if (saveBtnText) {
-            saveBtnText.innerText = assignment ? "SIMPAN PERUBAHAN FORM TUGAS" : "PUBLIKASIKAN FORM TUGAS KE SISWA";
+            saveBtnText.innerText = assignment ? "SIMPAN PERUBAHAN TUGAS" : "PUBLIKASIKAN TUGAS KE SISWA";
         }
 
         const kelasSelect = document.getElementById('assign-kelas');
@@ -2339,22 +2440,32 @@ document.addEventListener('DOMContentLoaded', () => {
             mapelSelect.value = assignment ? (assignment.mapel || 'Informatika') : (currentTeacher?.mapel || 'Informatika');
         }
 
+        const tipeSelect = document.getElementById('assign-tipe-pengumpulan');
+
         if (assignment) {
             document.getElementById('assign-judul').value = assignment.judul_tugas || '';
             document.getElementById('assign-deadline').value = assignment.deadline ? assignment.deadline.slice(0, 16) : '';
             const parsed = parseAssignmentQuestions(assignment);
             document.getElementById('assign-deskripsi').value = parsed.petunjuk || '';
+            if (tipeSelect) {
+                tipeSelect.value = parsed.tipe_pengumpulan || 'bebas';
+            }
             formBuilderQuestions = parsed.questions && parsed.questions.length > 0 ? parsed.questions : [
                 { id: 1, tipe: 'esai', pertanyaan: '', kunci: '', bobot: 25 }
             ];
+            window.onAssignTipePengumpulanChange(tipeSelect ? tipeSelect.value : 'bebas');
         } else {
             document.getElementById('assign-judul').value = '';
-            document.getElementById('assign-deskripsi').value = 'Jawablah setiap butir pertanyaan tugas berikut dengan teliti dan jujur.';
+            document.getElementById('assign-deskripsi').value = 'Jawablah setiap instruksi tugas berikut dengan teliti dan jujur.';
             document.getElementById('assign-deadline').value = '';
+            if (tipeSelect) {
+                tipeSelect.value = 'bebas';
+            }
             formBuilderQuestions = [
                 { id: 1, tipe: 'esai', pertanyaan: '', kunci: '', bobot: 25 },
                 { id: 2, tipe: 'pg', pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', kunci: 'A', bobot: 25 }
             ];
+            window.onAssignTipePengumpulanChange('bebas');
         }
 
         renderFormBuilderQuestions();
@@ -2427,6 +2538,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isSingkat = tipe === 'singkat';
             const isBs = tipe === 'benar_salah';
             const isFoto = tipe === 'upload_foto';
+            const isLink = tipe === 'link';
             const isMatch = tipe === 'menjodohkan';
 
             return `
@@ -2442,6 +2554,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <option value="pg_kompleks" ${isPgKompleks ? 'selected' : ''}>Pilihan Ganda Kompleks</option>
                                 <option value="singkat" ${isSingkat ? 'selected' : ''}>Isian Singkat</option>
                                 <option value="benar_salah" ${isBs ? 'selected' : ''}>Benar / Salah</option>
+                                <option value="link" ${isLink ? 'selected' : ''}>Tautan Link URL (Sosmed/Drive/Canva)</option>
                                 <option value="upload_foto" ${isFoto ? 'selected' : ''}>Upload Foto / Bukti</option>
                                 <option value="menjodohkan" ${isMatch ? 'selected' : ''}>Menjodohkan Konsep</option>
                             </select>
@@ -2578,6 +2691,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <input type="text" placeholder="Contoh: Foto catatan tulisan tangan yang rapi dan terbaca, atau screenshot praktik coding..." value="${escapeHtml(q.kunci || '')}" oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="w-full h-10 px-3.5 border-2 border-purple-300 rounded-xl font-bold text-sm bg-purple-50 focus:bg-white text-purple-950">
                             </div>
                         </div>
+                    ` : isLink ? `
+                        <div class="space-y-2 pt-1">
+                            <div class="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-3 text-xs text-indigo-950">
+                                <span class="font-black uppercase text-[10px] block mb-1">Format Soal Pengumpulan Tautan Link:</span>
+                                <p class="text-[11px] font-medium leading-relaxed">Siswa akan diberikan kolom input khusus untuk menempelkan tautan link (misal: Instagram Reels, TikTok, YouTube, presentasi Canva, Google Drive, atau portofolio praktik).</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-black uppercase text-purple-950 mb-1.5">Kriteria Tautan yang Diharapkan (Acuan Penilaian Guru & AI)</label>
+                                <input type="text" placeholder="Contoh: Link video reels Instagram durasi 60 detik dengan hashtag #Informatika58..." value="${escapeHtml(q.kunci || '')}" oninput="window.updateFormQuestionField(${idx}, 'kunci', this.value)" class="w-full h-10 px-3.5 border-2 border-purple-300 rounded-xl font-bold text-sm bg-purple-50 focus:bg-white text-purple-950">
+                            </div>
+                        </div>
                     ` : isMatch ? `
                         <div class="space-y-2 pt-1">
                             <div class="flex items-center justify-between">
@@ -2655,6 +2779,8 @@ document.addEventListener('DOMContentLoaded', () => {
             newItem.kunci = 'BENAR';
         } else if (type === 'upload_foto') {
             newItem.kunci = 'Foto lembar kerja atau tangkapan layar praktikum jelas dan lengkap';
+        } else if (type === 'link') {
+            newItem.kunci = 'Tautan link dapat diakses publik dan sesuai instruksi penugasan';
         } else if (type === 'menjodohkan') {
             newItem.pasangan = [
                 { kiri: '', kanan: '' },
@@ -2714,6 +2840,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!formBuilderQuestions[idx].kunci) {
                     formBuilderQuestions[idx].kunci = 'Unggah foto lembar pekerjaan dengan jelas';
                 }
+            } else if (newType === 'link') {
+                if (!formBuilderQuestions[idx].kunci) {
+                    formBuilderQuestions[idx].kunci = 'Tautan link dapat diakses publik dan sesuai instruksi penugasan';
+                }
             }
             renderFormBuilderQuestions();
         }
@@ -2725,34 +2855,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const judul = document.getElementById('assign-judul').value.trim();
         const petunjuk = document.getElementById('assign-deskripsi').value.trim();
         const deadline = document.getElementById('assign-deadline').value;
+        const tipePengumpulan = document.getElementById('assign-tipe-pengumpulan')?.value || 'bebas';
 
         if (!judul) {
             showCustomModal("Judul formulir tugas wajib diisi!");
             return;
         }
 
-        if (formBuilderQuestions.length === 0) {
-            showCustomModal("Form tugas harus memiliki minimal 1 butir pertanyaan!");
-            return;
-        }
-
-        for (let i = 0; i < formBuilderQuestions.length; i++) {
-            if (!formBuilderQuestions[i].pertanyaan.trim()) {
-                showCustomModal(`Pertanyaan nomor ${i + 1} masih kosong. Mohon lengkapi teks pertanyaan.`);
+        if (tipePengumpulan === 'form') {
+            if (formBuilderQuestions.length === 0) {
+                showCustomModal("Form tugas model interaktif harus memiliki minimal 1 butir pertanyaan!");
                 return;
+            }
+
+            for (let i = 0; i < formBuilderQuestions.length; i++) {
+                if (!formBuilderQuestions[i].pertanyaan.trim()) {
+                    showCustomModal(`Pertanyaan nomor ${i + 1} masih kosong. Mohon lengkapi teks pertanyaan.`);
+                    return;
+                }
             }
         }
 
         const btn = document.getElementById('btn-save-assignment');
         if (btn) {
             btn.disabled = true;
-            btn.innerText = editingAssignmentId ? "Menyimpan Perubahan..." : "Menerbitkan Form Tugas...";
+            btn.innerText = editingAssignmentId ? "Menyimpan Perubahan..." : "Menerbitkan Tugas...";
         }
 
         try {
             const payloadDeskripsi = JSON.stringify({
-                petunjuk: petunjuk || 'Jawablah seluruh butir pertanyaan berikut dengan teliti.',
-                questions: formBuilderQuestions
+                tipe_pengumpulan: tipePengumpulan,
+                petunjuk: petunjuk || 'Ikuti petunjuk pengerjaan tugas berikut dengan teliti.',
+                questions: tipePengumpulan === 'form' ? formBuilderQuestions : []
             });
 
             const cleanRubrik = 'Kesesuaian pemahaman konsep materi, kelengkapan uraian nalar, dan ketepatan pengerjaan butir soal.';
@@ -2771,7 +2905,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 editingAssignmentId = null;
                 closeAssignmentModal();
                 loadAssignments();
-                showCustomModal(`Formulir tugas "${judul}" berhasil diperbarui!`);
+                showCustomModal(`Tugas "${judul}" berhasil diperbarui!`);
             } else {
                 const { error } = await supabase.from('assignments').insert([{
                     teacher_id: currentSession?.user?.id,
@@ -2792,16 +2926,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeAssignmentModal();
                 loadAssignments();
                 loadOptionsSettings();
-                showCustomModal(`Formulir tugas "${judul}" berisi ${formBuilderQuestions.length} butir soal berhasil dipublikasikan untuk ${kelas}!`);
+                showCustomModal(`Tugas "${judul}" berhasil dipublikasikan untuk ${kelas}!`);
             }
         } catch (e) {
-            showCustomModal("Gagal menyimpan formulir tugas: " + e.message);
+            showCustomModal("Gagal menyimpan tugas: " + e.message);
         } finally {
             if (btn) {
                 btn.disabled = false;
                 const saveBtnText = document.getElementById('btn-save-assignment-text');
                 if (saveBtnText) {
-                    saveBtnText.innerText = editingAssignmentId ? "SIMPAN PERUBAHAN FORM TUGAS" : "PUBLIKASIKAN FORM TUGAS KE SISWA";
+                    saveBtnText.innerText = editingAssignmentId ? "SIMPAN PERUBAHAN TUGAS" : "PUBLIKASIKAN TUGAS KE SISWA";
                 }
             }
         }

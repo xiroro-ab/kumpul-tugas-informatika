@@ -81,19 +81,24 @@ export function parseQuizConfig(petunjukRaw, quizObj = {}) {
 
 export function parseAssignmentQuestions(assignment) {
     if (!assignment || !assignment.deskripsi) {
-        return { petunjuk: '', questions: [] };
+        return { petunjuk: '', questions: [], tipe_pengumpulan: 'bebas' };
     }
     const raw = String(assignment.deskripsi).trim();
+    let tipePengumpulan = '';
+    let petunjuk = '';
+    let qList = [];
+
     if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
             const parsed = JSON.parse(raw);
-            let qList = [];
-            let petunjuk = '';
             if (Array.isArray(parsed)) {
                 qList = parsed;
-            } else if (parsed.questions && Array.isArray(parsed.questions)) {
+            } else if (parsed && typeof parsed === 'object') {
                 petunjuk = parsed.petunjuk || '';
-                qList = parsed.questions;
+                tipePengumpulan = parsed.tipe_pengumpulan || '';
+                if (Array.isArray(parsed.questions)) {
+                    qList = parsed.questions;
+                }
             }
             if (qList.length > 0) {
                 qList.forEach(q => {
@@ -105,13 +110,55 @@ export function parseAssignmentQuestions(assignment) {
                         }
                     }
                 });
-                return { petunjuk, questions: qList };
             }
         } catch (_) {}
+    } else {
+        const s = splitQuestionImage(raw);
+        petunjuk = s.text;
     }
-    const s = splitQuestionImage(raw);
-    return { petunjuk: s.text, questions: [] };
+
+    // Auto-deteksi tipe pengumpulan jika belum tersimpan di JSON
+    if (!tipePengumpulan) {
+        const combined = `${assignment.judul_tugas || ''} ${petunjuk || ''} ${raw}`.toLowerCase();
+        if (combined.includes('hanya menerima link') || combined.includes('kirim link') || combined.includes('tautan link') || combined.includes('link tugas')) {
+            tipePengumpulan = 'link';
+        } else if (combined.includes('unggah berkas') || combined.includes('upload file') || combined.includes('upload berkas')) {
+            tipePengumpulan = 'file';
+        } else if (qList.length > 0 && !(qList.length === 1 && (!qList[0].pertanyaan || qList[0].pertanyaan.trim() === ''))) {
+            tipePengumpulan = 'form';
+        } else {
+            tipePengumpulan = 'bebas';
+        }
+    }
+
+    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan };
 }
+
+export function detectPlatform(url) {
+    const u = String(url || '').toLowerCase();
+    if (u.includes('canva.com')) return { name: 'Canva', bg: 'bg-teal-100 text-teal-800 border-teal-300' };
+    if (u.includes('docs.google.com') || u.includes('drive.google.com')) return { name: 'Google Docs/Drive', bg: 'bg-blue-100 text-blue-800 border-blue-300' };
+    if (u.includes('instagram.com')) return { name: 'Instagram Reels', bg: 'bg-pink-100 text-pink-800 border-pink-300' };
+    if (u.includes('tiktok.com')) return { name: 'TikTok', bg: 'bg-stone-200 text-stone-900 border-stone-400' };
+    if (u.includes('scratch.mit.edu')) return { name: 'Scratch MIT', bg: 'bg-amber-100 text-amber-800 border-amber-300' };
+    if (u.includes('youtube.com') || u.includes('youtu.be')) return { name: 'YouTube', bg: 'bg-red-100 text-red-800 border-red-300' };
+    return { name: 'Tautan Web', bg: 'bg-purple-100 text-purple-800 border-purple-300' };
+}
+
+window.handleStudentLinkInput = (input, qNum) => {
+    const val = input.value.trim();
+    const badge = document.getElementById(`student_link_badge_q_${qNum}`);
+    if (badge) {
+        if (val.length > 5) {
+            const detected = detectPlatform(val);
+            badge.textContent = detected.name;
+            badge.className = `text-[10px] font-black px-2 py-0.5 rounded-full border inline-block ${detected.bg}`;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+};
 
 export function isClassMatch(targetKelas, studentKelas) {
     if (!targetKelas || !studentKelas) return true;
@@ -192,6 +239,7 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
         const isPgKompleks = tipe === 'pg_kompleks';
         const isBs = tipe === 'benar_salah';
         const isFoto = tipe === 'upload_foto';
+        const isLink = tipe === 'link';
         const isMatch = tipe === 'menjodohkan';
         const isSingkat = tipe === 'singkat' || tipe === 'isian_singkat';
 
@@ -209,6 +257,9 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
         } else if (isBs) {
             typeLabel = 'Benar / Salah';
             typeBadgeClass = 'bg-teal-100 text-teal-900 border-teal-300';
+        } else if (isLink) {
+            typeLabel = 'Tautan Link URL';
+            typeBadgeClass = 'bg-pink-100 text-pink-900 border-pink-300';
         } else if (isFoto) {
             typeLabel = 'Upload Foto / Bukti';
             typeBadgeClass = 'bg-orange-100 text-orange-900 border-orange-300';
@@ -334,6 +385,17 @@ function renderStudentFormQuestions(questions, previousAnswersMap = {}, isReadOn
                             </div>
                         `;
                     }).join('')}
+                </div>
+            `;
+        } else if (isLink) {
+            const prevUrl = prevAnswer || '';
+            const detected = detectPlatform(prevUrl);
+            inputHtml = `
+                <div class="space-y-2 pt-1">
+                    <input type="url" name="student_q_${qNum}" value="${escapeHtml(prevUrl)}" ${isReadOnly ? 'readonly disabled' : ''} required placeholder="https://... (Tempel tautan Instagram, TikTok, YouTube, Canva, Google Drive, dll)" oninput="window.handleStudentLinkInput(this, ${qNum})" class="w-full h-10 px-3 rounded-xl border-2 border-black ${isReadOnly ? 'bg-slate-100 cursor-not-allowed' : 'bg-slate-50 focus:bg-white'} font-bold text-xs outline-none">
+                    <div id="student_link_badge_q_${qNum}" class="${prevUrl ? '' : 'hidden'} text-[10px] font-black px-2 py-0.5 rounded-full border inline-block ${detected.bg}">
+                        ${detected.name}
+                    </div>
                 </div>
             `;
         } else if (isSingkat) {
@@ -941,11 +1003,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const parsed = parseAssignmentQuestions(a);
-            const hasQuestions = parsed.questions && parsed.questions.length > 0;
+            const isForm = parsed.tipe_pengumpulan === 'form' && parsed.questions && parsed.questions.length > 0;
+            const tipeTugas = parsed.tipe_pengumpulan || 'bebas';
+
+            let tipeBadgeHtml = '';
+            if (isForm) {
+                tipeBadgeHtml = `<span class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase border border-black">Form Soal (${parsed.questions.length} Soal)</span>`;
+            } else if (tipeTugas === 'link') {
+                tipeBadgeHtml = `<span class="bg-pink-100 text-pink-900 border border-pink-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Tautan Link</span>`;
+            } else if (tipeTugas === 'file') {
+                tipeBadgeHtml = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Berkas</span>`;
+            } else if (tipeTugas === 'text') {
+                tipeBadgeHtml = `<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Form Web</span>`;
+            } else {
+                tipeBadgeHtml = `<span class="bg-teal-100 text-teal-900 border border-teal-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Pengumpulan Bebas</span>`;
+            }
 
             // Status submission badge
             let submissionBadge = '';
-            let actionBtnText = hasQuestions ? 'Kerjakan Soal Online ' : 'Kumpul Tugas Ini ';
+            let defaultActionText = isForm ? 'Kerjakan Soal Online ↗' : (tipeTugas === 'link' ? 'Kirim Tautan Link ↗' : (tipeTugas === 'file' ? 'Unggah Berkas ↗' : 'Kumpul Tugas Ini ↗'));
+            let actionBtnText = defaultActionText;
             let actionBtnClass = 'bg-indigo-600 hover:bg-black text-white';
 
             if (mySubmission) {
@@ -954,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     submissionBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs px-2 py-0.5 rounded-lg">Sudah Dikumpulkan &bull; Terkunci 1x</span>`;
                 }
-                actionBtnText = hasQuestions ? 'Lembar Jawaban (Terkunci)' : 'Lihat Pengumpulan (Terkunci)';
+                actionBtnText = isForm ? 'Lembar Jawaban (Terkunci)' : 'Lihat Pengumpulan (Terkunci)';
                 actionBtnClass = 'bg-white hover:bg-slate-100 text-black border-2 border-black';
             } else {
                 submissionBadge = `<span class="bg-red-100 text-red-800 border border-red-300 font-bold text-xs px-2 py-0.5 rounded-lg">Belum Dikerjakan</span>`;
@@ -972,17 +1049,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="bg-yellow-200 text-black border border-black text-[10px] font-black px-2 py-0.5 rounded uppercase">
                                 Kelas ${a.kelas}
                             </span>
-                            ${hasQuestions ? `
-                                <span class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase border border-black">
-                                    Form Online (${parsed.questions.length} Soal)
-                                </span>
-                            ` : ''}
+                            ${tipeBadgeHtml}
                         </div>
                         <div>${deadlineBadge}</div>
                     </div>
 
                     <h4 class="font-black text-lg md:text-xl text-black mb-1.5">${a.judul_tugas}</h4>
-                    <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line">${hasQuestions ? (parsed.petunjuk || 'Silakan buka dan kerjakan lembar soal interaktif online.') : a.deskripsi}</p>
+                    <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line">${escapeHtml(parsed.petunjuk || a.deskripsi || '')}</p>
 
                     ${mySubmission && mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '' ? `
                         <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 text-xs mb-3">
@@ -1288,8 +1361,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         const legacySheet = document.getElementById('task-legacy-text-sheet');
         const modeSwitcher = document.getElementById('sub-mode-switcher-container');
         const counterBadge = document.getElementById('student-form-counter-badge');
+        const tipeBadge = document.getElementById('modal-banner-tipe');
 
-        if (currentFormQuestions && currentFormQuestions.length > 0) {
+        const assignmentTipe = parsed.tipe_pengumpulan || 'bebas';
+
+        if (tipeBadge) {
+            tipeBadge.classList.remove('hidden');
+            if (assignmentTipe === 'form') {
+                tipeBadge.textContent = 'Form Soal Interaktif';
+                tipeBadge.className = 'bg-purple-100 text-purple-950 border border-purple-300 font-black text-[10px] px-2 py-0.5 rounded uppercase';
+            } else if (assignmentTipe === 'link') {
+                tipeBadge.textContent = 'Khusus Tautan Link';
+                tipeBadge.className = 'bg-pink-100 text-pink-950 border border-pink-300 font-black text-[10px] px-2 py-0.5 rounded uppercase';
+            } else if (assignmentTipe === 'file') {
+                tipeBadge.textContent = 'Khusus Berkas';
+                tipeBadge.className = 'bg-amber-100 text-amber-950 border border-amber-300 font-black text-[10px] px-2 py-0.5 rounded uppercase';
+            } else if (assignmentTipe === 'text') {
+                tipeBadge.textContent = 'Khusus Form Web';
+                tipeBadge.className = 'bg-blue-100 text-blue-950 border border-blue-300 font-black text-[10px] px-2 py-0.5 rounded uppercase';
+            } else {
+                tipeBadge.textContent = 'Pengumpulan Bebas';
+                tipeBadge.className = 'bg-teal-100 text-teal-950 border border-teal-300 font-black text-[10px] px-2 py-0.5 rounded uppercase';
+            }
+        }
+
+        if (assignmentTipe === 'form' && currentFormQuestions && currentFormQuestions.length > 0) {
             // Tampilkan Google Form Sheet
             if (formSheet) formSheet.classList.remove('hidden');
             if (legacySheet) legacySheet.classList.add('hidden');
@@ -1316,7 +1412,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Tampilkan Legacy Text Sheet
             if (formSheet) formSheet.classList.add('hidden');
             if (legacySheet) legacySheet.classList.remove('hidden');
-            if (modeSwitcher) modeSwitcher.classList.remove('hidden');
 
             if (subTextAnswerInput) subTextAnswerInput.readOnly = isLocked;
             if (linkUrlInput) linkUrlInput.readOnly = isLocked;
@@ -1330,24 +1425,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            if (mySubmission) {
-                if (mySubmission.storage_path && mySubmission.storage_path.startsWith('TEXT:')) {
-                    const prevText = mySubmission.storage_path.replace('TEXT:', '');
-                    if (subTextAnswerInput) {
-                        subTextAnswerInput.value = prevText;
-                        const words = prevText.split(/\s+/).filter(Boolean).length;
-                        if (subTextCount) subTextCount.textContent = `${words} kata | ${prevText.length} karakter`;
+            if (assignmentTipe === 'link') {
+                if (modeSwitcher) modeSwitcher.classList.add('hidden');
+                setSubmissionMode('link');
+            } else if (assignmentTipe === 'file') {
+                if (modeSwitcher) modeSwitcher.classList.add('hidden');
+                setSubmissionMode('file');
+            } else if (assignmentTipe === 'text') {
+                if (modeSwitcher) modeSwitcher.classList.add('hidden');
+                setSubmissionMode('text');
+            } else {
+                if (modeSwitcher) modeSwitcher.classList.remove('hidden');
+                if (mySubmission) {
+                    if (mySubmission.storage_path && mySubmission.storage_path.startsWith('TEXT:')) {
+                        const prevText = mySubmission.storage_path.replace('TEXT:', '');
+                        if (subTextAnswerInput) {
+                            subTextAnswerInput.value = prevText;
+                            const words = prevText.split(/\s+/).filter(Boolean).length;
+                            if (subTextCount) subTextCount.textContent = `${words} kata | ${prevText.length} karakter`;
+                        }
+                        setSubmissionMode('text');
+                    } else if (mySubmission.link_url || (mySubmission.storage_path && mySubmission.storage_path.startsWith('LINK:'))) {
+                        const prevUrl = mySubmission.link_url || mySubmission.storage_path.replace('LINK:', '');
+                        if (linkUrlInput) linkUrlInput.value = prevUrl;
+                        setSubmissionMode('link');
+                    } else if (mySubmission.tipe === 'file') {
+                        setSubmissionMode('file');
+                    } else {
+                        setSubmissionMode('text');
                     }
-                    setSubmissionMode('text');
-                } else if (mySubmission.link_url || (mySubmission.storage_path && mySubmission.storage_path.startsWith('LINK:'))) {
-                    const prevUrl = mySubmission.link_url || mySubmission.storage_path.replace('LINK:', '');
-                    if (linkUrlInput) linkUrlInput.value = prevUrl;
-                    setSubmissionMode('link');
                 } else {
                     setSubmissionMode('text');
                 }
-            } else {
-                setSubmissionMode('text');
             }
         }
 
@@ -1776,10 +1885,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             item.catatan_guru = isCorrect ? 'Jawaban tepat sesuai kunci kebenaran.' : `Jawaban kurang tepat (Kunci: ${item.kunci}).`;
                             totalObjektifScore += item.skor_guru;
                         } else if (isSingkat) {
-                            const isCorrect = String(item.jawaban_siswa || '').trim().toLowerCase() === String(item.kunci || '').trim().toLowerCase();
-                            item.skor_guru = isCorrect ? bobot : 0;
-                            item.catatan_guru = isCorrect ? 'Jawaban isian singkat tepat sesuai kunci.' : `Jawaban singkat belum tepat (Kunci: ${item.kunci}).`;
-                            totalObjektifScore += item.skor_guru;
+                            const isHasKey = Boolean(String(item.kunci || '').trim());
+                            if (isHasKey) {
+                                const isCorrect = String(item.jawaban_siswa || '').trim().toLowerCase() === String(item.kunci || '').trim().toLowerCase();
+                                item.skor_guru = isCorrect ? bobot : 0;
+                                item.catatan_guru = isCorrect ? 'Jawaban isian singkat tepat sesuai kunci.' : `Jawaban singkat belum tepat (Kunci: ${item.kunci}).`;
+                                totalObjektifScore += item.skor_guru;
+                            } else {
+                                hasEssayOrManual = true;
+                                item.skor_guru = null;
+                                item.catatan_guru = 'Menunggu evaluasi guru/AI (Isian singkat terbuka).';
+                            }
                         } else if (isMatch) {
                             const pairs = Array.isArray(item.pasangan) ? item.pasangan : [];
                             const studentMatches = (typeof item.jawaban_siswa === 'object' && item.jawaban_siswa !== null) ? item.jawaban_siswa : {};
@@ -1796,6 +1912,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         } else {
                             hasEssayOrManual = true;
                             item.skor_guru = null;
+                            if (tipe === 'link') {
+                                item.catatan_guru = 'Menunggu evaluasi guru (Tautan tugas siswa).';
+                            } else if (tipe === 'upload_foto') {
+                                item.catatan_guru = 'Menunggu evaluasi guru/AI (Lampiran berkas/foto siswa).';
+                            } else {
+                                item.catatan_guru = 'Menunggu evaluasi guru/AI (Jawaban esai/uraian siswa).';
+                            }
                         }
                     });
 
@@ -1810,10 +1933,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         storage_path: `FORM:${JSON.stringify(studentAnswers)}`,
                         link_url: null,
                         tipe: 'form',
-                        nilai: totalObjektifScore,
+                        nilai: hasEssayOrManual ? (totalObjektifScore > 0 ? totalObjektifScore : null) : totalObjektifScore,
                         status_koreksi: hasEssayOrManual ? 'belum_dikoreksi' : 'sudah_dikoreksi',
                         catatan_guru: hasEssayOrManual 
-                            ? `Skor sementara objektif: ${totalObjektifScore} poin (Menunggu penilaian soal esai).`
+                            ? (totalObjektifScore > 0 ? `Skor sementara objektif: ${totalObjektifScore} poin (Menunggu penilaian soal esai).` : 'Menunggu pemeriksaan dan penilaian guru.')
                             : 'Tuntas otomatis oleh sistem.'
                     };
 
