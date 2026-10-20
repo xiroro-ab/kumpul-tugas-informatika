@@ -4061,17 +4061,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button type="button" onclick="openExamReviewModal('${sub.id}')" title="Periksa lembar jawaban & rincian soal" class="h-8 px-3 bg-black hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
                         Periksa
                     </button>
-                    ${sub.isLocked ? `
-                        <button type="button" onclick="unlockStudentExam('${sub.id}')" title="Buka kunci akun agar siswa dapat melanjutkan" class="h-8 px-3 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
-                            Buka Kunci
+                    ${(sub.isLocked || sub.cheatAttempts > 0) ? `
+                        <button type="button" onclick="unlockStudentExam('${sub.id}')" title="${sub.isLocked ? 'Buka kunci akun agar siswa dapat melanjutkan' : 'Reset pelanggaran anti-kecurangan kembali ke 0'}" class="h-8 px-3 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                            ${sub.isLocked ? 'Buka Kunci' : 'Reset Curang (0)'}
                         </button>
                     ` : ''}
                     ${sub.isOngoing ? `
-                        <button type="button" onclick="forceFinishStudentExam('${sub.id}')" title="Paksa selesai dan kumpulkan ujian siswa" class="h-8 px-3 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                        <button type="button" onclick="forceFinishStudentExam('${sub.id}')" title="Paksa selesai dan kumpulkan ujian siswa sekarang" class="h-8 px-3 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
                             Paksa Selesai
                         </button>
-                    ` : ''}
-                    <button type="button" onclick="resetStudentExamSession('${sub.id}')" title="Hapus sesi agar siswa bisa ujian dari awal" class="h-8 px-3 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-400 rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                    ` : `
+                        <button type="button" onclick="reopenStudentExamSession('${sub.id}')" title="Buka kembali ujian agar siswa bisa melanjutkan pengerjaan" class="h-8 px-3 bg-blue-300 hover:bg-blue-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                            Buka Kembali
+                        </button>
+                    `}
+                    <button type="button" onclick="resetStudentExamSession('${sub.id}')" title="Hapus bersih sesi agar siswa bisa ujian dari awal nomor 1" class="h-8 px-3 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-400 rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
                         Reset
                     </button>
                 </div>
@@ -4097,10 +4101,54 @@ document.addEventListener('DOMContentLoaded', () => {
     window.unlockStudentExam = async (subId) => {
         const subRef = activeQuizSubmissions.find(s => String(s.id) === String(subId));
         const studentName = subRef?.nama_siswa || 'siswa ini';
+        const isLocked = subRef?.status_koreksi === 'terkunci_curang';
+        const modalTitle = isLocked ? 'Buka Kunci Akun Siswa' : 'Reset Pelanggaran Anti-Cheat';
+        const modalMsg = isLocked
+            ? `Buka kunci akun siswa "${studentName}"?\n\nSiswa akan diizinkan login kembali menggunakan token aktif dan melanjutkan pengerjaan soal. Jumlah pelanggaran anti-kecurangan akan di-reset ke 0, dan seluruh jawaban yang sudah diisi sebelumnya tetap tersimpan utuh.`
+            : `Reset pelanggaran anti-kecurangan untuk "${studentName}" kembali menjadi 0?\n\nJumlah pelanggaran akan kembali aman (0 Pelanggaran) dan status siswa menjadi fokus. Seluruh jawaban yang sudah diisi siswa tetap tersimpan utuh.`;
+
+        const conf = await showCustomModal(modalMsg, 'confirm', modalTitle, '');
+        if (!conf) return;
+
+        try {
+            const { data: cur, error: getErr } = await supabase.from('quiz_submissions').select('*').eq('id', subId).single();
+            if (getErr) throw getErr;
+
+            let curJawaban = cur?.jawaban_siswa || {};
+            if (typeof curJawaban === 'string') {
+                try { curJawaban = JSON.parse(curJawaban); } catch (_) { curJawaban = {}; }
+            }
+            curJawaban.cheatAttempts = 0;
+            curJawaban.lockedDueToCheating = false;
+            curJawaban.isFocus = true;
+            curJawaban.isOnline = true;
+            curJawaban.unlockedAt = new Date().toISOString();
+
+            const { error: updErr } = await supabase.from('quiz_submissions').update({
+                status_koreksi: 'sedang_ujian',
+                jawaban_siswa: curJawaban
+            }).eq('id', subId);
+
+            if (updErr) throw updErr;
+
+            await showCustomModal(`Berhasil! Pelanggaran anti-cheat siswa "${studentName}" telah di-reset ke 0 dan status ujian aktif kembali. Siswa dapat melanjutkan pengerjaan.`, 'alert', 'Pelanggaran Direset', '');
+            if (activeQuizForResults) {
+                openQuizResultsModal(activeQuizForResults.id);
+            }
+            const unlockBtn = document.getElementById('btn-review-unlock-student');
+            if (unlockBtn) unlockBtn.classList.add('hidden');
+        } catch (err) {
+            showCustomModal("Gagal mereset pelanggaran akun: " + err.message);
+        }
+    };
+
+    window.reopenStudentExamSession = async (subId) => {
+        const subRef = activeQuizSubmissions.find(s => String(s.id) === String(subId));
+        const studentName = subRef?.nama_siswa || 'siswa ini';
         const conf = await showCustomModal(
-            `Buka kunci akun siswa "${studentName}"?\n\nSiswa akan diizinkan login kembali menggunakan token aktif dan melanjutkan pengerjaan soal. Jumlah pelanggaran anti-kecurangan akan di-reset ke 0, dan seluruh jawaban yang sudah diisi sebelumnya tetap tersimpan utuh.`,
+            `Buka kembali ujian untuk siswa "${studentName}"?\n\nStatus ujian siswa akan diubah dari "Selesai" menjadi "Sedang Ujian". Pelanggaran anti-kecurangan di-reset ke 0, dan seluruh jawaban siswa yang tersimpan tetap utuh sehingga siswa dapat memasukkan token ujian dan langsung melanjutkan pengerjaan.`,
             'confirm',
-            'Buka Kunci Akun Siswa',
+            'Buka Kembali Sesi Ujian',
             ''
         );
         if (!conf) return;
@@ -4126,32 +4174,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (updErr) throw updErr;
 
-            await showCustomModal(`Berhasil! Akun siswa "${studentName}" telah dibuka kembali. Siswa dapat memasukkan token ujian dan langsung melanjutkan pengerjaan.`, 'alert', 'Akun Dibuka', '');
+            await showCustomModal(`Sesi ujian siswa "${studentName}" berhasil dibuka kembali! Siswa dapat membuka lembar ujian dengan token dan melanjutkan.`, 'alert', 'Ujian Berhasil Dibuka Kembali', '');
             if (activeQuizForResults) {
                 openQuizResultsModal(activeQuizForResults.id);
             }
-            const unlockBtn = document.getElementById('btn-review-unlock-student');
-            if (unlockBtn) unlockBtn.classList.add('hidden');
         } catch (err) {
-            showCustomModal("Gagal membuka kunci akun: " + err.message);
+            showCustomModal("Gagal membuka kembali sesi ujian: " + err.message);
         }
     };
 
     window.resetStudentExamSession = async (subId) => {
         const subRef = activeQuizSubmissions.find(s => String(s.id) === String(subId));
-        const studentName = subRef?.nama_siswa || 'siswa ini';
+        const studentName = subRef?.nama_siswa || '';
+        const studentId = subRef?.student_id || '';
+        const quizId = activeQuizForResults?.id || subRef?.quiz_id;
+
         const conf = await showCustomModal(
-            `PERINGATAN: Reset sesi ujian siswa "${studentName}"?\n\nSemua jawaban dan nilai siswa ini akan DIHAPUS dari sistem. Siswa harus mengerjakan ujian dari soal nomor 1 kembali.`,
+            `PERINGATAN: Reset sesi ujian siswa "${studentName || 'ini'}"?\n\nSemua jawaban dan status siswa pada ujian ini akan DIHAPUS BERSIH dari sistem. Siswa akan dapat login kembali dari awal nomor 1 seperti peserta baru.`,
             'confirm',
-            'Reset Sesi Ujian Siswa',
+            'Reset Bersih Sesi Ujian',
             ''
         );
         if (!conf) return;
 
         try {
-            const { error } = await supabase.from('quiz_submissions').delete().eq('id', subId);
-            if (error) throw error;
-            await showCustomModal(`Sesi ujian siswa "${studentName}" berhasil direset. Siswa dapat login kembali dari awal.`, 'alert', 'Sesi Direset', '');
+            // Hapus berdasarkan ID baris ini
+            const { error: delErr1 } = await supabase.from('quiz_submissions').delete().eq('id', subId);
+            if (delErr1) throw delErr1;
+
+            // Hapus juga riwayat lain siswa ini di kuis ini jika ada data duplikat/lama agar tidak bentrok status 'selesai'
+            if (quizId && studentName) {
+                await supabase.from('quiz_submissions')
+                    .delete()
+                    .eq('quiz_id', quizId)
+                    .ilike('nama_siswa', studentName);
+            }
+            if (quizId && studentId) {
+                await supabase.from('quiz_submissions')
+                    .delete()
+                    .eq('quiz_id', quizId)
+                    .eq('student_id', studentId);
+            }
+
+            await showCustomModal(`Sesi ujian siswa "${studentName}" berhasil direset bersih. Siswa dapat login kembali dari awal.`, 'alert', 'Sesi Direset', '');
             if (activeQuizForResults) {
                 openQuizResultsModal(activeQuizForResults.id);
             }
@@ -4700,8 +4765,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const unlockBtn = document.getElementById('btn-review-unlock-student');
         if (unlockBtn) {
-            if (sub.status_koreksi === 'terkunci_curang') {
+            if (sub.status_koreksi === 'terkunci_curang' || sub.cheatAttempts > 0) {
                 unlockBtn.classList.remove('hidden');
+                unlockBtn.innerText = sub.status_koreksi === 'terkunci_curang' ? 'Buka Kunci Akun' : 'Reset Pelanggaran Anti-Cheat (0)';
             } else {
                 unlockBtn.classList.add('hidden');
             }

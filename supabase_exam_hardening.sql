@@ -276,7 +276,7 @@ BEGIN
 
   PERFORM pg_advisory_xact_lock(hashtext(p_quiz_id::text || ':' || coalesce(nullif(p_student_id,''), lower(btrim(p_student_name)))));
   IF nullif(btrim(p_student_id), '') IS NOT NULL THEN
-    SELECT * INTO v_sub FROM public.quiz_submissions WHERE quiz_id = p_quiz_id AND student_id = p_student_id ORDER BY created_at DESC LIMIT 1;
+    SELECT * INTO v_sub FROM public.quiz_submissions WHERE quiz_id = p_quiz_id AND (student_id = p_student_id OR lower(nama_siswa)=lower(btrim(p_student_name))) ORDER BY created_at DESC LIMIT 1;
   ELSE
     SELECT * INTO v_sub FROM public.quiz_submissions WHERE quiz_id = p_quiz_id AND lower(nama_siswa)=lower(btrim(p_student_name)) AND kelas = p_kelas ORDER BY created_at DESC LIMIT 1;
   END IF;
@@ -533,7 +533,7 @@ SELECT coalesce(jsonb_agg(x ORDER BY x.created_at DESC), '[]'::jsonb)
     SELECT id, quiz_id, student_id, nama_siswa, kelas, status_koreksi, skor_pg, skor_esai, total_nilai, created_at
       FROM public.quiz_submissions
      WHERE (nullif(btrim(p_student_id),'') IS NOT NULL AND student_id = p_student_id)
-        OR (nullif(btrim(p_student_id),'') IS NULL AND lower(nama_siswa)=lower(btrim(p_student_name)) AND (nullif(btrim(p_kelas),'') IS NULL OR kelas = p_kelas))
+        OR (nullif(btrim(p_student_name),'') IS NOT NULL AND lower(nama_siswa)=lower(btrim(p_student_name)) AND (nullif(btrim(p_kelas),'') IS NULL OR kelas = p_kelas))
   ) x
 $$;
 
