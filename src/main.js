@@ -1037,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const subStudentSelect = document.getElementById('sub-student-select');
     const subStudentIdInput = document.getElementById('sub-student-id');
 
-    window.onSubStudentSelectChange = (sel) => {
+    window.onSubStudentSelectChange = async (sel) => {
         if (!sel || !sel.value) {
             if (subNamaInput) subNamaInput.value = '';
             if (subStudentIdInput) subStudentIdInput.value = '';
@@ -1053,10 +1053,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             subStudentSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
         }
 
-        localStorage.setItem('student_nama', studentName);
-        if (subKelasSelect && subKelasSelect.value) {
-            localStorage.setItem('student_kelas', subKelasSelect.value);
-            updateStudentProfileUI(subKelasSelect.value);
+        // Cek secara dinamis jika nama siswa yang baru dipilih ini sudah pernah mengumpulkan tugas ini
+        const curAssignId = subAssignIdInput ? subAssignIdInput.value : '';
+        const statusEl = document.getElementById('modal-banner-status');
+        if (curAssignId) {
+            try {
+                const { data: existingSub } = await supabase
+                    .from('files')
+                    .select('id, created_at, nilai, catatan_guru')
+                    .eq('assignment_id', Number(curAssignId))
+                    .ilike('nama', studentName.trim())
+                    .maybeSingle();
+
+                if (existingSub) {
+                    if (subSubmitBtn) {
+                        subSubmitBtn.disabled = true;
+                        subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                        subSubmitBtn.innerText = 'TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+                    }
+                    if (statusEl) {
+                        statusEl.classList.remove('hidden');
+                        const subDate = existingSub.created_at ? new Date(existingSub.created_at).toLocaleString('id-ID') : '';
+                        statusEl.innerHTML = `
+                            <div class="flex items-center justify-between">
+                                <span class="font-black text-emerald-900">Siswa Ini Sudah Mengumpulkan</span>
+                                <span class="text-[10px] bg-slate-200 text-slate-800 font-black px-2 py-0.5 rounded border border-slate-400">Terkunci 1x</span>
+                            </div>
+                            <p class="text-[11px] text-slate-700 font-bold mt-1">Siswa (${studentName}) tercatat sudah mengumpulkan tugas ini (${subDate}). Tanggapan dibatasi 1 kali.</p>
+                        `;
+                    }
+                } else {
+                    if (subSubmitBtn) {
+                        subSubmitBtn.disabled = false;
+                        subSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        subSubmitBtn.innerText = 'KIRIM JAWABAN TUGAS';
+                    }
+                    if (statusEl) {
+                        statusEl.classList.add('hidden');
+                    }
+                }
+            } catch (_) {}
         }
     };
 
@@ -1186,8 +1222,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             subKelasSelect.innerHTML = '<option value="">-- Pilih Kelas Anda --</option>' +
                 applicableClasses.map(k => `<option value="${escapeHtml(k)}">Kelas ${escapeHtml(k)}</option>`).join('');
 
-            const savedK = getActiveStudentKelas();
-
             if (isSingleExactClass) {
                 subKelasSelect.value = applicableClasses[0];
                 subKelasSelect.disabled = true;
@@ -1195,16 +1229,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 subKelasSelect.disabled = false;
                 subKelasSelect.classList.remove('cursor-not-allowed', 'bg-slate-100');
-                if (savedK && applicableClasses.includes(savedK)) {
-                    subKelasSelect.value = savedK;
-                } else if (applicableClasses.length === 1) {
-                    subKelasSelect.value = applicableClasses[0];
-                } else {
-                    subKelasSelect.value = '';
-                }
+                // Kosongkan kelas saat pertama modal dibuka agar siswa memilih secara sadar
+                subKelasSelect.value = '';
             }
 
-            populateSubStudentSelect(subKelasSelect.value, getActiveStudentName());
+            // Kosongkan nama siswa agar tidak terisi otomatis dari perangkat/cache
+            populateSubStudentSelect(subKelasSelect.value, '');
+        }
+
+        if (subNamaInput) subNamaInput.value = '';
+        if (subStudentIdInput) subStudentIdInput.value = '';
+        if (subStudentSelect) {
+            subStudentSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
         }
 
         if (subMapelSelect) {
@@ -1220,52 +1256,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (linkUrlInput) linkUrlInput.value = '';
         if (linkNoteInput) linkNoteInput.value = '';
 
-        // Cek apakah siswa telah mengirim tugas ini sebelumnya
-        const mySubmission = studentFiles.find(f => 
-            (f.assignment_id && String(f.assignment_id) === String(assignment.id)) ||
-            (f.materi && f.materi.toLowerCase().trim() === (assignment.judul_tugas || '').toLowerCase().trim())
-        );
-
-        const isLocked = Boolean(mySubmission);
-
         const statusEl = document.getElementById('modal-banner-status');
         if (statusEl) {
-            if (mySubmission) {
-                statusEl.classList.remove('hidden');
-                const subDate = mySubmission.created_at ? new Date(mySubmission.created_at).toLocaleString('id-ID') : 'sebelumnya';
-                if (mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '') {
-                    statusEl.innerHTML = `
-                        <div class="flex items-center justify-between">
-                            <span class="font-black text-emerald-950">Nilai Anda: ${mySubmission.nilai} / 100</span>
-                            <span class="text-[10px] bg-emerald-200 text-emerald-950 font-black px-2 py-0.5 rounded border border-emerald-400">Telah Dikoreksi &bull; Terkunci 1x</span>
-                        </div>
-                        ${mySubmission.catatan_guru ? `<p class="text-[11px] font-medium text-emerald-950 mt-1"><strong>Catatan Guru:</strong> ${escapeHtml(mySubmission.catatan_guru)}</p>` : ''}
-                    `;
-                } else {
-                    statusEl.innerHTML = `
-                        <div class="flex items-center justify-between">
-                            <span class="font-black text-emerald-900">Tanggapan Terkirim &amp; Terkunci</span>
-                            <span class="text-[10px] bg-slate-200 text-slate-800 font-black px-2 py-0.5 rounded border border-slate-400">1x Pengisian Selesai</span>
-                        </div>
-                        <p class="text-[11px] text-slate-700 font-bold mt-1">Anda sudah mengirimkan formulir tugas ini (${subDate}). Pengisian formulir tugas ini dibatasi 1 kali dan tidak dapat diubah kembali.</p>
-                    `;
-                }
-            } else {
-                statusEl.classList.add('hidden');
-            }
+            statusEl.classList.add('hidden');
         }
 
         if (subSubmitBtn) {
-            if (isLocked) {
-                subSubmitBtn.disabled = true;
-                subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                subSubmitBtn.innerText = 'TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
-            } else {
-                subSubmitBtn.disabled = false;
-                subSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                subSubmitBtn.innerText = 'KIRIM JAWABAN TUGAS ';
-            }
+            subSubmitBtn.disabled = false;
+            subSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            subSubmitBtn.innerText = 'KIRIM JAWABAN TUGAS';
         }
+
+        const isLocked = false;
 
         const formSheet = document.getElementById('task-google-form-sheet');
         const legacySheet = document.getElementById('task-legacy-text-sheet');
@@ -1370,13 +1372,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             subKelasSelect.innerHTML = '<option value="">-- Pilih Kelas Anda --</option>' +
                 allClassesList.map(k => `<option value="${escapeHtml(k)}">Kelas ${escapeHtml(k)}</option>`).join('');
 
-            const savedK = getActiveStudentKelas();
-            if (savedK && allClassesList.includes(savedK)) {
-                subKelasSelect.value = savedK;
-            } else {
-                subKelasSelect.value = '';
-            }
-            populateSubStudentSelect(subKelasSelect.value, getActiveStudentName());
+            subKelasSelect.value = '';
+            populateSubStudentSelect('', '');
+        }
+        if (subNamaInput) subNamaInput.value = '';
+        if (subStudentIdInput) subStudentIdInput.value = '';
+        if (subStudentSelect) {
+            subStudentSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
         }
         if (subMapelSelect) {
             subMapelSelect.value = 'Informatika';
