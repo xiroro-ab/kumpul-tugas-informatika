@@ -4055,26 +4055,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 scoreBadge = `<span class="inline-flex items-center justify-center px-3 py-1 bg-emerald-400 text-black border-2 border-black rounded-xl font-black text-sm uppercase whitespace-nowrap shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${sub.total_nilai || 0}</span>`;
             }
 
-            // Clean action buttons in 1 single horizontal row!
+            // Clean action buttons: strictly mutually exclusive based on student state
+            let contextActionButtons = '';
+            if (sub.isLocked) {
+                // 1. Siswa Terkunci Anti-Cheat -> Hanya tampilkan Buka Kunci
+                contextActionButtons = `
+                    <button type="button" onclick="unlockStudentExam('${sub.id}')" title="Buka kunci akun agar siswa dapat melanjutkan pengerjaan" class="h-8 px-3 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                        Buka Kunci
+                    </button>
+                `;
+            } else if (sub.isOngoing) {
+                // 2. Siswa Sedang Ujian -> Jika ada pelanggaran tampilkan Reset Curang, dan tombol Paksa Selesai
+                contextActionButtons = `
+                    ${sub.cheatAttempts > 0 ? `
+                        <button type="button" onclick="unlockStudentExam('${sub.id}')" title="Reset jumlah pelanggaran anti-kecurangan kembali ke 0" class="h-8 px-3 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                            Reset Curang (0)
+                        </button>
+                    ` : ''}
+                    <button type="button" onclick="forceFinishStudentExam('${sub.id}')" title="Paksa selesai dan kumpulkan ujian siswa sekarang" class="h-8 px-3 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                        Paksa Selesai
+                    </button>
+                `;
+            } else {
+                // 3. Siswa Sudah Selesai / Dinilai -> Hanya tampilkan Buka Kembali jika ingin ujian dilanjutkan
+                contextActionButtons = `
+                    <button type="button" onclick="reopenStudentExamSession('${sub.id}')" title="Buka kembali ujian yang sudah selesai agar siswa bisa melanjutkan pengerjaan" class="h-8 px-3 bg-blue-300 hover:bg-blue-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
+                        Buka Kembali
+                    </button>
+                `;
+            }
+
             const actionButtons = `
                 <div class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
                     <button type="button" onclick="openExamReviewModal('${sub.id}')" title="Periksa lembar jawaban & rincian soal" class="h-8 px-3 bg-black hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
                         Periksa
                     </button>
-                    ${(sub.isLocked || sub.cheatAttempts > 0) ? `
-                        <button type="button" onclick="unlockStudentExam('${sub.id}')" title="${sub.isLocked ? 'Buka kunci akun agar siswa dapat melanjutkan' : 'Reset pelanggaran anti-kecurangan kembali ke 0'}" class="h-8 px-3 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
-                            ${sub.isLocked ? 'Buka Kunci' : 'Reset Curang (0)'}
-                        </button>
-                    ` : ''}
-                    ${sub.isOngoing ? `
-                        <button type="button" onclick="forceFinishStudentExam('${sub.id}')" title="Paksa selesai dan kumpulkan ujian siswa sekarang" class="h-8 px-3 bg-orange-400 hover:bg-orange-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
-                            Paksa Selesai
-                        </button>
-                    ` : `
-                        <button type="button" onclick="reopenStudentExamSession('${sub.id}')" title="Buka kembali ujian agar siswa bisa melanjutkan pengerjaan" class="h-8 px-3 bg-blue-300 hover:bg-blue-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
-                            Buka Kembali
-                        </button>
-                    `}
+                    ${contextActionButtons}
                     <button type="button" onclick="resetStudentExamSession('${sub.id}')" title="Hapus bersih sesi agar siswa bisa ujian dari awal nomor 1" class="h-8 px-3 bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-400 rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition inline-flex items-center gap-1">
                         Reset
                     </button>
