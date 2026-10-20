@@ -29,6 +29,31 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
+      @media print {
+        body {
+          background: white !important;
+          padding: 0 !important;
+        }
+        #portal-page-container, #submission-modal, #materi-modal, #custom-modal, #confirm-modal, #toast, #loadingPopup {
+          display: none !important;
+        }
+        #receipt-modal {
+          position: static !important;
+          display: block !important;
+          background: transparent !important;
+          backdrop-filter: none !important;
+          padding: 0 !important;
+        }
+        #receipt-modal > div {
+          box-shadow: none !important;
+          border-width: 2px !important;
+          max-width: 100% !important;
+          padding: 24px !important;
+        }
+        #receipt-modal button {
+          display: none !important;
+        }
+      }
     </style>
 </head>
 <body class="bg-[#f8fafc] text-slate-900 min-h-screen flex flex-col items-center p-3 sm:p-6 md:p-8">
@@ -598,51 +623,57 @@
     <!-- MODAL RESI DIGITAL PENGUMPULAN (BUKTI RESMI LMS)         -->
     <!-- ======================================================== -->
     <div id="receipt-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[36px] max-w-md w-full p-4 sm:p-6 md:p-8 text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] my-auto relative max-h-[92dvh] overflow-y-auto">
-            <div class="w-16 h-16 bg-emerald-400 border-2 border-black rounded-full flex items-center justify-center mx-auto mb-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-white">
-                <svg class="w-8 h-8 text-black" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg>
+        <div class="bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-3xl max-w-md w-full p-4 sm:p-6 text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] my-auto relative max-h-[94dvh] overflow-y-auto">
+            <div class="w-14 h-14 bg-emerald-400 border-2 border-black rounded-full flex items-center justify-center mx-auto mb-2.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-black">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg>
             </div>
-            <h3 class="text-2xl font-black uppercase tracking-tight text-slate-900 mb-0.5">Tugas Berhasil Terkirim!</h3>
-            <p class="text-slate-500 font-bold text-xs uppercase tracking-widest mb-4">Bukti Resmi Pengumpulan LMS SMPN 58</p>
+            <h3 class="text-xl sm:text-2xl font-black uppercase tracking-tight text-slate-900">Tugas Berhasil Terkirim!</h3>
+            <p class="text-slate-500 font-bold text-[11px] uppercase tracking-wider mb-3.5">Bukti Resmi Pengumpulan LMS SMPN 58</p>
 
-            <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-4 text-left space-y-2 mb-4 font-mono text-xs">
-                <div class="flex justify-between border-b border-slate-200 pb-1">
-                    <span class="text-slate-500">NO. RESI</span>
-                    <span id="receipt-id" class="font-black text-black">TGS-000000</span>
+            <div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-3.5 sm:p-4 text-left space-y-3 mb-3.5 text-xs">
+                <div class="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                    <div>
+                        <span class="text-[10px] font-black uppercase text-slate-400 block tracking-wider">No. Resi Pengumpulan</span>
+                        <span id="receipt-id" class="font-mono font-black text-xs sm:text-sm text-slate-900 tracking-wider">TGS-000000</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Waktu Terkirim</span>
+                        <span id="receipt-time" class="font-bold text-[11px] text-slate-700 block">-</span>
+                    </div>
                 </div>
-                <div class="flex justify-between border-b border-slate-200 pb-1">
-                    <span class="text-slate-500">WAKTU</span>
-                    <span id="receipt-time" class="font-bold text-black">-</span>
+
+                <div class="border-b border-slate-200 pb-2.5">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Identitas Siswa</span>
+                        <span id="receipt-meta" class="font-mono font-bold text-[10px] bg-indigo-100 text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded-md">-</span>
+                    </div>
+                    <div id="receipt-student" class="font-black text-sm sm:text-base text-slate-900 uppercase break-words leading-tight">-</div>
                 </div>
-                <div class="flex justify-between border-b border-slate-200 pb-1">
-                    <span class="text-slate-500">SISWA</span>
-                    <span id="receipt-student" class="font-black text-black uppercase">-</span>
+
+                <div class="border-b border-slate-200 pb-2.5">
+                    <span class="text-[10px] font-black uppercase text-slate-400 block tracking-wider mb-1">Tugas / Lembar Kerja</span>
+                    <div id="receipt-title" class="font-black text-xs sm:text-sm text-slate-900 leading-snug break-words">-</div>
                 </div>
-                <div class="flex justify-between border-b border-slate-200 pb-1">
-                    <span class="text-slate-500">KELAS & MAPEL</span>
-                    <span id="receipt-meta" class="font-black text-black">-</span>
-                </div>
-                <div class="flex justify-between border-b border-slate-200 pb-1">
-                    <span class="text-slate-500">TUGAS</span>
-                    <span id="receipt-title" class="font-black text-black">-</span>
-                </div>
-                <div class="pt-1">
-                    <span class="text-slate-500 block mb-1">DETAIL BERKAS / TAUTAN:</span>
-                    <div id="receipt-detail" class="font-bold text-slate-800 break-all bg-white p-2 rounded border border-slate-200 text-[11px]">
+
+                <div>
+                    <span class="text-[10px] font-black uppercase text-slate-400 block tracking-wider mb-1">Metode & Berkas Jawaban</span>
+                    <div id="receipt-detail" class="font-bold text-slate-800 break-words bg-white p-2.5 rounded-xl border border-slate-200 text-xs leading-relaxed">
                         -
                     </div>
                 </div>
             </div>
 
-            <div class="bg-yellow-100 border border-yellow-300 rounded-xl p-2 text-xs text-yellow-900 font-bold mb-4">
-                Simpan atau tangkap layar (screenshot) halaman ini sebagai bukti resmi pengumpulan Anda.
+            <div class="bg-amber-50 border border-amber-300 rounded-xl p-2.5 text-[11px] text-amber-900 font-bold mb-3.5 flex items-center gap-2 text-left">
+                <svg class="w-4 h-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <span>Tangkap layar (screenshot) bukti ini sebagai arsip pribadi pengumpulan tugas Anda.</span>
             </div>
 
             <div class="flex flex-col gap-2">
-                <button type="button" onclick="window.print()" class="w-full h-11 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                <button type="button" onclick="window.print()" class="w-full h-10 sm:h-11 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24-1.077-.077-2.21.463-3.17m8.053 0c.54.96.703 2.093.463 3.17M12 3v13.5m0 0l-3-3m3 3l3-3m-9 6h12a2.25 2.25 0 002.25-2.25V9.75A2.25 2.25 0 0017.25 7.5H6.75A2.25 2.25 0 004.5 9.75v7.5A2.25 2.25 0 006.75 19.5z"></path></svg>
                     Cetak / Simpan Bukti
                 </button>
-                <button type="button" onclick="closeReceiptModal()" class="w-full h-11 bg-black hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition">
+                <button type="button" onclick="closeReceiptModal()" class="w-full h-10 sm:h-11 bg-black hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition">
                     Tutup & Kembali ke Portal
                 </button>
             </div>

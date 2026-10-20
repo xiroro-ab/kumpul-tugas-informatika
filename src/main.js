@@ -1868,12 +1868,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     function showReceiptModal(data) {
-        document.getElementById('receipt-id').textContent = data.receiptId;
-        document.getElementById('receipt-time').textContent = data.time;
-        document.getElementById('receipt-student').textContent = data.student;
-        document.getElementById('receipt-meta').textContent = data.meta;
-        document.getElementById('receipt-title').textContent = data.title;
-        document.getElementById('receipt-detail').textContent = data.detail;
+        document.getElementById('receipt-id').textContent = data.receiptId || '-';
+        document.getElementById('receipt-time').textContent = data.time || '-';
+        document.getElementById('receipt-student').textContent = data.student || '-';
+        document.getElementById('receipt-meta').textContent = data.meta || '-';
+        document.getElementById('receipt-title').textContent = data.title || '-';
+        document.getElementById('receipt-detail').textContent = data.detail || '-';
 
         const modal = document.getElementById('receipt-modal');
         modal.classList.remove('hidden');
