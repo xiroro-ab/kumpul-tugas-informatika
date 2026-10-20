@@ -967,11 +967,11 @@
     <!-- ======================================================= -->
     <!-- MODAL HASIL UJIAN SISWA & LIVE MONITORING ANTI-CHEAT    -->
     <!-- ======================================================= -->
-    <div id="quiz-results-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="bg-white border-[4px] border-black rounded-[36px] p-5 sm:p-7 max-w-6xl w-full shadow-[14px_14px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 my-auto max-h-[92vh] overflow-hidden">
+    <div id="quiz-results-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] sm:border-[4px] border-black rounded-[28px] sm:rounded-[36px] max-w-6xl w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] sm:shadow-[14px_14px_0px_0px_rgba(0,0,0,1)] flex flex-col my-auto max-h-[92dvh] overflow-hidden">
             
-            <!-- Modal Header -->
-            <div class="flex justify-between items-start border-b-2 border-black pb-3 shrink-0">
+            <!-- Modal Header (Pinned at Top) -->
+            <div class="flex justify-between items-start border-b-2 border-black p-4 sm:p-6 pb-3 sm:pb-4 shrink-0 bg-white">
                 <div>
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-[10px] bg-amber-200 text-amber-950 border border-black font-black px-2.5 py-0.5 rounded-lg uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">Hasil & Live Monitoring CBT</span>
@@ -980,98 +980,103 @@
                             Live Sync Aktif
                         </span>
                     </div>
-                    <h3 id="quiz-results-title" class="text-xl sm:text-2xl font-black text-black uppercase mt-1">Judul Ujian</h3>
+                    <h3 id="quiz-results-title" class="text-lg sm:text-2xl font-black text-black uppercase mt-1">Judul Ujian</h3>
                 </div>
-                <button type="button" onclick="closeQuizResultsModal()" class="w-9 h-9 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-slate-100 text-xl transition">&times;</button>
+                <button type="button" onclick="closeQuizResultsModal()" class="w-9 h-9 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-slate-100 text-xl transition shrink-0">&times;</button>
             </div>
 
-            <!-- Bento Summary Statistics Cards -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 shrink-0">
-                <div class="bg-slate-50 border-2 border-black rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
-                    <span class="text-[10px] font-black text-slate-500 uppercase block">Total Siswa</span>
-                    <span id="stat-results-total" class="font-black text-lg text-black">0</span>
-                </div>
-                <div class="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
-                    <span class="text-[10px] font-black text-emerald-800 uppercase block">Fokus Ujian</span>
-                    <span id="stat-results-focus" class="font-black text-lg text-emerald-700">0</span>
-                </div>
-                <div class="bg-amber-50 border-2 border-amber-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
-                    <span class="text-[10px] font-black text-amber-900 uppercase block">Di Luar Ujian</span>
-                    <span id="stat-results-unfocus" class="font-black text-lg text-amber-600">0</span>
-                </div>
-                <div class="bg-red-50 border-2 border-red-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
-                    <span class="text-[10px] font-black text-red-800 uppercase block">Terkunci Curang</span>
-                    <span id="stat-results-locked" class="font-black text-lg text-red-600">0</span>
-                </div>
-                <div class="bg-indigo-50 border-2 border-indigo-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
-                    <span class="text-[10px] font-black text-indigo-800 uppercase block">Selesai</span>
-                    <span id="stat-results-done" class="font-black text-lg text-indigo-700">0</span>
-                </div>
-                <div class="bg-purple-50 border-2 border-purple-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
-                    <span class="text-[10px] font-black text-purple-800 uppercase block">Rata-Rata</span>
-                    <span id="stat-results-avg" class="font-black text-lg text-purple-700">0</span>
-                </div>
-            </div>
-
-            <!-- Filter & Search Controls Bar -->
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0 bg-slate-50 border-2 border-black rounded-2xl p-3">
-                <div class="flex flex-wrap items-center gap-2 flex-1">
-                    <div class="flex items-center gap-1.5">
-                        <label for="filter-results-kelas" class="text-xs font-black uppercase text-black">Kelas:</label>
-                        <select id="filter-results-kelas" onchange="applyQuizResultsFilters()" class="h-9 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer outline-none">
-                            <option value="all">Semua Kelas</option>
-                        </select>
+            <!-- Scrollable Body (Stats + Filter + Table) -->
+            <div class="p-3.5 sm:p-6 overflow-y-auto flex-1 space-y-3.5 sm:space-y-4">
+                
+                <!-- Bento Summary Statistics Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                    <div class="bg-slate-50 border-2 border-black rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black text-slate-500 uppercase block">Total Siswa</span>
+                        <span id="stat-results-total" class="font-black text-lg text-black">0</span>
                     </div>
-
-                    <div class="flex items-center gap-1.5">
-                        <label for="filter-results-status" class="text-xs font-black uppercase text-black">Status:</label>
-                        <select id="filter-results-status" onchange="applyQuizResultsFilters()" class="h-9 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer outline-none">
-                            <option value="all">Semua Status</option>
-                            <option value="focus">Fokus Mengerjakan</option>
-                            <option value="unfocus">Di Luar Ujian / Tidak Fokus</option>
-                            <option value="locked">Terkunci Curang</option>
-                            <option value="done">Selesai</option>
-                            <option value="review">Selesai - Perlu Dinilai</option>
-                        </select>
+                    <div class="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black text-emerald-800 uppercase block">Fokus Ujian</span>
+                        <span id="stat-results-focus" class="font-black text-lg text-emerald-700">0</span>
+                    </div>
+                    <div class="bg-amber-50 border-2 border-amber-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black text-amber-900 uppercase block">Di Luar Ujian</span>
+                        <span id="stat-results-unfocus" class="font-black text-lg text-amber-600">0</span>
+                    </div>
+                    <div class="bg-red-50 border-2 border-red-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black text-red-800 uppercase block">Terkunci Curang</span>
+                        <span id="stat-results-locked" class="font-black text-lg text-red-600">0</span>
+                    </div>
+                    <div class="bg-indigo-50 border-2 border-indigo-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black text-indigo-800 uppercase block">Selesai</span>
+                        <span id="stat-results-done" class="font-black text-lg text-indigo-700">0</span>
+                    </div>
+                    <div class="bg-purple-50 border-2 border-purple-500 rounded-xl p-2.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <span class="text-[10px] font-black text-purple-800 uppercase block">Rata-Rata</span>
+                        <span id="stat-results-avg" class="font-black text-lg text-purple-700">0</span>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 w-full sm:w-64">
-                    <input type="text" id="search-results-student" oninput="applyQuizResultsFilters()" placeholder="Cari nama atau NISN..." class="w-full h-9 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black outline-none placeholder:text-slate-400">
+                <!-- Filter & Search Controls Bar -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-slate-50 border-2 border-black rounded-2xl p-3">
+                    <div class="flex flex-wrap items-center gap-2 flex-1">
+                        <div class="flex items-center gap-1.5">
+                            <label for="filter-results-kelas" class="text-xs font-black uppercase text-black">Kelas:</label>
+                            <select id="filter-results-kelas" onchange="applyQuizResultsFilters()" class="h-9 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer outline-none">
+                                <option value="all">Semua Kelas</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center gap-1.5">
+                            <label for="filter-results-status" class="text-xs font-black uppercase text-black">Status:</label>
+                            <select id="filter-results-status" onchange="applyQuizResultsFilters()" class="h-9 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer outline-none">
+                                <option value="all">Semua Status</option>
+                                <option value="focus">Fokus Mengerjakan</option>
+                                <option value="unfocus">Di Luar Ujian / Tidak Fokus</option>
+                                <option value="locked">Terkunci Curang</option>
+                                <option value="done">Selesai</option>
+                                <option value="review">Selesai - Perlu Dinilai</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full sm:w-64">
+                        <input type="text" id="search-results-student" oninput="applyQuizResultsFilters()" placeholder="Cari nama atau NISN..." class="w-full h-9 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black outline-none placeholder:text-slate-400">
+                    </div>
                 </div>
+
+                <!-- Results Table -->
+                <div class="border-[3px] border-black rounded-2xl overflow-x-auto bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                    <table class="w-full min-w-[840px] divide-y-2 divide-black text-left text-xs">
+                        <thead class="bg-slate-100 sticky top-0 z-10">
+                            <tr>
+                                <th class="px-3 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-12">No</th>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2">Nama Siswa & NISN</th>
+                                <th class="px-3 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-20">Kelas</th>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center whitespace-nowrap">Status & Anti-Cheat</th>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-36 whitespace-nowrap">Progres Soal</th>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-36 whitespace-nowrap">Nilai Akhir</th>
+                                <th class="px-4 py-3 font-black uppercase border-b-2 border-black text-center whitespace-nowrap">Aksi Guru</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quiz-submissions-tbody" class="divide-y-2 divide-black bg-white">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
 
-            <!-- Results Table (Scrollable Body) -->
-            <div class="border-[3px] border-black rounded-2xl overflow-x-auto bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex-1 overflow-y-auto">
-                <table class="w-full min-w-[840px] divide-y-2 divide-black text-left text-xs">
-                    <thead class="bg-slate-100 sticky top-0 z-10">
-                        <tr>
-                            <th class="px-3 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-12">No</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2">Nama Siswa & NISN</th>
-                            <th class="px-3 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-20">Kelas</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center whitespace-nowrap">Status & Anti-Cheat</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-36 whitespace-nowrap">Progres Soal</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black border-r-2 text-center w-36 whitespace-nowrap">Nilai Akhir</th>
-                            <th class="px-4 py-3 font-black uppercase border-b-2 border-black text-center whitespace-nowrap">Aksi Guru</th>
-                        </tr>
-                    </thead>
-                    <tbody id="quiz-submissions-tbody" class="divide-y-2 divide-black bg-white">
-                        <!-- Populated via JS -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Modal Footer Buttons -->
-            <div class="flex flex-wrap justify-between items-center gap-2 pt-2 border-t-2 border-black shrink-0">
+            <!-- Modal Footer Buttons (Pinned at Bottom) -->
+            <div class="flex flex-wrap justify-between items-center gap-2 p-3 sm:p-4 border-t-2 border-black shrink-0 bg-slate-50">
                 <div class="flex items-center gap-2">
-                    <button type="button" onclick="exportQuizCSV()" class="h-10 px-4 bg-emerald-400 hover:bg-emerald-500 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                    <button type="button" onclick="exportQuizCSV()" class="h-10 px-4 bg-emerald-400 hover:bg-emerald-500 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
                         Unduh Rekap CSV
                     </button>
-                    <button type="button" onclick="printQuizResults()" class="h-10 px-4 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
+                    <button type="button" onclick="printQuizResults()" class="h-10 px-4 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
                         Cetak Lembar Skor
                     </button>
                 </div>
-                <button type="button" onclick="closeQuizResultsModal()" class="h-10 px-5 bg-white hover:bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase transition">
+                <button type="button" onclick="closeQuizResultsModal()" class="h-10 px-5 bg-white hover:bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase transition cursor-pointer">
                     Tutup
                 </button>
             </div>
@@ -1081,22 +1086,22 @@
     <!-- ======================================================= -->
     <!-- MODAL: PERIKSA LEMBAR JAWABAN & AI KOREKSI ESAI         -->
     <!-- ======================================================= -->
-    <div id="student-exam-review-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-2xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 my-8">
-            <div class="flex justify-between items-start border-b-2 border-black pb-3">
+    <div id="student-exam-review-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+        <div class="bg-white border-[3px] border-black rounded-[28px] sm:rounded-[36px] max-w-2xl w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[92dvh] overflow-hidden my-auto">
+            <div class="flex justify-between items-start border-b-2 border-black p-4 sm:p-6 pb-3 shrink-0 bg-purple-100">
                 <div>
-                    <span class="text-[10px] bg-purple-100 text-purple-900 border border-purple-300 font-black px-2 py-0.5 rounded uppercase">Lembar Jawaban Siswa</span>
-                    <h3 id="exam-review-student-name" class="text-2xl font-black text-black uppercase mt-1">Nama Siswa</h3>
-                    <p id="exam-review-meta" class="text-xs font-bold text-slate-500">Kelas VII.1 • Skor PG: 80</p>
+                    <span class="text-[10px] bg-purple-200 text-purple-950 border border-purple-400 font-black px-2 py-0.5 rounded uppercase">Lembar Jawaban Siswa</span>
+                    <h3 id="exam-review-student-name" class="text-xl sm:text-2xl font-black text-black uppercase mt-1">Nama Siswa</h3>
+                    <p id="exam-review-meta" class="text-xs font-bold text-slate-600">Kelas VII.1 • Skor PG: 80</p>
                 </div>
-                <button onclick="closeExamReviewModal()" class="text-2xl font-black hover:text-red-600">&times;</button>
+                <button onclick="closeExamReviewModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg cursor-pointer shrink-0">&times;</button>
             </div>
 
-            <div id="exam-review-questions-container" class="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            <div id="exam-review-questions-container" class="space-y-4 p-4 sm:p-6 overflow-y-auto flex-1">
                 <!-- List per nomor soal dan jawaban siswa -->
             </div>
 
-            <div class="flex flex-wrap justify-between items-center gap-2 pt-3 border-t-2 border-black">
+            <div class="flex flex-wrap justify-between items-center gap-2 p-3 sm:p-4 border-t-2 border-black shrink-0 bg-slate-50">
                 <div class="flex items-center gap-2">
                     <button type="button" onclick="unlockCurrentReviewStudent()" id="btn-review-unlock-student" class="hidden bg-amber-400 hover:bg-amber-500 text-black border-2 border-black font-black px-4 py-2.5 rounded-xl text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
                         Buka Kunci Akun Siswa
