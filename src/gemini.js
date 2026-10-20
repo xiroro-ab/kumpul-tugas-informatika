@@ -3,6 +3,8 @@
 // Gemini 3.7 Flash, Gemini 3.5 Flash-Lite, Gemini 3.8 Flash, 
 // Gemini 3 Flash (Preview) (Bawaan GuruPro), Gemini 2.5 Pro, atau kustom manual.
 
+import { balanceExamWeights } from './examScoring.js';
+
 export const GEMINI_MODEL_PRESETS = [
     { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash' },
     { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite' },
@@ -515,6 +517,10 @@ Tugas Anda merancang instrumen evaluasi kuis/ujian dengan spesifikasi butir soal
    - "rubrik_esai": kriteria penilaian bertingkat untuk acuan guru & AI.
    - "bobot": 25
 
+ATURAN PEMBOBOTAN NILAI (SKALA TOTAL TEPAT 100 POIN):
+- Total nilai/bobot dari seluruh butir soal HARUS TEPAT BERJUMLAH 100 POIN.
+- Berikan bobot lebih besar untuk soal penalaran mendalam/esai/menjodohkan (misal 20-25 poin) dan bagi rata untuk soal objektif (pg, benar_salah, singkat) sehingga akumulasi bobot seluruh soal tepat 100.
+
 PENTING: Jangan gunakan karakter em dash.
 KEMBALIKAN HANYA JSON MURNI TANPA MARKDOWN BACKTICKS SESUAI SCHEMA:
 {
@@ -623,6 +629,9 @@ KEMBALIKAN HANYA JSON MURNI TANPA MARKDOWN BACKTICKS SESUAI SCHEMA:
         };
     });
 
+    // Seimbangkan seluruh bobot butir soal agar akumulasi total tepat 100 poin
+    balanceExamWeights(items, 100);
+
     // Pastikan properti array dapat dibaca baik sebagai array langsung maupun objek kuis
     items.judul_kuis = parsed?.judul_kuis || `Ujian ${cfg.mapel} - ${cfg.topik}`;
     items.petunjuk = parsed?.petunjuk || `Ujian ${cfg.topik}. Kerjakan dengan teliti dan jujur!`;
@@ -659,20 +668,27 @@ Tentukan:
  * AI Auto-Koreksi Jawaban Esai Ujian Siswa
  */
 export async function aiGradeQuizEssay(pertanyaan, rubrik, jawabanSiswa, maxBobot = 20) {
-    const system = `Anda adalah penilai ujian esai SMP objektif. Berikan skor dan evaluasi singkat dalam JSON: {"skor": number, "feedback": string}`;
+    const system = `Anda adalah guru penguji ahli SMP Negeri 58 Palembang yang menilai jawaban ujian esai/uraian siswa secara adil, objektif, dan mendidik.
+Format respon HANYA JSON: {"skor": number, "feedback": string}`;
 
     const cleanPertanyaan = String(pertanyaan || '').replace(/\n?\[GAMBAR:\s*[^\]]+\]/gi, '').trim();
-    const prompt = `Soal Esai: ${cleanPertanyaan}
-Rubrik Jawaban Guru: ${rubrik}
-Bobot Maksimal: ${maxBobot}
+    const prompt = `Soal Ujian: ${cleanPertanyaan}
+Panduan Kunci / Rubrik Penilaian Guru: ${rubrik || 'Kesesuaian konsep, kelengkapan uraian, dan logika penalaran.'}
+Bobot Poin Maksimal: ${maxBobot}
 Jawaban Siswa: ${jawabanSiswa || '(Kosong / Tidak menjawab)'}
 
-Berikan:
-- "skor": angka antara 0 sampai ${maxBobot}
-- "feedback": kalimat masukan singkat (maks 2 kalimat)`;
+Kriteria Penilaian:
+1. "skor": Berikan nilai proporsional antara 0 sampai ${maxBobot} (bulat). Jika jawaban kosong/tidak relevan beri 0. Jika mencakup sebagian konsep kunci beri nilai proporsional. Jika lengkap dan tepat beri ${maxBobot}.
+2. "feedback": Catatan penilaian singkat (1-2 kalimat) yang ramah dan edukatif menjelaskan alasan perolehan skor.`;
 
     const raw = await callGemini(prompt, system, true);
-    return robustJsonParse(raw);
+    const parsed = robustJsonParse(raw);
+    const numericScore = typeof parsed?.skor === 'number' ? parsed.skor : parseInt(parsed?.skor, 10);
+    const safeScore = Number.isFinite(numericScore) ? Math.min(maxBobot, Math.max(0, numericScore)) : 0;
+    return {
+        skor: safeScore,
+        feedback: parsed?.feedback || 'Evaluasi esai selesai.'
+    };
 }
 
 /**

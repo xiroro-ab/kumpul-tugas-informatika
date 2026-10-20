@@ -1514,8 +1514,14 @@
                 <div class="space-y-3">
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2">
                         <div>
-                            <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">2. Butir-Butir Soal (<span id="manual-quiz-total-count">0</span> Soal)</h4>
-                            <p class="text-[11px] text-slate-500 font-bold">Tambahkan butir soal PG, PG Kompleks, Benar/Salah, Singkat, Menjodohkan, Upload Foto, atau Esai.</p>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">2. Butir-Butir Soal (<span id="manual-quiz-total-count">0</span> Soal)</h4>
+                                <span id="manual-quiz-total-bobot-badge" class="px-2 py-0.5 rounded-lg border font-black text-[10px] uppercase bg-emerald-100 text-emerald-950 border-emerald-400">Total Bobot: 0 / 100 Poin</span>
+                                <button type="button" onclick="balanceManualQuizBobot()" title="Bagi rata bobot secara proporsional agar total tepat 100 poin" class="px-2 py-0.5 bg-yellow-300 hover:bg-yellow-400 text-black border border-black rounded-lg font-black text-[10px] uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1 cursor-pointer">
+                                    <span>⚡</span> Bagi Rata Bobot (100 Poin)
+                                </button>
+                            </div>
+                            <p class="text-[11px] text-slate-500 font-bold mt-0.5">Tambahkan butir soal PG, PG Kompleks, Benar/Salah, Singkat, Menjodohkan, Upload Foto, atau Esai.</p>
                         </div>
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <button type="button" onclick="addManualQuestionItem('pg')" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">

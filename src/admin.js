@@ -22,7 +22,7 @@ import {
     parseRosterCsvText, 
     initialStudents 
 } from './rosterData.js';
-import { calculateExamScore, getMaxScore, toPercent, getSubmissionAnswers } from './examScoring.js';
+import { calculateExamScore, getMaxScore, toPercent, getSubmissionAnswers, balanceExamWeights } from './examScoring.js';
 
 let currentSession = null;
 let currentTeacher = null;
@@ -3264,7 +3264,31 @@ document.addEventListener('DOMContentLoaded', () => {
     window.updateManualQuestionField = (idx, field, value) => {
         if (manualQuizQuestions[idx]) {
             manualQuizQuestions[idx][field] = value;
+            if (field === 'bobot') {
+                updateManualQuizTotalBobotDisplay();
+            }
         }
+    };
+
+    function updateManualQuizTotalBobotDisplay() {
+        const totalBobot = manualQuizQuestions.reduce((sum, q) => sum + (parseInt(q.bobot, 10) || 0), 0);
+        const bobotBadge = document.getElementById('manual-quiz-total-bobot-badge');
+        if (bobotBadge) {
+            bobotBadge.textContent = `Total Bobot: ${totalBobot} / 100 Poin`;
+            bobotBadge.className = totalBobot === 100
+                ? "px-2 py-0.5 rounded-lg border font-black text-[10px] uppercase bg-emerald-100 text-emerald-950 border-emerald-400"
+                : "px-2 py-0.5 rounded-lg border font-black text-[10px] uppercase bg-amber-100 text-amber-950 border-amber-400";
+        }
+    }
+
+    window.balanceManualQuizBobot = () => {
+        if (!manualQuizQuestions || manualQuizQuestions.length === 0) {
+            showCustomModal("Belum ada butir soal untuk diseimbangkan bobotnya.", "alert", "Pemberitahuan", "");
+            return;
+        }
+        balanceExamWeights(manualQuizQuestions, 100);
+        renderManualQuizQuestions();
+        showCustomModal("Berhasil! Seluruh butir soal telah diseimbangkan secara cerdas dan proporsional sehingga akumulasi bobot tepat 100 poin.", "alert", "Bobot 100 Poin Sempurna", "");
     };
 
     window.changeManualQuestionType = (idx, newType) => {
@@ -3292,6 +3316,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.renderManualQuizQuestions = () => {
         const countEl = document.getElementById('manual-quiz-total-count');
         if (countEl) countEl.innerText = manualQuizQuestions.length;
+
+        updateManualQuizTotalBobotDisplay();
 
         const container = document.getElementById('manual-quiz-questions-list');
         if (!container) return;
@@ -4632,14 +4658,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             ` : '';
 
+            const qBobot = Number(q.bobot) || (q.tipe === 'esai' || q.tipe === 'upload_foto' || q.tipe === 'menjodohkan' ? 20 : 10);
+
             if (q.tipe === 'pg') {
                 const studentAns = answers[q.id] || '(Tidak dijawab)';
                 const isCorrect = String(studentAns).toUpperCase() === (q.kunci_pg || '').toUpperCase();
                 card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-black">No. ${idx + 1} (Pilihan Ganda)</span>
+                    <div class="flex items-center justify-between flex-wrap gap-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs text-indigo-900 bg-indigo-100 px-2 py-0.5 rounded border border-indigo-300 uppercase">No. ${idx + 1} (Pilihan Ganda)</span>
+                            <span class="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded">Bobot: ${qBobot} Poin</span>
+                        </div>
                         <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${isCorrect ? `Benar (+${q.bobot || 10})` : 'Salah (0)'}
+                            ${isCorrect ? `Benar (${qBobot}/${qBobot})` : `Salah (0/${qBobot})`}
                         </span>
                     </div>
                     <p class="font-bold text-xs text-slate-800">${escapeHtml(cleanPertanyaan)}</p>
@@ -4655,10 +4686,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const correctKeys = (q.kunci_pg || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean).sort();
                 const isCorrect = studentKeys.length > 0 && studentKeys.join(',') === correctKeys.join(',');
                 card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-cyan-900 bg-cyan-100 px-2 py-0.5 rounded border border-cyan-300 uppercase">No. ${idx + 1} (PG Kompleks)</span>
+                    <div class="flex items-center justify-between flex-wrap gap-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs text-cyan-900 bg-cyan-100 px-2 py-0.5 rounded border border-cyan-300 uppercase">No. ${idx + 1} (PG Kompleks)</span>
+                            <span class="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded">Bobot: ${qBobot} Poin</span>
+                        </div>
                         <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${isCorrect ? `Benar (+${q.bobot || 10})` : 'Kurang Tepat (0)'}
+                            ${isCorrect ? `Benar (${qBobot}/${qBobot})` : `Kurang Tepat (0/${qBobot})`}
                         </span>
                     </div>
                     <p class="font-bold text-xs text-slate-800">${escapeHtml(cleanPertanyaan)}</p>
@@ -4672,10 +4706,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const studentAns = answers[q.id] || '(Tidak dijawab)';
                 const isCorrect = String(studentAns).trim().toLowerCase() === String(q.kunci_pg || '').trim().toLowerCase();
                 card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 uppercase">No. ${idx + 1} (Benar/Salah)</span>
+                    <div class="flex items-center justify-between flex-wrap gap-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 uppercase">No. ${idx + 1} (Benar/Salah)</span>
+                            <span class="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded">Bobot: ${qBobot} Poin</span>
+                        </div>
                         <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-red-100 text-red-900 border-red-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${isCorrect ? `Benar (+${q.bobot || 10})` : 'Salah (0)'}
+                            ${isCorrect ? `Benar (${qBobot}/${qBobot})` : `Salah (0/${qBobot})`}
                         </span>
                     </div>
                     <p class="font-bold text-xs text-slate-800">${escapeHtml(cleanPertanyaan)}</p>
@@ -4689,12 +4726,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const studentAns = answers[q.id] || '(Kosong)';
                 const isCorrect = String(studentAns).trim().toLowerCase() === String(q.kunci_pg || '').trim().toLowerCase();
                 const currentFeedback = aiFeedback[q.id] || {};
-                const defaultScore = isCorrect ? (q.bobot || 10) : 0;
+                const defaultScore = isCorrect ? qBobot : 0;
                 card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-blue-900 bg-blue-100 px-2 py-0.5 rounded border border-blue-300 uppercase">No. ${idx + 1} (Isian Singkat)</span>
+                    <div class="flex items-center justify-between flex-wrap gap-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs text-blue-900 bg-blue-100 px-2 py-0.5 rounded border border-blue-300 uppercase">No. ${idx + 1} (Isian Singkat)</span>
+                            <span class="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded">Bobot Maks: ${qBobot} Poin</span>
+                        </div>
                         <span class="${isCorrect ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-amber-100 text-amber-900 border-amber-400'} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${isCorrect ? `Cocok Otomatis (+${q.bobot || 10})` : 'Perlu Evaluasi Guru/AI'}
+                            ${isCorrect ? `Cocok Otomatis (${qBobot}/${qBobot})` : 'Perlu Evaluasi Guru/AI'}
                         </span>
                     </div>
                     <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
@@ -4705,8 +4745,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 items-center">
                         <div class="sm:col-span-1">
-                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor (0-${q.bobot || 10})</label>
-                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : defaultScore}" min="0" max="${q.bobot || 10}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor (0-${qBobot})</label>
+                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : defaultScore}" min="0" max="${qBobot}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
                         </div>
                         <div class="sm:col-span-3">
                             <label class="block text-[10px] font-black uppercase text-black mb-0.5">Catatan / Evaluasi</label>
@@ -4730,17 +4770,20 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td class="p-2 font-bold text-xs text-black">${escapeHtml(p.kiri)}</td>
                             <td class="p-2 font-bold text-xs ${isMatch ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(stAns)}</td>
                             <td class="p-2 font-bold text-xs text-slate-600">${escapeHtml(p.kanan)}</td>
-                            <td class="p-2 text-center text-xs">${isMatch ? '' : ''}</td>
+                            <td class="p-2 text-center text-xs">${isMatch ? '✅' : '❌'}</td>
                         </tr>
                     `;
                 }).join('');
 
-                const autoScore = pairs.length > 0 ? Math.round((q.bobot || 20) * (correctMatches / pairs.length)) : 0;
+                const autoScore = pairs.length > 0 ? Math.round(qBobot * (correctMatches / pairs.length)) : 0;
 
                 card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-teal-900 bg-teal-100 px-2 py-0.5 rounded border border-teal-300 uppercase">No. ${idx + 1} (Menjodohkan)</span>
-                        <span class="text-xs font-bold text-slate-500">Kesesuaian: ${correctMatches}/${pairs.length} Pasangan</span>
+                    <div class="flex items-center justify-between flex-wrap gap-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs text-teal-900 bg-teal-100 px-2 py-0.5 rounded border border-teal-300 uppercase">No. ${idx + 1} (Menjodohkan)</span>
+                            <span class="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded">Bobot Maks: ${qBobot} Poin</span>
+                        </div>
+                        <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">Cocok: ${correctMatches}/${pairs.length} (${autoScore}/${qBobot})</span>
                     </div>
                     <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
                     ${imgStimulusHtml}
@@ -4759,8 +4802,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 items-center">
                         <div class="sm:col-span-1">
-                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor (0-${q.bobot || 20})</label>
-                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : autoScore}" min="0" max="${q.bobot || 20}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor (0-${qBobot})</label>
+                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : autoScore}" min="0" max="${qBobot}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
                         </div>
                         <div class="sm:col-span-3">
                             <label class="block text-[10px] font-black uppercase text-black mb-0.5">Masukan / Feedback Guru</label>
@@ -4775,9 +4818,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isImage = safeFileUrl.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i);
 
                 card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-pink-900 bg-pink-100 px-2 py-0.5 rounded border border-pink-300 uppercase">No. ${idx + 1} (Upload Foto / Berkas)</span>
-                        <span class="text-xs font-bold text-slate-500">Bobot Maks: ${q.bobot || 20}</span>
+                    <div class="flex items-center justify-between flex-wrap gap-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs text-pink-900 bg-pink-100 px-2 py-0.5 rounded border border-pink-300 uppercase">No. ${idx + 1} (Upload Foto / Berkas)</span>
+                            <span class="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded">Bobot Maks: ${qBobot} Poin</span>
+                        </div>
                     </div>
                     <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
                     ${imgStimulusHtml}
@@ -4797,8 +4842,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 items-center">
                         <div class="sm:col-span-1">
-                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor (0-${q.bobot || 20})</label>
-                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : ''}" min="0" max="${q.bobot || 20}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor (0-${qBobot})</label>
+                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : ''}" min="0" max="${qBobot}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
                         </div>
                         <div class="sm:col-span-3">
                             <label class="block text-[10px] font-black uppercase text-black mb-0.5">Masukan / Feedback Guru</label>
@@ -4810,9 +4855,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const studentEssay = answers[q.id] || '(Kosong)';
                 const currentFeedback = aiFeedback[q.id] || {};
                 card.innerHTML = `
-                    <div class="flex items-center justify-between">
-                        <span class="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 uppercase">No. ${idx + 1} (Soal Esai)</span>
-                        <span class="text-xs font-bold text-slate-500">Bobot Maks: ${q.bobot || 20}</span>
+                    <div class="flex items-center justify-between flex-wrap gap-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded border border-purple-300 uppercase">No. ${idx + 1} (Soal Esai)</span>
+                            <span class="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded">Bobot Maks: ${qBobot} Poin</span>
+                        </div>
                     </div>
                     <p class="font-bold text-xs text-black">${escapeHtml(cleanPertanyaan)}</p>
                     ${imgStimulusHtml}
@@ -4823,8 +4870,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 items-center">
                         <div class="sm:col-span-1">
-                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor Esai (0-${q.bobot || 20})</label>
-                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : ''}" min="0" max="${q.bobot || 20}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
+                            <label class="block text-[10px] font-black uppercase text-black mb-0.5">Skor Esai (0-${qBobot})</label>
+                            <input type="number" id="essay-score-${q.id}" value="${currentFeedback.skor !== undefined ? currentFeedback.skor : ''}" min="0" max="${qBobot}" class="w-full h-9 px-2 border-2 border-black rounded-lg font-black text-sm bg-white">
                         </div>
                         <div class="sm:col-span-3">
                             <label class="block text-[10px] font-black uppercase text-black mb-0.5">Masukan / Feedback Esai</label>

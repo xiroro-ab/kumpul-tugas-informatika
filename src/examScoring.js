@@ -1,7 +1,7 @@
 // Skor otomatis ujian. Objektif dan subjektif dipisah agar tidak dihitung dua kali
 // saat guru menyimpan hasil koreksi di admin.
-function getBobot(q) {
-    return Number(q.bobot) || (q.tipe === 'menjodohkan' ? 20 : 10);
+export function getBobot(q) {
+    return Number(q?.bobot) || (q?.tipe === 'menjodohkan' || q?.tipe === 'esai' || q?.tipe === 'upload_foto' ? 20 : 10);
 }
 
 export function getMaxScore(questions) {
@@ -10,6 +10,57 @@ export function getMaxScore(questions) {
 
 export function toPercent(score, maxScore) {
     return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+}
+
+/**
+ * Menyeimbangkan pembobotan butir soal secara cerdas dan proporsional
+ * sehingga total bobot seluruh soal tepat berjumlah targetTotal (default 100 poin).
+ */
+export function balanceExamWeights(questions, targetTotal = 100) {
+    if (!questions || !Array.isArray(questions) || questions.length === 0) return questions;
+    const n = questions.length;
+
+    const baseWeights = questions.map(q => {
+        const isSubjective = ['esai', 'upload_foto', 'menjodohkan'].includes(q?.tipe);
+        const w = Number(q?.bobot);
+        if (w && w > 0) return w;
+        return isSubjective ? 20 : 10;
+    });
+
+    const sumBase = baseWeights.reduce((a, b) => a + b, 0);
+    if (sumBase <= 0) {
+        const each = Math.floor(targetTotal / n);
+        let rem = targetTotal - (each * n);
+        questions.forEach((q, idx) => {
+            q.bobot = each + (idx < rem ? 1 : 0);
+        });
+        return questions;
+    }
+
+    let allocated = baseWeights.map(w => Math.max(1, Math.round((w / sumBase) * targetTotal)));
+    let currentSum = allocated.reduce((a, b) => a + b, 0);
+
+    let diff = targetTotal - currentSum;
+    let idx = 0;
+    while (diff !== 0 && idx < 300) {
+        const targetIdx = idx % n;
+        if (diff > 0) {
+            allocated[targetIdx]++;
+            diff--;
+        } else if (diff < 0) {
+            if (allocated[targetIdx] > 1) {
+                allocated[targetIdx]--;
+                diff++;
+            }
+        }
+        idx++;
+    }
+
+    questions.forEach((q, i) => {
+        q.bobot = allocated[i];
+    });
+
+    return questions;
 }
 
 export function calculateExamScore(questions, answers) {
