@@ -2947,7 +2947,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 showCustomModal(`Tugas "${judul}" berhasil diperbarui!`);
             } else {
                 const { error } = await supabase.from('assignments').insert([{
-                    /* teacher_id removed */
                     guru_id: currentTeacher?.id || currentSession?.user?.id,
                     mapel,
                     kelas,
@@ -3209,7 +3208,12 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = '<div class="col-span-2 text-center py-6 font-bold text-black uppercase animate-pulse">Memuat materi pembelajaran...</div>';
 
         try {
-            const { data, error } = await supabase.from('materials').select('*').order('created_at', { ascending: false });
+            const isSuperadmin = currentTeacher?.role === 'superadmin';
+            let matQuery = supabase.from('materials').select('*').order('created_at', { ascending: false });
+            if (!isSuperadmin && currentTeacher?.id) {
+                matQuery = matQuery.or(`teacher_id.eq.${currentTeacher.id},guru_id.eq.${currentTeacher.id}`);
+            }
+            const { data, error } = await matQuery;
             if (error) throw error;
             materialsList = data || [];
 
@@ -3298,7 +3302,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const { error } = await supabase.from('materials').insert([{
-                /* teacher_id removed */
+                teacher_id: currentSession?.user?.id,
+                guru_id: currentTeacher?.id || currentSession?.user?.id,
                 mapel,
                 kelas,
                 judul,
@@ -3435,7 +3440,12 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = '<div class="text-center py-6 font-bold text-black uppercase">Memuat bank soal ujian...</div>';
 
         try {
-            const { data, error } = await supabase.from('quizzes').select('*, quiz_questions(*)').order('created_at', { ascending: false });
+            const isSuperadmin = currentTeacher?.role === 'superadmin';
+            let quizQuery = supabase.from('quizzes').select('*, quiz_questions(*)').order('created_at', { ascending: false });
+            if (!isSuperadmin && currentTeacher?.id) {
+                quizQuery = quizQuery.or(`teacher_id.eq.${currentTeacher.id},guru_id.eq.${currentTeacher.id}`);
+            }
+            const { data, error } = await quizQuery;
             if (error) throw error;
             quizzesList = data || [];
 
@@ -3729,7 +3739,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let quizData = null;
             try {
                 const { data: qd, error: qErr } = await supabase.from('quizzes').insert([{
-                    /* teacher_id removed */
+                    teacher_id: currentSession?.user?.id,
+                    guru_id: currentTeacher?.id || currentSession?.user?.id,
                     mapel,
                     kelas,
                     judul_kuis: judul,
@@ -3743,7 +3754,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 quizData = qd;
             } catch (_) {
                 const { data: qd2, error: qErr2 } = await supabase.from('quizzes').insert([{
-                    /* teacher_id removed */
+                    teacher_id: currentSession?.user?.id,
+                    guru_id: currentTeacher?.id || currentSession?.user?.id,
                     mapel,
                     kelas,
                     judul_kuis: judul,
@@ -4530,7 +4542,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 let quizError = null;
                 try {
                     const { data: qd, error: qErr } = await supabase.from('quizzes').insert([{
-                        /* teacher_id removed */
+                        teacher_id: currentSession?.user?.id,
+                        guru_id: currentTeacher?.id || currentSession?.user?.id,
                         mapel,
                         kelas,
                         judul_kuis: judul,
@@ -4544,7 +4557,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     quizData = qd;
                 } catch (_) {
                     const { data: qd2, error: qErr2 } = await supabase.from('quizzes').insert([{
-                        /* teacher_id removed */
+                        teacher_id: currentSession?.user?.id,
+                        guru_id: currentTeacher?.id || currentSession?.user?.id,
                         mapel,
                         kelas,
                         judul_kuis: judul,
