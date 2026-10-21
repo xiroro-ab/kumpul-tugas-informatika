@@ -369,10 +369,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tab Navigation
     window.switchTab = (tabName) => {
+        const isSuperadmin = currentTeacher?.role === 'superadmin';
+
+        // Proteksi ketat: jika bukan superadmin, tolak akses ke tab approval
+        if (tabName === 'approval' && !isSuperadmin) {
+            showCustomModal("Akses Ditolak: Fitur Persetujuan Guru hanya dapat diakses oleh Superadmin sekolah.");
+            tabName = 'penugasan';
+        }
+
         const tabs = ['penugasan', 'materi', 'kuis', 'siswa', 'setting', 'approval'];
         tabs.forEach(t => {
             const btn = document.getElementById(`tab-btn-${t}`);
             const content = document.getElementById(`tab-content-${t}`);
+
+            // Khusus tab approval: JANGAN PERNAH dibuat tampak jika bukan superadmin!
+            if (t === 'approval' && !isSuperadmin) {
+                if (btn) {
+                    btn.classList.add('hidden');
+                    btn.classList.remove('flex');
+                }
+                if (content) content.classList.add('hidden');
+                return;
+            }
+
             if (t === tabName) {
                 if (btn) {
                     if (t === 'approval') {
@@ -394,6 +413,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        const tabsGrid = document.getElementById('lms-tabs-grid');
+        if (tabsGrid) {
+            if (isSuperadmin) {
+                tabsGrid.classList.remove('grid-cols-5');
+                tabsGrid.classList.add('grid-cols-6');
+            } else {
+                tabsGrid.classList.remove('grid-cols-6');
+                tabsGrid.classList.add('grid-cols-5');
+            }
+        }
+
         if (tabName === 'penugasan') {
             loadAssignments();
             loadFilesTable();
@@ -401,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabName === 'materi') loadMaterials();
         if (tabName === 'kuis') loadQuizzes();
         if (tabName === 'siswa') loadStudentsRoster();
-        if (tabName === 'approval') loadAllTeachers();
+        if (tabName === 'approval' && isSuperadmin) loadAllTeachers();
     };
 
     // Sub-view Switcher dalam Tab Kelola Tugas & Meja Koreksi
@@ -510,8 +540,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
 
             if (data.session) {
-                const { count } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
-                const isFirstTeacher = !count || count === 0;
+                let isFirstTeacher = false;
+                try {
+                    const { data: superadmins, error: sErr } = await supabase
+                        .from('teachers')
+                        .select('id')
+                        .eq('role', 'superadmin')
+                        .limit(1);
+                    if (!sErr && superadmins && superadmins.length > 0) {
+                        isFirstTeacher = false;
+                    } else if (!sErr) {
+                        const { count } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
+                        isFirstTeacher = (count === 0);
+                    }
+                } catch (_) {
+                    isFirstTeacher = false;
+                }
 
                 await supabase.from('teachers').upsert([{
                     id: data.user.id,
@@ -596,6 +640,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     approvalTabBtn.classList.add('hidden');
                     approvalTabBtn.classList.remove('flex');
                 }
+                const approvalTabContent = document.getElementById('tab-content-approval');
+                if (approvalTabContent) approvalTabContent.classList.add('hidden');
                 if (tabsGrid) {
                     tabsGrid.classList.remove('grid-cols-6');
                     tabsGrid.classList.add('grid-cols-5');
@@ -635,8 +681,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateTeacherDisplay(data.nama_guru, data.mapel);
                 return data;
             } else {
-                const { count } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
-                const isFirstTeacher = !count || count === 0;
+                let isFirstTeacher = false;
+                try {
+                    const { data: superadmins, error: sErr } = await supabase
+                        .from('teachers')
+                        .select('id')
+                        .eq('role', 'superadmin')
+                        .limit(1);
+                    if (!sErr && superadmins && superadmins.length > 0) {
+                        isFirstTeacher = false;
+                    } else if (!sErr) {
+                        const { count } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
+                        isFirstTeacher = (count === 0);
+                    }
+                } catch (_) {
+                    isFirstTeacher = false;
+                }
 
                 const defaultName = user.user_metadata?.full_name || user.user_metadata?.nama_guru || user.email.split('@')[0];
                 const defaultMapel = user.user_metadata?.mapel || 'Informatika';
@@ -6047,6 +6107,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 8. Persetujuan Akun Guru (Superadmin Only)
     // ==========================================
     window.loadAllTeachers = async () => {
+        if (currentTeacher?.role !== 'superadmin') {
+            console.warn("Akses ditolak: loadAllTeachers hanya untuk Superadmin.");
+            const tbody = document.getElementById('teachers-approval-tbody');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center font-bold text-red-500 uppercase">Akses Ditolak: Fitur hanya untuk Superadmin.</td></tr>';
+            return;
+        }
         const tbody = document.getElementById('teachers-approval-tbody');
         if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center font-bold text-slate-500 uppercase animate-pulse">Memuat daftar akun guru...</td></tr>';
@@ -6118,6 +6184,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.setTeacherStatus = async (teacherId, newStatus) => {
+        if (currentTeacher?.role !== 'superadmin') {
+            showCustomModal("Akses Ditolak: Hanya Superadmin yang berwenang mengubah status persetujuan guru.");
+            return;
+        }
         try {
             const { error } = await supabase.from('teachers').update({ status: newStatus }).eq('id', teacherId);
             if (error) throw error;
