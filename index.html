@@ -562,6 +562,19 @@
                         <input type="text" id="sub-materi" placeholder="Misal: Laporan Praktikum Jaringan Komputer" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none focus:bg-white">
                     </div>
 
+                    <!-- Token / Kode Akses Tugas (Proteksi Siswa Resmi) -->
+                    <div id="sub-token-container" class="hidden space-y-1 bg-amber-50 border-2 border-black rounded-xl p-2.5">
+                        <div class="flex items-center justify-between">
+                            <label for="sub-token-input" class="text-xs font-black uppercase text-amber-950 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-amber-800 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+                                <span>3. Kode Akses / Token Tugas</span>
+                            </label>
+                            <span class="text-[10px] font-black uppercase bg-amber-200 text-amber-900 border border-amber-400 px-1.5 py-0.5 rounded">Wajib Diisi</span>
+                        </div>
+                        <input type="text" id="sub-token-input" placeholder="Masukkan token dari guru mata pelajaran..." class="w-full h-10 px-3 uppercase font-mono font-black text-xs border-2 border-black rounded-xl bg-white tracking-widest outline-none">
+                        <p class="text-[10px] text-amber-900 font-bold leading-tight">Dapatkan kode token ini dari guru mata pelajaran di kelas atau grup WhatsApp kelas.</p>
+                    </div>
+
                     <!-- Mode Switcher: Form Web vs Berkas vs Tautan -->
                     <div id="sub-mode-switcher-container" class="space-y-1 pt-0.5">
                         <label class="text-xs font-black uppercase text-black ml-1">Metode Pengerjaan / Pengumpulan</label>

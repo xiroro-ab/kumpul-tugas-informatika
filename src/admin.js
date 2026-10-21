@@ -198,6 +198,8 @@ export function parseAssignmentQuestions(assignment) {
     let tipePengumpulan = '';
     let petunjuk = '';
     let qList = [];
+    let token = '';
+    let tokenRequired = false;
 
     if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
@@ -207,6 +209,8 @@ export function parseAssignmentQuestions(assignment) {
             } else if (parsed && typeof parsed === 'object') {
                 petunjuk = parsed.petunjuk || '';
                 tipePengumpulan = parsed.tipe_pengumpulan || '';
+                token = (parsed.token || '').toString().trim().toUpperCase();
+                tokenRequired = parsed.token_required !== undefined ? !!parsed.token_required : !!token;
                 if (Array.isArray(parsed.questions)) {
                     qList = parsed.questions;
                 }
@@ -257,7 +261,7 @@ export function parseAssignmentQuestions(assignment) {
         ];
     }
 
-    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan };
+    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan, token, token_required: tokenRequired };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2100,6 +2104,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     tipeBadgeHtml = `<span class="bg-teal-100 text-teal-900 border border-teal-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Pengumpulan Bebas</span>`;
                 }
 
+                const assignToken = parsed.token || '';
+                const isTokenRequired = parsed.token_required !== false && !!assignToken;
+                let tokenBadgeHtml = '';
+                if (isTokenRequired) {
+                    tokenBadgeHtml = `
+                        <div class="inline-flex items-center gap-1.5 bg-yellow-200 border-2 border-black px-2 py-0.5 rounded-lg text-[10px] font-black text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                            <span>Token:</span>
+                            <span class="font-mono tracking-wider">${escapeHtml(assignToken)}</span>
+                            <button type="button" onclick="copyAssignToken('${escapeHtml(assignToken)}')" title="Salin Token" class="ml-0.5 hover:underline text-indigo-700 font-bold text-[10px]">
+                                Salin
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    tokenBadgeHtml = `
+                        <span class="bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            Tanpa Token
+                        </span>
+                    `;
+                }
+
                 card.innerHTML = `
                     <div>
                         <div class="flex justify-between items-start gap-2 mb-2 flex-wrap">
@@ -2108,6 +2133,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     Kelas ${escapeHtml(a.kelas)} &bull; ${escapeHtml(a.mapel)}
                                 </span>
                                 ${tipeBadgeHtml}
+                                ${tokenBadgeHtml}
                             </div>
                             <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                                 Batas: ${deadlineText}
@@ -2551,6 +2577,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 { id: 1, tipe: 'esai', pertanyaan: '', kunci: '', bobot: 25 }
             ];
             window.onAssignTipePengumpulanChange(tipeSelect ? tipeSelect.value : 'bebas');
+
+            const tokenInput = document.getElementById('assign-token');
+            const tokenCheck = document.getElementById('assign-token-enabled');
+            if (tokenInput) tokenInput.value = parsed.token || '';
+            if (tokenCheck) tokenCheck.checked = parsed.token_required !== false && !!parsed.token;
+            window.toggleAssignTokenInput(tokenCheck ? tokenCheck.checked : true);
         } else {
             document.getElementById('assign-judul').value = '';
             document.getElementById('assign-deskripsi').value = 'Jawablah setiap instruksi tugas berikut dengan teliti dan jujur.';
@@ -2563,6 +2595,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 { id: 2, tipe: 'pg', pertanyaan: '', opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', kunci: 'A', bobot: 25 }
             ];
             window.onAssignTipePengumpulanChange('bebas');
+
+            const tokenCheck = document.getElementById('assign-token-enabled');
+            if (tokenCheck) tokenCheck.checked = true;
+            window.generateRandomAssignToken();
+            window.toggleAssignTokenInput(true);
         }
 
         renderFormBuilderQuestions();
@@ -2979,11 +3016,16 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.innerText = editingAssignmentId ? "Menyimpan Perubahan..." : "Menerbitkan Tugas...";
         }
 
+        const assignTokenEnabled = document.getElementById('assign-token-enabled')?.checked ?? true;
+        const assignToken = (document.getElementById('assign-token')?.value || '').trim().toUpperCase();
+
         try {
             const payloadDeskripsi = JSON.stringify({
                 tipe_pengumpulan: tipePengumpulan,
                 petunjuk: petunjuk || 'Ikuti petunjuk pengerjaan tugas berikut dengan teliti.',
-                questions: tipePengumpulan === 'form' ? formBuilderQuestions : []
+                questions: tipePengumpulan === 'form' ? formBuilderQuestions : [],
+                token: assignToken,
+                token_required: assignTokenEnabled && !!assignToken
             });
 
             const cleanRubrik = 'Kesesuaian pemahaman konsep materi, kelengkapan uraian nalar, dan ketepatan pengerjaan butir soal.';
@@ -3872,6 +3914,40 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================
     let manualQuizQuestions = [];
     let editingQuizId = null;
+
+    // Helper Token / Kode Akses Tugas Siswa
+    window.generateRandomAssignToken = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let randomStr = '';
+        for (let i = 0; i < 3; i++) {
+            randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const token = `TGS58${randomStr}`;
+        const input = document.getElementById('assign-token');
+        if (input) input.value = token;
+        return token;
+    };
+
+    window.copyAssignToken = async (token) => {
+        if (!token) return;
+        try {
+            await navigator.clipboard.writeText(token);
+            showCustomModal(`Token tugas [${token}] berhasil disalin ke clipboard! Bagikan token ini kepada siswa saat pengumpulan tugas dimulai.`, 'alert', 'Token Disalin', '');
+        } catch (_) {
+            showCustomModal(`Token Tugas: ${token}\nSilakan salin token di atas secara manual.`, 'alert', 'Token Tugas', '');
+        }
+    };
+
+    window.toggleAssignTokenInput = (enabled) => {
+        const box = document.getElementById('assign-token-box');
+        if (box) {
+            if (enabled) {
+                box.classList.remove('opacity-40', 'pointer-events-none');
+            } else {
+                box.classList.add('opacity-40', 'pointer-events-none');
+            }
+        }
+    };
 
     // Helper Unggah & Pasang Gambar Soal (Form Tugas & Kuis)
     window.handleQuestionImageUpload = async (event, idx, context = 'form') => {

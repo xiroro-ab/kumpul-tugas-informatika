@@ -750,6 +750,25 @@
                         <label class="block text-[11px] font-black uppercase text-black mb-1">Petunjuk Pengisian Siswa</label>
                         <textarea id="assign-deskripsi" rows="2" placeholder="Tuliskan petunjuk pengerjaan (contoh: Bacalah setiap pertanyaan dengan teliti dan jawablah secara mandiri)..." class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-white"></textarea>
                     </div>
+
+                    <!-- Konfigurasi Token / Kode Akses Tugas Siswa -->
+                    <div class="bg-amber-50 border-2 border-black rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="assign-token-enabled" onchange="window.toggleAssignTokenInput(this.checked)" checked class="w-4 h-4 rounded border-2 border-black text-indigo-600 focus:ring-0 cursor-pointer">
+                            <div>
+                                <label for="assign-token-enabled" class="text-xs font-black uppercase text-amber-950 cursor-pointer block">
+                                    Wajibkan Token / Kode Akses Tugas
+                                </label>
+                                <span class="text-[10px] text-amber-900 font-bold block">Hanya siswa yang memiliki token dari guru yang dapat mengumpulkan tugas (mencegah spam luar).</span>
+                            </div>
+                        </div>
+                        <div id="assign-token-box" class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                            <input type="text" id="assign-token" placeholder="TGS58A" class="w-28 h-10 px-3 uppercase font-mono font-black text-xs text-center border-2 border-black rounded-xl bg-white tracking-widest outline-none">
+                            <button type="button" onclick="window.generateRandomAssignToken()" class="h-10 px-3 bg-white hover:bg-slate-100 border-2 border-black rounded-xl text-[11px] font-black uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 whitespace-nowrap cursor-pointer">
+                                Acak Token
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Notice Info untuk Mode Non-Formulir (Bebas, Link, Berkas, Teks Web) -->

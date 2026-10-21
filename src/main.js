@@ -88,6 +88,8 @@ export function parseAssignmentQuestions(assignment) {
     let tipePengumpulan = '';
     let petunjuk = '';
     let qList = [];
+    let token = '';
+    let tokenRequired = false;
 
     if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
@@ -97,6 +99,8 @@ export function parseAssignmentQuestions(assignment) {
             } else if (parsed && typeof parsed === 'object') {
                 petunjuk = parsed.petunjuk || '';
                 tipePengumpulan = parsed.tipe_pengumpulan || '';
+                token = (parsed.token || '').toString().trim().toUpperCase();
+                tokenRequired = parsed.token_required !== undefined ? !!parsed.token_required : !!token;
                 if (Array.isArray(parsed.questions)) {
                     qList = parsed.questions;
                 }
@@ -132,7 +136,7 @@ export function parseAssignmentQuestions(assignment) {
         }
     }
 
-    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan };
+    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan, token, token_required: tokenRequired };
 }
 
 export function detectPlatform(url) {
@@ -1051,6 +1055,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 Kelas ${a.kelas}
                             </span>
                             ${tipeBadgeHtml}
+                            ${parsed.token_required && parsed.token ? `<span class="bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Wajib Token Guru</span>` : ''}
                         </div>
                         <div>${deadlineBadge}</div>
                     </div>
@@ -1273,6 +1278,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rubrikEl = document.getElementById('modal-banner-rubrik');
         if (rubrikEl) {
             rubrikEl.classList.add('hidden');
+        }
+
+        const tokenContainer = document.getElementById('sub-token-container');
+        const tokenInput = document.getElementById('sub-token-input');
+        const isTokenRequired = parsed.token_required && !!parsed.token;
+        if (tokenContainer && tokenInput) {
+            tokenInput.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+            if (isTokenRequired) {
+                tokenContainer.classList.remove('hidden');
+                const cachedToken = sessionStorage.getItem(`tgs_token_${assignment.id}`) || '';
+                tokenInput.value = cachedToken;
+            } else {
+                tokenContainer.classList.add('hidden');
+                tokenInput.value = '';
+            }
         }
 
         if (!rosterStudents || rosterStudents.length === 0) {
@@ -1670,6 +1690,53 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (subMateriInput) subMateriInput.focus();
             await showCustomModal('Judul atau topik tugas belum terisi.', 'alert', 'Data Belum Lengkap', '');
             return;
+        }
+
+        // Validasi Token Tugas jika tugas dilindungi token oleh guru
+        if (currentActiveAssignment) {
+            const parsed = parseAssignmentQuestions(currentActiveAssignment);
+            if (parsed.token_required && parsed.token) {
+                const tokenInput = document.getElementById('sub-token-input');
+                const enteredToken = (tokenInput?.value || '').trim().toUpperCase();
+                const expectedToken = (parsed.token || '').trim().toUpperCase();
+
+                if (!enteredToken) {
+                    if (tokenInput) {
+                        tokenInput.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+                        tokenInput.focus();
+                        tokenInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    await showCustomModal(
+                        'Peringatan: Token / Kode Akses Tugas Belum Diisi!\n\nTugas ini diproteksi oleh guru mata pelajaran. Silakan masukkan Kode Akses / Token Tugas yang dibagikan guru di kelas atau grup WhatsApp sebelum mengirim jawaban.',
+                        'alert',
+                        'Token Tugas Diperlukan',
+                        ''
+                    );
+                    return;
+                }
+
+                if (enteredToken !== expectedToken) {
+                    if (tokenInput) {
+                        tokenInput.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+                        tokenInput.focus();
+                        tokenInput.select();
+                        tokenInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    await showCustomModal(
+                        `Token Tugas Tidak Valid!\n\nKode "${enteredToken}" yang Anda masukkan salah. Pastikan Anda memasukkan kode token resmi dari guru mata pelajaran.`,
+                        'alert',
+                        'Token Salah',
+                        ''
+                    );
+                    return;
+                }
+
+                // Token valid: simpan di sessionStorage agar sesi pengerjaan tetap lancar
+                sessionStorage.setItem(`tgs_token_${currentActiveAssignment.id}`, enteredToken);
+                if (tokenInput) {
+                    tokenInput.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+                }
+            }
         }
 
         // Konfirmasi identitas siswa sebelum submit agar tidak salah kirim atas nama siswa lain
