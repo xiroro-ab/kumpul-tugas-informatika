@@ -3305,6 +3305,213 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 4. Modul Materi Pembelajaran
     // ==========================================
+
+    function detectMaterialType(url) {
+        if (!url) return 'modul';
+        const lower = url.toLowerCase();
+        if (lower.includes('mpi-informatika') || lower.includes('/mpi') || lower.includes('scratch.mit.edu')) {
+            return 'mpi';
+        }
+        if (lower.includes('web-presentasi58') || lower.includes('slides.google.com') || lower.includes('canva.com') || lower.includes('presentasi')) {
+            return 'presentasi';
+        }
+        if (lower.includes('youtube.com') || lower.includes('youtu.be') || lower.includes('vimeo.com')) {
+            return 'video';
+        }
+        return 'modul';
+    }
+
+    function getEmbedUrl(url, type) {
+        if (!url) return '';
+        try {
+            if (type === 'video' || url.includes('youtube.com') || url.includes('youtu.be')) {
+                let videoId = '';
+                if (url.includes('youtu.be/')) {
+                    videoId = url.split('youtu.be/')[1].split(/[?#]/)[0];
+                } else if (url.includes('youtube.com/watch')) {
+                    const u = new URL(url);
+                    videoId = u.searchParams.get('v');
+                } else if (url.includes('youtube.com/embed/')) {
+                    return url;
+                }
+                if (videoId) {
+                    return `https://www.youtube.com/embed/${videoId}?rel=0`;
+                }
+            }
+            return url;
+        } catch (_) {
+            return url;
+        }
+    }
+
+    function parseMaterialData(m) {
+        if (!m) return { tipe: 'modul', deskripsi: '', url_materi: '', tugas_id: '', kategori: 'modul', level: 'menengah' };
+        let parsed = null;
+        if (typeof m.konten === 'string' && m.konten.trim().startsWith('{')) {
+            try {
+                parsed = JSON.parse(m.konten);
+            } catch (_) {
+                parsed = null;
+            }
+        }
+
+        if (parsed && typeof parsed === 'object') {
+            return {
+                tipe: parsed.tipe || (m.link_video ? detectMaterialType(m.link_video) : 'modul'),
+                deskripsi: parsed.deskripsi || '',
+                url_materi: parsed.url_materi || m.link_video || '',
+                tugas_id: parsed.tugas_id || '',
+                kategori: parsed.kategori || 'modul',
+                level: parsed.level || 'menengah'
+            };
+        }
+
+        const url = m.link_video || '';
+        return {
+            tipe: url ? detectMaterialType(url) : 'modul',
+            deskripsi: m.konten || '',
+            url_materi: url,
+            tugas_id: '',
+            kategori: 'modul',
+            level: 'menengah'
+        };
+    }
+
+    window.applyMaterialPreset = (presetType) => {
+        const urlInput = document.getElementById('mat-video');
+        const tipeSelect = document.getElementById('mat-tipe');
+        if (presetType === 'mpi') {
+            if (urlInput) urlInput.value = 'https://mpi-informatika.vercel.app/';
+            if (tipeSelect) tipeSelect.value = 'mpi';
+        } else if (presetType === 'presentasi') {
+            if (urlInput) urlInput.value = 'https://web-presentasi58.vercel.app/';
+            if (tipeSelect) tipeSelect.value = 'presentasi';
+        }
+    };
+
+    window.openAdminDirectPreview = (url, title, type) => {
+        const modal = document.getElementById('admin-material-preview-modal');
+        const iframe = document.getElementById('admin-preview-iframe');
+        const textContainer = document.getElementById('admin-preview-text');
+        const titleEl = document.getElementById('admin-preview-title');
+        const badgeEl = document.getElementById('admin-preview-badge');
+        const extBtn = document.getElementById('admin-preview-ext-btn');
+
+        if (!modal) return;
+        if (titleEl) titleEl.textContent = title;
+        if (extBtn) {
+            extBtn.href = url || '#';
+            extBtn.classList.toggle('hidden', !url);
+        }
+
+        if (badgeEl) {
+            if (type === 'mpi') {
+                badgeEl.textContent = 'MPI Interaktif';
+                badgeEl.className = 'bg-indigo-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            } else if (type === 'presentasi') {
+                badgeEl.textContent = 'Slide Presentasi';
+                badgeEl.className = 'bg-amber-500 text-black font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            } else if (type === 'video') {
+                badgeEl.textContent = 'Video Pembelajaran';
+                badgeEl.className = 'bg-rose-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            } else {
+                badgeEl.textContent = 'Modul Bacaan';
+                badgeEl.className = 'bg-emerald-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            }
+        }
+
+        if (url) {
+            if (textContainer) textContainer.classList.add('hidden');
+            if (iframe) {
+                iframe.classList.remove('hidden');
+                iframe.src = getEmbedUrl(url, type);
+            }
+        } else {
+            if (iframe) {
+                iframe.classList.add('hidden');
+                iframe.src = 'about:blank';
+            }
+            if (textContainer) {
+                textContainer.classList.remove('hidden');
+                textContainer.innerHTML = '<p class="text-sm text-slate-500 font-bold">Materi ini tidak memiliki URL embed interaktif.</p>';
+            }
+        }
+
+        modal.classList.remove('hidden');
+    };
+
+    window.openAdminMaterialPreview = (id) => {
+        const mat = materialsList.find(m => String(m.id) === String(id));
+        if (!mat) return;
+        const meta = parseMaterialData(mat);
+        const modal = document.getElementById('admin-material-preview-modal');
+        const iframe = document.getElementById('admin-preview-iframe');
+        const textContainer = document.getElementById('admin-preview-text');
+        const titleEl = document.getElementById('admin-preview-title');
+        const badgeEl = document.getElementById('admin-preview-badge');
+        const extBtn = document.getElementById('admin-preview-ext-btn');
+
+        if (!modal) return;
+        if (titleEl) titleEl.textContent = mat.judul;
+        if (extBtn) {
+            extBtn.href = meta.url_materi || '#';
+            extBtn.classList.toggle('hidden', !meta.url_materi);
+        }
+
+        if (badgeEl) {
+            if (meta.tipe === 'mpi') {
+                badgeEl.textContent = 'MPI Interaktif';
+                badgeEl.className = 'bg-indigo-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            } else if (meta.tipe === 'presentasi') {
+                badgeEl.textContent = 'Slide Presentasi';
+                badgeEl.className = 'bg-amber-500 text-black font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            } else if (meta.tipe === 'video') {
+                badgeEl.textContent = 'Video Pembelajaran';
+                badgeEl.className = 'bg-rose-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            } else {
+                badgeEl.textContent = 'Modul Bacaan';
+                badgeEl.className = 'bg-emerald-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            }
+        }
+
+        if (meta.url_materi) {
+            if (textContainer) textContainer.classList.add('hidden');
+            if (iframe) {
+                iframe.classList.remove('hidden');
+                iframe.src = getEmbedUrl(meta.url_materi, meta.tipe);
+            }
+        } else {
+            if (iframe) {
+                iframe.classList.add('hidden');
+                iframe.src = 'about:blank';
+            }
+            if (textContainer) {
+                textContainer.classList.remove('hidden');
+                textContainer.innerHTML = `
+                    <div class="prose max-w-none">
+                        <h2 class="text-xl font-black text-black mb-3">${mat.judul}</h2>
+                        <div class="text-sm text-slate-800 whitespace-pre-line leading-relaxed font-medium">${meta.deskripsi}</div>
+                    </div>
+                `;
+            }
+        }
+
+        modal.classList.remove('hidden');
+    };
+
+    window.closeAdminMaterialPreview = () => {
+        const modal = document.getElementById('admin-material-preview-modal');
+        const iframe = document.getElementById('admin-preview-iframe');
+        if (modal) modal.classList.add('hidden');
+        if (iframe) iframe.src = 'about:blank';
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            window.closeAdminMaterialPreview();
+        }
+    });
+
     async function loadMaterials() {
         const container = document.getElementById('materials-container');
         container.innerHTML = '<div class="col-span-2 text-center py-6 font-bold text-black uppercase animate-pulse">Memuat materi pembelajaran...</div>';
@@ -3326,20 +3533,49 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             materialsList.forEach(m => {
+                const meta = parseMaterialData(m);
+                let badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
+                let badgeText = 'Modul Bacaan';
+
+                if (meta.tipe === 'mpi') {
+                    badgeClass = 'bg-indigo-100 text-indigo-900 border-indigo-300';
+                    badgeText = 'MPI Interaktif';
+                } else if (meta.tipe === 'presentasi') {
+                    badgeClass = 'bg-amber-100 text-amber-900 border-amber-300';
+                    badgeText = 'Slide Presentasi';
+                } else if (meta.tipe === 'video') {
+                    badgeClass = 'bg-rose-100 text-rose-900 border-rose-300';
+                    badgeText = 'Video Pembelajaran';
+                }
+
                 const card = document.createElement('div');
                 card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
                 card.innerHTML = `
                     <div>
                         <div class="flex justify-between items-start gap-2 mb-2">
-                            <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                Kelas ${m.kelas} &bull; ${m.mapel}
-                            </span>
-                            <button onclick="deleteMaterial('${m.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase">Hapus</button>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                    Kelas ${m.kelas} &bull; ${m.mapel}
+                                </span>
+                                <span class="${badgeClass} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                    ${badgeText}
+                                </span>
+                            </div>
+                            <button onclick="deleteMaterial('${m.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase cursor-pointer">Hapus</button>
                         </div>
                         <h4 class="font-black text-lg text-black mb-2">${m.judul}</h4>
-                        <p class="text-xs text-slate-700 font-medium line-clamp-4 leading-relaxed mb-3 whitespace-pre-line">${m.konten}</p>
+                        <p class="text-xs text-slate-700 font-medium line-clamp-3 leading-relaxed mb-3 whitespace-pre-line">${meta.deskripsi || m.konten}</p>
                     </div>
-                    ${m.link_video ? `<a href="${m.link_video}" target="_blank" class="text-xs font-bold text-indigo-600 underline">Tonton Video Pembelajaran ↗</a>` : ''}
+                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                        <button type="button" onclick="openAdminMaterialPreview('${m.id}')" class="px-3 h-8 bg-black hover:bg-slate-800 text-white rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer">
+                            Pratinjau Materi
+                        </button>
+                        ${meta.url_materi ? `
+                            <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-indigo-600 hover:text-black underline flex items-center gap-1">
+                                <span>Buka Tautan Sumber</span> ↗
+                            </a>
+                        ` : ''}
+                    </div>
                 `;
                 container.appendChild(card);
             });
@@ -3358,8 +3594,24 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('mat-judul').value = '';
         document.getElementById('mat-konten').value = '';
         document.getElementById('mat-video').value = '';
+        if (document.getElementById('mat-tipe')) document.getElementById('mat-tipe').value = 'modul';
         if (document.getElementById('mat-kategori')) document.getElementById('mat-kategori').value = 'modul';
         if (document.getElementById('mat-level')) document.getElementById('mat-level').value = 'menengah';
+
+        // Populate tugas terkait select
+        const tugasSelect = document.getElementById('mat-tugas-terkait');
+        if (tugasSelect) {
+            tugasSelect.innerHTML = '<option value="">Tanpa Penugasan Langsung (Hanya Membaca / Mempelajari)</option>';
+            if (Array.isArray(assignmentsList) && assignmentsList.length > 0) {
+                assignmentsList.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.id;
+                    opt.textContent = `[Tugas] ${a.judul_tugas} (${a.kelas || 'Semua Kelas'})`;
+                    tugasSelect.appendChild(opt);
+                });
+            }
+        }
+
         document.getElementById('material-modal').classList.remove('hidden');
     };
 
@@ -3390,6 +3642,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const judul = document.getElementById('mat-judul').value.trim();
         const konten = document.getElementById('mat-konten').value.trim();
         const video = document.getElementById('mat-video').value.trim();
+        const tipe = document.getElementById('mat-tipe')?.value || (video ? detectMaterialType(video) : 'modul');
+        const kategori = document.getElementById('mat-kategori')?.value || 'modul';
+        const level = document.getElementById('mat-level')?.value || 'menengah';
+        const tugasId = document.getElementById('mat-tugas-terkait')?.value || '';
 
         if (!judul || !konten) {
             showCustomModal("Judul dan uraian materi wajib diisi!");
@@ -3403,13 +3659,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            // Simpan metadata dalam JSON terstruktur untuk kompatibilitas penuh dan fitur kaya
+            const structuredKonten = JSON.stringify({
+                tipe,
+                kategori,
+                level,
+                url_materi: video,
+                tugas_id: tugasId,
+                deskripsi: konten
+            });
+
             const { error } = await supabase.from('materials').insert([{
                 teacher_id: currentSession?.user?.id,
                 guru_id: currentTeacher?.id || currentSession?.user?.id,
                 mapel,
                 kelas,
                 judul,
-                konten,
+                konten: structuredKonten,
                 link_video: video
             }]);
 

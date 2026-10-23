@@ -232,12 +232,71 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 sm:mb-6">
                     <div>
                         <h3 class="text-xl sm:text-2xl font-black uppercase text-black">Perpustakaan Materi Pembelajaran</h3>
-                        <p class="text-[11px] sm:text-xs font-bold text-slate-500">Akses ringkasan materi dan video interaktif yang disiapkan bapak/ibu guru.</p>
+                        <p class="text-[11px] sm:text-xs font-bold text-slate-500">Akses modul interaktif, presentasi, dan video pembelajaran kurikulum.</p>
                     </div>
-                    <div class="w-full sm:w-48">
-                        <select id="filter-materi-mapel" onchange="filterStudentMaterials()" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 cursor-pointer">
+                    <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2">
+                        <select id="filter-materi-tipe" onchange="filterStudentMaterials()" class="w-full sm:w-44 h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer">
+                            <option value="">Semua Tipe Media</option>
+                            <option value="mpi">MPI Interaktif</option>
+                            <option value="presentasi">Slide Presentasi</option>
+                            <option value="video">Video Pembelajaran</option>
+                            <option value="modul">Modul Bacaan</option>
+                        </select>
+                        <select id="filter-materi-mapel" onchange="filterStudentMaterials()" class="w-full sm:w-40 h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 cursor-pointer">
                             <option value="">Semua Mapel</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Pusat Media Interaktif Siswa SMPN 58 -->
+                <div class="mb-6 p-4 sm:p-5 bg-gradient-to-r from-indigo-50 to-amber-50 border-2 border-black rounded-2xl sm:rounded-3xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="mb-3">
+                        <span class="bg-black text-white font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            Pusat Eksplorasi Digital
+                        </span>
+                        <h4 class="font-black text-sm sm:text-base text-black uppercase mt-1">Ekosistem Belajar Mandiri SMPN 58 Palembang</h4>
+                        <p class="text-[11px] font-bold text-slate-600">Pelajari materi langsung di LMS melalui web interaktif dan kumpulan slide tayang resmi.</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Card Web MPI -->
+                        <div class="bg-white border-2 border-black rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div>
+                                <div class="flex items-center justify-between gap-2 mb-1.5">
+                                    <span class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase">Web MPI Interaktif</span>
+                                    <span class="text-[10px] font-bold text-slate-500">Informatika</span>
+                                </div>
+                                <h5 class="font-black text-xs sm:text-sm text-black uppercase">Media Pembelajaran Interaktif (MPI)</h5>
+                                <p class="text-[11px] text-slate-600 font-medium mt-1 leading-snug">Laboratorium simulasi coding, visualisasi konsep komputer, dan game edukatif.</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="openStudentMaterialDirect('https://mpi-informatika.vercel.app/', 'Media Pembelajaran Interaktif (MPI) Informatika', 'mpi')" class="flex-1 h-9 bg-indigo-600 hover:bg-indigo-700 text-white border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                                    Buka di LMS
+                                </button>
+                                <a href="https://mpi-informatika.vercel.app/" target="_blank" rel="noopener noreferrer" class="h-9 px-3 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 transition" title="Buka di tab baru">
+                                    Tab Baru ↗
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Card Web Presentasi -->
+                        <div class="bg-white border-2 border-black rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div>
+                                <div class="flex items-center justify-between gap-2 mb-1.5">
+                                    <span class="bg-amber-400 text-black border border-black font-black text-[10px] px-2 py-0.5 rounded uppercase">Slide Presentasi</span>
+                                    <span class="text-[10px] font-bold text-slate-500">Semua Bab</span>
+                                </div>
+                                <h5 class="font-black text-xs sm:text-sm text-black uppercase">Bank Slide Presentasi Guru</h5>
+                                <p class="text-[11px] text-slate-600 font-medium mt-1 leading-snug">Koleksi slide tayangan materi ajar bapak/ibu guru untuk belajar mandiri di rumah.</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="openStudentMaterialDirect('https://web-presentasi58.vercel.app/', 'Bank Slide Presentasi Guru SMPN 58', 'presentasi')" class="flex-1 h-9 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                                    Buka di LMS
+                                </button>
+                                <a href="https://web-presentasi58.vercel.app/" target="_blank" rel="noopener noreferrer" class="h-9 px-3 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 transition" title="Buka di tab baru">
+                                    Tab Baru ↗
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -933,5 +992,57 @@
 
     <script type="module" src="/src/main.js"></script>
     <script type="module" src="/src/mountReact.tsx"></script>
+    <!-- ======================================================= -->
+    <!-- MODAL: MODE FOKUS BELAJAR SISWA (INTERAKTIF & BACAAN)    -->
+    <!-- ======================================================= -->
+    <div id="student-material-focus-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+        <div id="focus-modal-container" class="bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-3xl max-w-6xl w-full h-[94vh] shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden">
+            <!-- Header Modal -->
+            <div class="px-3 sm:px-6 py-2.5 sm:py-3 border-b-2 border-black bg-slate-100 flex items-center justify-between gap-2 shrink-0">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span id="focus-modal-badge" class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase tracking-wider shrink-0">MPI Interaktif</span>
+                    <h3 id="focus-modal-title" class="text-xs sm:text-sm font-black text-black truncate uppercase tracking-tight">Judul Materi Belajar</h3>
+                </div>
+                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button type="button" onclick="toggleMaterialFullscreen()" class="h-8 px-2 sm:px-2.5 bg-white border-2 border-black rounded-lg text-black font-black text-[10px] sm:text-[11px] uppercase tracking-wider hover:bg-slate-100 flex items-center gap-1 transition cursor-pointer" title="Layar Penuh">
+                        <span id="focus-btn-fullscreen-text">Layar Penuh</span>
+                    </button>
+                    <a id="focus-modal-ext-btn" href="#" target="_blank" rel="noopener noreferrer" class="h-8 px-2 sm:px-2.5 bg-white border-2 border-black rounded-lg text-black font-black text-[10px] sm:text-[11px] uppercase tracking-wider hover:bg-slate-100 flex items-center gap-1 transition" title="Buka di tab baru">
+                        <span>Tab Baru</span> ↗
+                    </a>
+                    <button type="button" onclick="closeStudentMaterialFocus()" class="w-8 h-8 rounded-lg border-2 border-black bg-white hover:bg-red-50 text-black hover:text-red-600 flex items-center justify-center font-black text-base transition cursor-pointer">
+                        &times;
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body Area -->
+            <div id="focus-modal-body" class="flex-1 w-full bg-slate-900 relative overflow-auto">
+                <iframe id="focus-modal-iframe" class="w-full h-full border-0 hidden" allow="fullscreen; autoplay; clipboard-write; encrypted-media"></iframe>
+                <div id="focus-modal-text-container" class="hidden w-full h-full bg-white p-5 sm:p-8 md:p-10 overflow-y-auto max-w-4xl mx-auto space-y-4">
+                    <!-- Teks modul artikel akan dirender di sini -->
+                </div>
+            </div>
+
+            <!-- Footer Action Bar -->
+            <div class="px-4 sm:px-6 py-2.5 sm:py-3 border-t-2 border-black bg-slate-50 flex items-center justify-between gap-2 shrink-0 flex-wrap">
+                <div class="flex items-center gap-2">
+                    <button type="button" id="focus-btn-toggle-done" onclick="toggleCurrentFocusProgress()" class="h-9 px-3.5 bg-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer hover:bg-emerald-50">
+                        <span id="focus-toggle-icon">○</span>
+                        <span id="focus-toggle-label">Tandai Selesai Dipelajari</span>
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="focus-btn-tugas-terkait" onclick="openLinkedAssignmentFromFocus()" class="hidden h-9 px-4 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                        <span>Kerjakan Latihan Terkait</span> ↗
+                    </button>
+                    <button type="button" onclick="closeStudentMaterialFocus()" class="h-9 px-4 bg-black text-white hover:bg-slate-800 border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer">
+                        Selesai Membaca
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
