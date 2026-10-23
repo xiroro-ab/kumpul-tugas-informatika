@@ -2416,22 +2416,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.toggleMaterialFullscreen = () => {
+        const iframe = document.getElementById('focus-modal-iframe');
         const container = document.getElementById('focus-modal-container');
         const textBtn = document.getElementById('focus-btn-fullscreen-text');
         if (!container) return;
 
+        // Jika iframe aktif (slide presentasi atau MPI), jadikan iframe layar penuh agar rasio slide 100% pas
+        const targetEl = (!iframe.classList.contains('hidden') && iframe.requestFullscreen) ? iframe : container;
+
         if (!document.fullscreenElement) {
-            if (container.requestFullscreen) {
+            if (targetEl.requestFullscreen) {
+                targetEl.requestFullscreen();
+            } else if (container.requestFullscreen) {
                 container.requestFullscreen();
-            } else if (container.webkitRequestFullscreen) {
-                container.webkitRequestFullscreen();
             }
             if (textBtn) textBtn.textContent = 'Keluar Layar Penuh';
         } else {
             if (document.exitFullscreen) {
                 document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
             }
             if (textBtn) textBtn.textContent = 'Layar Penuh';
         }

@@ -2079,7 +2079,7 @@
     <!-- MODAL: PRATINJAU MATERI FOKUS (GURU)                    -->
     <!-- ======================================================= -->
     <div id="admin-material-preview-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-        <div class="bg-white border-[3px] border-black rounded-2xl sm:rounded-3xl max-w-5xl w-full h-[90vh] shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden">
+        <div class="bg-white border-[3px] border-black rounded-2xl sm:rounded-3xl w-[98vw] max-w-[1500px] h-[96vh] shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden transition-all">
             <!-- Header Modal -->
             <div class="px-4 sm:px-6 py-3 border-b-2 border-black bg-slate-100 flex items-center justify-between gap-3 shrink-0">
                 <div class="flex items-center gap-2 min-w-0">
@@ -2087,6 +2087,9 @@
                     <h3 id="admin-preview-title" class="text-xs sm:text-sm font-black text-black truncate uppercase tracking-tight">Pratinjau Materi</h3>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" onclick="toggleAdminPreviewFullscreen()" class="h-8 px-2.5 bg-white border-2 border-black rounded-lg text-black font-black text-[11px] uppercase tracking-wider hover:bg-slate-100 flex items-center gap-1 transition cursor-pointer" title="Layar Penuh">
+                        <span id="admin-preview-fullscreen-text">Layar Penuh</span>
+                    </button>
                     <a id="admin-preview-ext-btn" href="#" target="_blank" rel="noopener noreferrer" class="h-8 px-2.5 bg-white border-2 border-black rounded-lg text-black font-black text-[11px] uppercase tracking-wider hover:bg-slate-100 flex items-center gap-1 transition" title="Buka di tab baru">
                         <span>Tab Baru</span> ↗
                     </a>
@@ -2097,7 +2100,7 @@
             </div>
             <!-- Body Container -->
             <div id="admin-preview-body" class="flex-1 w-full bg-slate-900 relative overflow-auto">
-                <iframe id="admin-preview-iframe" class="w-full h-full border-0 hidden" allow="fullscreen; autoplay; clipboard-write; encrypted-media"></iframe>
+                <iframe id="admin-preview-iframe" class="w-full h-full border-0 hidden" allow="fullscreen; autoplay; clipboard-write; encrypted-media" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" scrolling="yes"></iframe>
                 <div id="admin-preview-text" class="hidden w-full h-full bg-white p-6 sm:p-8 overflow-y-auto max-w-3xl mx-auto space-y-4"></div>
             </div>
         </div>

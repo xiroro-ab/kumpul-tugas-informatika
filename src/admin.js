@@ -3499,6 +3499,27 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('hidden');
     };
 
+    window.toggleAdminPreviewFullscreen = () => {
+        const iframe = document.getElementById('admin-preview-iframe');
+        const modal = document.getElementById('admin-material-preview-modal');
+        const textBtn = document.getElementById('admin-preview-fullscreen-text');
+        if (!modal) return;
+
+        const targetEl = (!iframe.classList.contains('hidden') && iframe.requestFullscreen) ? iframe : modal;
+
+        if (!document.fullscreenElement) {
+            if (targetEl.requestFullscreen) {
+                targetEl.requestFullscreen();
+            }
+            if (textBtn) textBtn.textContent = 'Keluar Layar Penuh';
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+            if (textBtn) textBtn.textContent = 'Layar Penuh';
+        }
+    };
+
     window.closeAdminMaterialPreview = () => {
         const modal = document.getElementById('admin-material-preview-modal');
         const iframe = document.getElementById('admin-preview-iframe');
