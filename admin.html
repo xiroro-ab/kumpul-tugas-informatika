@@ -309,7 +309,7 @@
                             </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div class="border-2 border-black rounded-xl p-3.5 bg-indigo-50/70 flex flex-col justify-between gap-3">
+                            <div id="hub-mpi-card" class="border-2 border-black rounded-xl p-3.5 bg-indigo-50/70 flex flex-col justify-between gap-3">
                                 <div>
                                     <div class="flex items-center justify-between gap-2 mb-1.5">
                                         <span class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase">Web MPI Siswa</span>
@@ -1335,7 +1335,7 @@
                         <label class="block text-[11px] font-black uppercase text-black">3. URL Sumber / Embed Materi (Web MPI, Presentasi, atau Video)</label>
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Preset Cepat:</span>
-                            <button type="button" onclick="applyMaterialPreset('mpi')" class="px-2 py-0.5 bg-indigo-100 hover:bg-indigo-200 border border-black rounded text-[10px] font-bold text-indigo-900 transition cursor-pointer">
+                            <button type="button" id="btn-preset-mpi" onclick="applyMaterialPreset('mpi')" class="px-2 py-0.5 bg-indigo-100 hover:bg-indigo-200 border border-black rounded text-[10px] font-bold text-indigo-900 transition cursor-pointer">
                                 + Web MPI Informatika
                             </button>
                             <button type="button" onclick="applyMaterialPreset('presentasi')" class="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 border border-black rounded text-[10px] font-bold text-amber-900 transition cursor-pointer">

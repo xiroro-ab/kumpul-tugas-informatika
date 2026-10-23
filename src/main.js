@@ -2487,6 +2487,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const filterTipe = document.getElementById('filter-materi-tipe')?.value || '';
         const studentKelas = globalKelasSelect?.value || '';
 
+        // Filter Web MPI Siswa: Hanya tampilkan jika siswa memilih 'Semua Mapel' atau 'Informatika'
+        const studentMpiCard = document.getElementById('student-hub-mpi-card');
+        if (studentMpiCard) {
+            const showMpi = !filterMapel || filterMapel.toLowerCase().includes('informatika');
+            if (showMpi) {
+                studentMpiCard.classList.remove('hidden');
+            } else {
+                studentMpiCard.classList.add('hidden');
+            }
+        }
+
         if (!container) return;
         container.innerHTML = '';
 

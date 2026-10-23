@@ -3512,7 +3512,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    function updateTeacherMateriVisibility() {
+        const isSuperadmin = currentTeacher?.role === 'superadmin';
+        const teacherMapel = (currentTeacher?.mapel || '').trim().toLowerCase();
+        const isInformatika = isSuperadmin || teacherMapel.includes('informatika');
+
+        const mpiCard = document.getElementById('hub-mpi-card');
+        const mpiPresetBtn = document.getElementById('btn-preset-mpi');
+        const videoInput = document.getElementById('mat-video');
+
+        if (mpiCard) {
+            if (isInformatika) {
+                mpiCard.classList.remove('hidden');
+            } else {
+                mpiCard.classList.add('hidden');
+            }
+        }
+
+        if (mpiPresetBtn) {
+            if (isInformatika) {
+                mpiPresetBtn.classList.remove('hidden');
+            } else {
+                mpiPresetBtn.classList.add('hidden');
+            }
+        }
+
+        if (videoInput) {
+            if (isInformatika) {
+                videoInput.placeholder = "https://mpi-informatika.vercel.app/ atau https://web-presentasi58.vercel.app/ atau link YouTube";
+            } else {
+                videoInput.placeholder = "https://web-presentasi58.vercel.app/ atau link Canva/Drive/YouTube";
+            }
+        }
+    }
+
     async function loadMaterials() {
+        updateTeacherMateriVisibility();
         const container = document.getElementById('materials-container');
         container.innerHTML = '<div class="col-span-2 text-center py-6 font-bold text-black uppercase animate-pulse">Memuat materi pembelajaran...</div>';
 
@@ -3612,6 +3647,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        updateTeacherMateriVisibility();
         document.getElementById('material-modal').classList.remove('hidden');
     };
 
