@@ -3424,7 +3424,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (textContainer) textContainer.classList.add('hidden');
             if (iframe) {
                 iframe.classList.remove('hidden');
+                iframe.style.minHeight = "850px";
+                iframe.style.height = "auto";
                 iframe.src = getEmbedUrl(url, type);
+                const modeBtn = document.getElementById('admin-preview-view-mode-text');
+                if (modeBtn) modeBtn.textContent = 'Mode Scroll Bebas';
+                currentAdminHeightMode = 'scroll';
             }
         } else {
             if (iframe) {
@@ -3478,7 +3483,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (textContainer) textContainer.classList.add('hidden');
             if (iframe) {
                 iframe.classList.remove('hidden');
+                iframe.style.minHeight = "850px";
+                iframe.style.height = "auto";
                 iframe.src = getEmbedUrl(meta.url_materi, meta.tipe);
+                const modeBtn = document.getElementById('admin-preview-view-mode-text');
+                if (modeBtn) modeBtn.textContent = 'Mode Scroll Bebas';
+                currentAdminHeightMode = 'scroll';
             }
         } else {
             if (iframe) {
@@ -3497,6 +3507,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         modal.classList.remove('hidden');
+    };
+
+    let currentAdminHeightMode = 'scroll';
+
+    window.toggleAdminPreviewHeightMode = () => {
+        const iframe = document.getElementById('admin-preview-iframe');
+        const textBtn = document.getElementById('admin-preview-view-mode-text');
+        if (!iframe) return;
+
+        if (currentAdminHeightMode === 'scroll') {
+            currentAdminHeightMode = 'fit';
+            iframe.style.minHeight = "unset";
+            iframe.style.height = "100%";
+            if (textBtn) textBtn.textContent = 'Mode Pas Layar (Fit)';
+        } else {
+            currentAdminHeightMode = 'scroll';
+            iframe.style.minHeight = "850px";
+            iframe.style.height = "auto";
+            if (textBtn) textBtn.textContent = 'Mode Scroll Bebas';
+        }
     };
 
     window.toggleAdminPreviewFullscreen = () => {

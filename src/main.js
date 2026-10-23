@@ -2151,6 +2151,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
 
     let currentActiveFocusMaterial = null;
+    let currentModalHeightMode = 'scroll';
+
+    window.toggleModalHeightMode = () => {
+        const iframe = document.getElementById('focus-modal-iframe');
+        const textBtn = document.getElementById('focus-btn-view-mode-text');
+        if (!iframe) return;
+
+        if (currentModalHeightMode === 'scroll') {
+            currentModalHeightMode = 'fit';
+            iframe.style.minHeight = "unset";
+            iframe.style.height = "100%";
+            if (textBtn) textBtn.textContent = 'Mode Pas Layar (Fit)';
+        } else {
+            currentModalHeightMode = 'scroll';
+            iframe.style.minHeight = "850px";
+            iframe.style.height = "auto";
+            if (textBtn) textBtn.textContent = 'Mode Scroll Bebas';
+        }
+    };
 
     function detectMaterialType(url) {
         if (!url) return 'modul';
@@ -2307,7 +2326,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (textContainer) textContainer.classList.add('hidden');
         if (iframe) {
             iframe.classList.remove('hidden');
+            iframe.style.minHeight = "850px";
+            iframe.style.height = "auto";
             iframe.src = getEmbedUrl(url, type);
+            const modeBtn = document.getElementById('focus-btn-view-mode-text');
+            if (modeBtn) modeBtn.textContent = 'Mode Scroll Bebas';
+            currentModalHeightMode = 'scroll';
         }
 
         updateFocusModalProgressBtn('direct_' + type);
@@ -2363,7 +2387,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (textContainer) textContainer.classList.add('hidden');
             if (iframe) {
                 iframe.classList.remove('hidden');
+                iframe.style.minHeight = "850px";
+                iframe.style.height = "auto";
                 iframe.src = getEmbedUrl(meta.url_materi, meta.tipe);
+                const modeBtn = document.getElementById('focus-btn-view-mode-text');
+                if (modeBtn) modeBtn.textContent = 'Mode Scroll Bebas';
+                currentModalHeightMode = 'scroll';
             }
         } else {
             if (iframe) {
@@ -2467,14 +2496,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error) throw error;
             allMaterials = data || [];
 
-            // Isi filter mapel
-            const mapelSet = new Set(allMaterials.map(m => m.mapel));
-            filterSelect.innerHTML = '<option value="">Semua Mapel</option>';
-            mapelSet.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m; opt.textContent = m;
-                filterSelect.appendChild(opt);
+            // Isi filter mapel secara dinamis tanpa menghapus pilihan yang sedang aktif
+            const currentSelectedMapel = (filterSelect?.value || '').trim();
+            const mapelSet = new Set();
+            allMaterials.forEach(m => {
+                if (m.mapel && typeof m.mapel === 'string' && m.mapel.trim()) {
+                    mapelSet.add(m.mapel.trim());
+                }
             });
+
+            if (filterSelect) {
+                filterSelect.innerHTML = '<option value="">Semua Mapel</option>';
+                Array.from(mapelSet).sort().forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.textContent = m;
+                    if (m.toLowerCase() === currentSelectedMapel.toLowerCase()) {
+                        opt.selected = true;
+                    }
+                    filterSelect.appendChild(opt);
+                });
+            }
 
             renderStudentMaterials();
             updatePortalOverviewStats();
@@ -2485,34 +2527,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderStudentMaterials() {
         const container = document.getElementById('student-materials-list');
-        const filterMapel = document.getElementById('filter-materi-mapel')?.value || '';
-        const filterTipe = document.getElementById('filter-materi-tipe')?.value || '';
-        const studentKelas = globalKelasSelect?.value || '';
+        const filterMapel = (document.getElementById('filter-materi-mapel')?.value || '').trim().toLowerCase();
+        const filterTipe = (document.getElementById('filter-materi-tipe')?.value || '').trim().toLowerCase();
+        const studentKelas = (globalKelasSelect?.value || '').trim();
 
-        // Filter Web MPI Siswa: Hanya tampilkan jika siswa memilih 'Semua Mapel' atau 'Informatika'
-        const studentMpiCard = document.getElementById('student-hub-mpi-card');
-        if (studentMpiCard) {
-            const showMpi = !filterMapel || filterMapel.toLowerCase().includes('informatika');
-            if (showMpi) {
-                studentMpiCard.classList.remove('hidden');
-            } else {
-                studentMpiCard.classList.add('hidden');
-            }
+        // 1. Sinkronkan visibilitas Hub Eksternal (Banner Atas) dengan Filter Tipe & Mapel!
+        const hubBanner = document.getElementById('student-hub-banner');
+        const mpiCard = document.getElementById('student-hub-mpi-card');
+        const presCard = document.getElementById('student-hub-presentasi-card');
+
+        // Syarat tampil MPI:
+        // - filterTipe harus kosong atau 'mpi'
+        // - filterMapel harus kosong atau mengandung 'informatika'
+        const showMpi = (!filterTipe || filterTipe === 'mpi') && (!filterMapel || filterMapel.includes('informatika'));
+
+        // Syarat tampil Presentasi:
+        // - filterTipe harus kosong atau 'presentasi'
+        const showPres = (!filterTipe || filterTipe === 'presentasi');
+
+        if (mpiCard) mpiCard.classList.toggle('hidden', !showMpi);
+        if (presCard) presCard.classList.toggle('hidden', !showPres);
+        if (hubBanner) {
+            hubBanner.classList.toggle('hidden', !showMpi && !showPres);
         }
 
         if (!container) return;
         container.innerHTML = '';
 
+        // 2. Filter kartu materi dari database
         const filtered = allMaterials.filter(m => {
             const meta = parseMaterialData(m);
-            const matchMapel = !filterMapel || m.mapel === filterMapel;
+            const matMapel = (m.mapel || '').trim().toLowerCase();
+            const matTipe = (meta.tipe || '').trim().toLowerCase();
+
+            // Match Mapel (case-insensitive & trimmed)
+            const matchMapel = !filterMapel || matMapel === filterMapel;
+
+            // Match Kelas
             const matchKelas = !studentKelas || isClassMatch(m.kelas, studentKelas);
-            const matchTipe = !filterTipe || meta.tipe === filterTipe;
+
+            // Match Tipe
+            const matchTipe = !filterTipe || matTipe === filterTipe;
+
             return matchMapel && matchKelas && matchTipe;
         });
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div class="col-span-2 text-center py-8 text-slate-500 font-bold uppercase">Belum ada materi pembelajaran yang sesuai dengan pilihan ini.</div>';
+            container.innerHTML = '<div class="col-span-2 bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">Belum ada materi pembelajaran yang sesuai dengan pilihan filter ini.</div>';
             return;
         }
 

@@ -2086,7 +2086,10 @@
                     <span id="admin-preview-badge" class="bg-indigo-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0">MPI Interaktif</span>
                     <h3 id="admin-preview-title" class="text-xs sm:text-sm font-black text-black truncate uppercase tracking-tight">Pratinjau Materi</h3>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                    <button type="button" id="admin-preview-view-mode" onclick="toggleAdminPreviewHeightMode()" class="h-8 px-2.5 bg-white border-2 border-black rounded-lg text-black font-black text-[11px] uppercase tracking-wider hover:bg-slate-100 flex items-center gap-1 transition cursor-pointer" title="Ubah mode tampilan antara scroll penuh atau pas layar">
+                        <span id="admin-preview-view-mode-text">Mode Scroll Bebas</span>
+                    </button>
                     <button type="button" onclick="toggleAdminPreviewFullscreen()" class="h-8 px-2.5 bg-white border-2 border-black rounded-lg text-black font-black text-[11px] uppercase tracking-wider hover:bg-slate-100 flex items-center gap-1 transition cursor-pointer" title="Layar Penuh">
                         <span id="admin-preview-fullscreen-text">Layar Penuh</span>
                     </button>
@@ -2099,8 +2102,8 @@
                 </div>
             </div>
             <!-- Body Container -->
-            <div id="admin-preview-body" class="flex-1 w-full bg-slate-900 relative overflow-auto">
-                <iframe id="admin-preview-iframe" class="w-full h-full border-0 hidden" allow="fullscreen; autoplay; clipboard-write; encrypted-media" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" scrolling="yes"></iframe>
+            <div id="admin-preview-body" class="flex-1 w-full bg-slate-900 relative overflow-y-auto overflow-x-auto">
+                <iframe id="admin-preview-iframe" class="w-full min-h-[850px] border-0 hidden block" allow="fullscreen; autoplay; clipboard-write; encrypted-media" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" scrolling="yes"></iframe>
                 <div id="admin-preview-text" class="hidden w-full h-full bg-white p-6 sm:p-8 overflow-y-auto max-w-3xl mx-auto space-y-4"></div>
             </div>
         </div>
