@@ -2173,46 +2173,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 card.innerHTML = `
                     <div>
-                        <div class="flex justify-between items-start gap-2 mb-2 flex-wrap">
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                    Kelas ${escapeHtml(a.kelas)} &bull; ${escapeHtml(a.mapel)}
-                                </span>
-                                ${tipeBadgeHtml}
-                                ${tokenBadgeHtml}
-                            </div>
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                    Batas: ${deadlineText}
-                                </span>
-                                ${a.lock_deadline ? `<span class="bg-rose-100 text-rose-900 border border-rose-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Kunci Deadline</span>` : ''}
-                                ${a.is_archived ? `<span class="bg-slate-200 text-slate-800 border border-slate-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">Diarsipkan</span>` : ''}
-                            </div>
+                        <div class="flex items-center gap-1.5 flex-wrap mb-2.5">
+                            <span class="bg-emerald-100 text-emerald-950 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                Kelas ${escapeHtml(a.kelas)} &bull; ${escapeHtml(a.mapel)}
+                            </span>
+                            ${tipeBadgeHtml}
+                            ${tokenBadgeHtml}
+                            <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                Batas: ${deadlineText}
+                            </span>
+                            ${a.lock_deadline ? `<span class="bg-rose-100 text-rose-900 border border-rose-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Kunci Deadline</span>` : ''}
+                            ${a.is_archived ? `<span class="bg-slate-200 text-slate-800 border border-slate-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">Diarsipkan</span>` : ''}
                         </div>
                         <h4 class="font-black text-lg text-black mb-1">${escapeHtml(a.judul_tugas)}</h4>
                         <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line line-clamp-3">${escapeHtml(descText)}</p>
                         ${(a.rubrik_ai && !a.rubrik_ai.includes('Soal #') && !a.rubrik_ai.includes('(')) ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3"><strong>Rubrik Penilaian:</strong> ${escapeHtml(a.rubrik_ai)}</div>` : ''}
                     </div>
-                    <div class="pt-3 border-t-2 border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                        <span class="text-xs font-black text-slate-800 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-xl">
-                            ${matchingSubs.length} Siswa (${gradedCount} Dinilai)
-                        </span>
-                        <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-                            <button type="button" onclick="editAssignment('${a.id}')" class="h-9 px-3 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
+
+                    <!-- Footer Kartu: Terstruktur 2 Baris, Rapi, Bebas Overflow -->
+                    <div class="pt-3 border-t-2 border-slate-100 mt-auto space-y-2.5">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <span class="text-xs font-black text-slate-800 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-xl">
+                                ${matchingSubs.length} Siswa (${gradedCount} Dinilai)
+                            </span>
+                            <button type="button" onclick="openAssignmentSubmissionsModal('${a.id}')" class="h-9 px-3.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-1 cursor-pointer">
+                                <span>Periksa (${matchingSubs.length})</span> ↗
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                            <button type="button" onclick="editAssignment('${a.id}')" class="h-8 px-2.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
                                 ${tipePengumpulan === 'form' ? 'Edit Soal' : 'Edit Tugas'}
                             </button>
                             ${tipePengumpulan === 'form' ? `
-                                <button type="button" onclick="addQuestionToExistingAssignment('${a.id}')" class="h-9 px-3 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
-                                    Tambah Soal
+                                <button type="button" onclick="addQuestionToExistingAssignment('${a.id}')" class="h-8 px-2.5 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                                    + Soal
                                 </button>
                             ` : ''}
-                            <button type="button" onclick="toggleArchiveAssignment('${a.id}')" title="${a.is_archived ? 'Kembalikan tugas ke daftar aktif' : 'Sembunyikan tugas dari siswa (arsip)'}" class="h-9 px-3 ${a.is_archived ? 'bg-indigo-100 hover:bg-indigo-200 text-indigo-900' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'} border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center cursor-pointer">
+                            <button type="button" onclick="toggleArchiveAssignment('${a.id}')" title="${a.is_archived ? 'Kembalikan tugas ke daftar aktif' : 'Sembunyikan tugas dari siswa (arsip)'}" class="h-8 px-2.5 ${a.is_archived ? 'bg-indigo-100 hover:bg-indigo-200 text-indigo-950' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'} border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
                                 ${a.is_archived ? 'Buka Arsip' : 'Arsipkan'}
                             </button>
-                            <button type="button" onclick="openAssignmentSubmissionsModal('${a.id}')" class="h-9 px-3.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center col-span-2 sm:col-span-1">
-                                Periksa (${matchingSubs.length})
-                            </button>
-                            <button type="button" onclick="deleteAssignment('${a.id}')" class="h-9 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center col-span-2 sm:col-span-1">
+                            <button type="button" onclick="deleteAssignment('${a.id}')" class="h-8 px-2.5 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition ml-auto cursor-pointer">
                                 Hapus
                             </button>
                         </div>

@@ -1169,71 +1169,85 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (mySubmission) {
                 if (mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '') {
-                    submissionBadge = `<span class="bg-emerald-400 text-black border-2 border-black font-black text-xs px-2.5 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">Nilai: ${mySubmission.nilai}/100 &bull; Terkunci 1x</span>`;
+                    submissionBadge = `<span class="inline-flex items-center gap-1 whitespace-nowrap bg-emerald-400 text-black border-2 border-black font-black text-xs px-2.5 py-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">✓ Nilai: ${mySubmission.nilai}/100</span>`;
                 } else {
-                    submissionBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs px-2 py-0.5 rounded-lg">Sudah Dikumpulkan &bull; Terkunci 1x</span>`;
+                    submissionBadge = `<span class="inline-flex items-center gap-1 whitespace-nowrap bg-emerald-100 text-emerald-950 border border-emerald-400 font-bold text-xs px-2.5 py-1 rounded-xl">✓ Sudah Dikumpulkan</span>`;
                 }
-                actionBtnText = isForm ? 'Lembar Jawaban (Terkunci)' : 'Lihat Pengumpulan (Terkunci)';
+                actionBtnText = isForm ? 'Lembar Jawaban' : 'Lihat Pengumpulan';
                 actionBtnClass = 'bg-white hover:bg-slate-100 text-black border-2 border-black';
             } else if (isPast && parsed.lock_deadline) {
-                submissionBadge = `<span class="bg-rose-100 text-rose-900 border border-rose-300 font-bold text-xs px-2 py-0.5 rounded-lg">Waktu Habis (Terkunci)</span>`;
+                submissionBadge = `<span class="inline-flex items-center whitespace-nowrap bg-rose-100 text-rose-950 border border-rose-300 font-bold text-xs px-2.5 py-1 rounded-xl">Waktu Habis (Terkunci)</span>`;
                 actionBtnText = 'Pengumpulan Ditutup';
                 actionBtnClass = 'bg-slate-200 text-slate-600 border-2 border-slate-300 cursor-not-allowed';
             } else if (isPast) {
-                submissionBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-2 py-0.5 rounded-lg">Belum Dikerjakan (Terlambat)</span>`;
+                submissionBadge = `<span class="inline-flex items-center whitespace-nowrap bg-amber-100 text-amber-950 border border-amber-300 font-bold text-xs px-2.5 py-1 rounded-xl">Belum Dikerjakan (Terlambat)</span>`;
             } else {
-                submissionBadge = `<span class="bg-red-100 text-red-800 border border-red-300 font-bold text-xs px-2 py-0.5 rounded-lg">Belum Dikerjakan</span>`;
+                submissionBadge = `<span class="inline-flex items-center whitespace-nowrap bg-red-100 text-red-900 border border-red-300 font-bold text-xs px-2.5 py-1 rounded-xl">Belum Dikerjakan</span>`;
+            }
+
+            const rawNote = mySubmission && mySubmission.catatan_guru ? String(mySubmission.catatan_guru).trim() : '';
+            const isDefaultPlaceholder = !rawNote || 
+                rawNote.includes('Menunggu pemeriksaan') || 
+                rawNote.includes('Tuntas otomatis') ||
+                rawNote.includes('Menunggu evaluasi');
+
+            const hasScore = mySubmission && mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '';
+
+            let feedbackSectionHtml = '';
+            if (hasScore) {
+                feedbackSectionHtml = `
+                    <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 text-xs mb-3 shadow-sm">
+                        <div class="flex justify-between items-center ${rawNote && !isDefaultPlaceholder ? 'mb-2' : ''}">
+                            <span class="font-black text-emerald-950 text-xs">Hasil Koreksi Guru:</span>
+                            <span class="font-black text-sm bg-emerald-300 text-emerald-950 px-2.5 py-0.5 rounded-lg border border-emerald-500">${mySubmission.nilai} / 100</span>
+                        </div>
+                        ${rawNote && !isDefaultPlaceholder ? `
+                            <div class="mt-2 bg-amber-50 border border-amber-300 rounded-lg p-2.5 text-slate-800">
+                                <span class="font-black text-[11px] text-amber-950 block mb-0.5">💬 Catatan & Masukan Guru:</span>
+                                <p class="text-xs font-bold italic leading-relaxed">"${escapeHtml(rawNote)}"</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else if (rawNote && !isDefaultPlaceholder) {
+                feedbackSectionHtml = `
+                    <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 text-xs mb-3 shadow-sm">
+                        <span class="font-black text-[11px] text-amber-950 block mb-0.5">💬 Catatan & Masukan Guru:</span>
+                        <p class="text-xs font-bold text-slate-800 italic leading-relaxed">"${escapeHtml(rawNote)}"</p>
+                    </div>
+                `;
             }
 
             const card = document.createElement('div');
             card.className = "bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] p-4 sm:p-5 md:p-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
             card.innerHTML = `
                 <div>
-                    <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                ${a.mapel}
-                            </span>
-                            <span class="bg-yellow-200 text-black border border-black text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                Kelas ${a.kelas}
-                            </span>
-                            ${tipeBadgeHtml}
-                            ${parsed.token_required && parsed.token ? `<span class="bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Wajib Token Guru</span>` : ''}
-                        </div>
-                        <div>${deadlineBadge}</div>
+                    <div class="flex items-center gap-1.5 flex-wrap mb-2.5">
+                        <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            ${a.mapel}
+                        </span>
+                        <span class="bg-yellow-200 text-black border border-black text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            Kelas ${a.kelas}
+                        </span>
+                        ${tipeBadgeHtml}
+                        ${parsed.token_required && parsed.token ? `<span class="bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Wajib Token</span>` : ''}
+                        ${deadlineBadge}
                     </div>
 
-                    <h4 class="font-black text-lg md:text-xl text-black mb-1.5">${a.judul_tugas}</h4>
+                    <h4 class="font-black text-lg md:text-xl text-black mb-1.5">${escapeHtml(a.judul_tugas)}</h4>
                     <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line">${escapeHtml(parsed.petunjuk || a.deskripsi || '')}</p>
 
-                    ${mySubmission && mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '' ? `
-                        <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 text-xs mb-3 shadow-sm">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="font-black text-emerald-950 text-xs">Hasil Koreksi Guru:</span>
-                                <span class="font-black text-sm bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-500">${mySubmission.nilai} / 100</span>
-                            </div>
-                            ${mySubmission.catatan_guru ? `
-                                <div class="mt-2 bg-amber-50 border border-amber-300 rounded-lg p-2 text-slate-800">
-                                    <span class="font-black text-[11px] text-amber-950 block mb-0.5">💬 Catatan & Masukan Guru:</span>
-                                    <p class="text-[11px] font-bold italic leading-relaxed">"${escapeHtml(mySubmission.catatan_guru)}"</p>
-                                </div>
-                            ` : ''}
-                        </div>
-                    ` : (mySubmission && mySubmission.catatan_guru ? `
-                        <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 text-xs mb-3 shadow-sm">
-                            <span class="font-black text-[11px] text-amber-950 block mb-0.5">💬 Catatan Guru:</span>
-                            <p class="text-[11px] font-bold text-slate-800 italic leading-relaxed">"${escapeHtml(mySubmission.catatan_guru)}"</p>
-                        </div>
-                    ` : '')}
+                    ${feedbackSectionHtml}
                 </div>
 
-                <div class="pt-3 border-t-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                    <div class="w-full sm:w-auto">${submissionBadge}</div>
-                    <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')})" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center ${actionBtnClass}">
+                <div class="pt-3 border-t-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mt-auto">
+                    <div class="w-full sm:w-auto shrink-0">${submissionBadge}</div>
+                    <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')})" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0 ${actionBtnClass}">
                         ${actionBtnText}
                     </button>
                 </div>
             `;
+
             container.appendChild(card);
         });
     }

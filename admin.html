@@ -188,43 +188,52 @@
             <!-- TAB 1: KELOLA TUGAS / PR & MEJA KOREKSI LENGKAP         -->
             <!-- ======================================================= -->
             <div id="tab-content-penugasan" class="space-y-6">
-                <div class="bg-emerald-300 border-[3px] border-black rounded-3xl md:rounded-[40px] p-4 sm:p-6 md:p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
-                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
-                        <div class="flex-1 min-w-[260px]">
+                <div class="bg-emerald-300 border-[3px] border-black rounded-3xl md:rounded-[40px] p-4 sm:p-6 md:p-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] space-y-4 sm:space-y-5">
+                    <!-- Baris 1: Judul & Tombol Utama Buat Tugas -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+                        <div>
                             <h3 class="text-2xl sm:text-3xl font-black text-black uppercase tracking-tight">Kelola Tugas/PR & Meja Koreksi</h3>
                             <p class="text-black font-bold text-xs md:text-sm mt-0.5">Kelola penugasan, rancang formulir tugas, dan periksa lembar jawaban siswa secara mendalam.</p>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
-                            <button type="button" onclick="openLegerExportModal()" class="h-11 bg-emerald-400 hover:bg-emerald-500 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer" title="Ekspor Matriks Leger Nilai 1 Kelas Utuh ke Excel">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                Leger Nilai (.csv)
+                        <div class="flex flex-wrap items-center gap-2 shrink-0">
+                            <button type="button" onclick="openAssignmentModal()" class="h-10 sm:h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition cursor-pointer">
+                                <span>+</span> Buat Tugas Baru
                             </button>
-                            <button type="button" onclick="exportCSV()" class="h-11 bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
-                                Unduh CSV
-                            </button>
-                            <button type="button" onclick="printOfficialGradebook()" class="h-11 bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
-                                Cetak Rekap Nilai
-                            </button>
-                            <button type="button" onclick="openAiAssignmentModal()" class="h-11 bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
-                                AI Buat Tugas
-                            </button>
-                            <button type="button" onclick="openAssignmentModal()" class="h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
-                                Buat Tugas Baru
+                            <button type="button" onclick="openAiAssignmentModal()" class="h-10 sm:h-11 bg-yellow-300 hover:bg-yellow-400 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition cursor-pointer">
+                                <span>✨</span> AI Buat Tugas
                             </button>
                         </div>
                     </div>
 
-                    <!-- Sub-view Navigation Toggles -->
-                    <div class="flex flex-wrap items-center gap-2 border-b-2 border-black/20 pb-4 mb-6">
-                        <button type="button" id="subview-btn-cards" onclick="switchPenugasanSubView('cards')" class="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
-                            Daftar Tugas (<span id="penugasan-count-badge">0</span>)
-                        </button>
-                        <button type="button" id="subview-btn-table" onclick="switchPenugasanSubView('table')" class="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black border-2 border-black hover:bg-slate-100 active:translate-y-0.5 transition cursor-pointer">
-                            Meja Koreksi Siswa (<span id="submissions-count-badge">0</span>)
-                        </button>
-                    </div>
+                    <!-- Baris 2: Sub-views (Tabs) & Toolbar Ekspor Rekap -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-3.5 border-t-2 border-black/20">
+                        <!-- Pilihan Tampilan: Daftar Tugas vs Meja Koreksi -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" id="subview-btn-cards" onclick="switchPenugasanSubView('cards')" class="h-10 px-4 rounded-xl font-black text-xs uppercase tracking-wider bg-black text-white border-2 border-black active:translate-y-0.5 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                Daftar Tugas (<span id="penugasan-count-badge">0</span>)
+                            </button>
+                            <button type="button" id="subview-btn-table" onclick="switchPenugasanSubView('table')" class="h-10 px-4 rounded-xl font-black text-xs uppercase tracking-wider bg-white text-black border-2 border-black hover:bg-slate-100 active:translate-y-0.5 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                Meja Koreksi Siswa (<span id="submissions-count-badge">0</span>)
+                            </button>
+                        </div>
 
-                    <!-- SUB-VIEW 1: CARDS PENUGASAN -->
+                        <!-- Tombol Ekspor Nilai & Laporan -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" onclick="openLegerExportModal()" class="h-10 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black font-black px-3.5 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition cursor-pointer" title="Ekspor Matriks Leger Nilai 1 Kelas Utuh ke Excel">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                Leger Nilai (.csv)
+                            </button>
+                            <button type="button" onclick="exportCSV()" class="h-10 bg-white hover:bg-slate-100 text-black border-2 border-black font-black px-3.5 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition cursor-pointer">
+                                Unduh CSV
+                            </button>
+                            <button type="button" onclick="printOfficialGradebook()" class="h-10 bg-white hover:bg-slate-100 text-black border-2 border-black font-black px-3.5 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition cursor-pointer">
+                                Cetak Rekap
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB-VIEW 1: CARDS PENUGASAN -->
                     <div id="penugasan-cards-view" class="space-y-4">
                         <!-- Filter Arsip & Status Tugas -->
                         <div class="flex items-center justify-between gap-3 flex-wrap bg-white border-2 border-black rounded-2xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
