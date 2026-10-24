@@ -1001,8 +1001,31 @@ PERSYARATAN WAJIB DAN KETAT:
    - Topik Pembelajaran: ${topik}
    - Gaya Penyajian: ${deskripsiGaya}
    - Konten materi harus akurat, mendidik, ringkas, mudah dipahami siswa SMP, dan tidak bertele-tele.
-4. INTERAKTIVITAS & JAVASCRIPT:
-   - Seluruh interaktivitas (pergantian tab, klik kartu, simulasi, perhitungan kuis, buka-tutup accordion) wajib ditulis dengan Vanilla JavaScript bersih di dalam tag <script> sebelum </body>.
+4. INTERAKTIVITAS & JAVASCRIPT TAB (SANGAT PENTING):
+   - Jika menggunakan gaya Tab Navigasi, Anda WAJIB mengikuti pola standar yang terbukti bekerja berikut agar tab PASTI dapat diklik dan berganti konten:
+     a. Setiap tombol tab menggunakan atribut:
+        class="tab-btn px-4 py-3 font-bold text-sm min-h-[44px] cursor-pointer" onclick="window.switchTab('tab-1')" id="btn-tab-1"
+     b. Setiap panel konten tab menggunakan:
+        class="tab-content space-y-4" id="tab-1" (panel 1 aktif tanpa 'hidden', panel 2 dst diberi class 'hidden')
+     c. Deklarasikan fungsi switchTab secara GLOBAL pada window persis seperti ini:
+        <script>
+        window.switchTab = function(tabId) {
+          document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.add('hidden'); });
+          var target = document.getElementById(tabId);
+          if (target) target.classList.remove('hidden');
+
+          document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-black');
+            btn.classList.add('border-transparent', 'text-slate-500');
+          });
+          var activeBtn = document.getElementById('btn-' + tabId) || document.querySelector('[onclick*=\"' + tabId + '\"]');
+          if (activeBtn) {
+            activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-black');
+            activeBtn.classList.remove('border-transparent', 'text-slate-500');
+          }
+        };
+        </script>
+     d. JANGAN PERNAH membungkus switchTab di dalam fungsi tertutup atau event DOMContentLoaded tanpa window.switchTab = ... karena inline onclick di HTML tidak akan bisa menemukannya.
    - Jangan menggunakan library eksternal selain Tailwind CDN.
    - Untuk kuis mandiri (jika ada), berikan skor instan dan penjelasan jawaban benar/salah secara langsung saat siswa memilih opsi.`;
 
@@ -1021,7 +1044,7 @@ Tuliskan kode dokumen HTML5 mandiri selengkapnya sekarang:`;
 
 /**
  * AI Refiner / Perbaikan Tampilan & Fitur Dokumen HTML MPI
- * Memperbaiki tampilan HP, mempercantik CSS Tailwind, atau menambah interaksi sesuai instruksi guru.
+ * Memperbaiki tampilan HP, mempercantik CSS Tailwind, atau memperbaiki tombol & tab interaktif.
  */
 export async function aiRefineMpiHtml({ currentHtml, revisionPrompt }) {
     if (!currentHtml) throw new Error('Kode HTML yang akan diperbaiki tidak ditemukan.');
@@ -1031,11 +1054,34 @@ export async function aiRefineMpiHtml({ currentHtml, revisionPrompt }) {
 Tugas Anda adalah memperbarui atau memperbaiki kode HTML Media Pembelajaran yang diberikan sesuai permintaan revisi guru.
 
 PEDOMAN PERBAIKAN:
-1. Pastikan perbaikan sepenuhnya responsif di layar HP siswa (360px-420px) dan laptop/desktop.
-2. Gunakan Tailwind CSS (<script src="https://cdn.tailwindcss.com"></script>).
-3. Pastikan seluruh tombol memiliki touch target minimal 44px dan teks memiliki kontras yang mudah dibaca (WCAG AA).
-4. Pertahankan seluruh materi ajar dan logika interaktif yang sudah berfungsi dengan baik, hanya ubah/tambahkan bagian yang diminta oleh guru.
-5. Kembalikan HANYA kode dokumen HTML5 lengkap dari <!DOCTYPE html> hingga </html> tanpa teks pengantar atau penutup.`;
+1. RESPONSIF & LAYAR HP:
+   - Pastikan layout rapi, tidak terpotong, dan dapat di-scroll lancar di layar HP siswa (360px-420px) maupun laptop.
+   - Gunakan Tailwind CSS (<script src="https://cdn.tailwindcss.com"></script>).
+   - Seluruh tombol interaktif wajib memiliki tinggi sentuh minimal 44px (min-h-[44px]).
+2. PERBAIKAN KHUSUS TOMBOL & TAB INTERAKTIF:
+   - Jika guru meminta perbaikan tab atau tombol yang tidak bisa ditekan / tidak merespons:
+     Masalah utamanya adalah fungsi JavaScript belum terpasang di window global atau nama id tab tidak cocok!
+     Perbaiki dengan memastikan:
+     a. Fungsi switch tab terdaftar langsung pada window global:
+        window.switchTab = function(tabId) {
+          document.querySelectorAll('.tab-content').forEach(function(p) { p.classList.add('hidden'); });
+          var target = document.getElementById(tabId);
+          if (target) target.classList.remove('hidden');
+          document.querySelectorAll('.tab-btn').forEach(function(b) {
+            b.classList.remove('border-indigo-600', 'text-indigo-600', 'font-black');
+            b.classList.add('border-transparent', 'text-slate-500');
+          });
+          var activeBtn = document.getElementById('btn-' + tabId) || document.querySelector('[onclick*=\"' + tabId + '\"]');
+          if (activeBtn) {
+            activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-black');
+            activeBtn.classList.remove('border-transparent', 'text-slate-500');
+          }
+        };
+     b. Setiap tombol tab memiliki: onclick="window.switchTab('id-panel')" dan class="tab-btn cursor-pointer"
+     c. Setiap panel konten memiliki: class="tab-content" dan id yang sesuai
+     d. Pastikan tidak ada script syntax error yang menghentikan eksekusi JavaScript.
+3. KELUARAN MURNI:
+   - Kembalikan HANYA kode dokumen HTML5 lengkap dari <!DOCTYPE html> hingga </html> tanpa teks percakapan pengantar atau penutup.`;
 
     const userPrompt = `Berikut adalah kode HTML Media Pembelajaran saat ini:
 \`\`\`html
@@ -1044,6 +1090,9 @@ ${currentHtml}
 
 Permintaan Perbaikan Guru:
 ${revisionPrompt}
+
+PANDUAN TAMBAHAN:
+Jika perbaikan berkaitan dengan tab navigasi atau tombol yang tidak merespons, pastikan skrip pergantian tab dipasang pada window.switchTab secara global dan sinkronkan ID tombol dengan ID panel konten.
 
 Tuliskan kode HTML5 lengkap hasil penyempurnaan sekarang:`;
 

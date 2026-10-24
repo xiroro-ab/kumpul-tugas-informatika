@@ -4004,6 +4004,7 @@ document.addEventListener('DOMContentLoaded', () => {
         topik: '',
         device: 'mobile'
     };
+    let currentPreviewBlobUrl = null;
 
     window.openAiMpiModal = () => {
         const kelasSelect = document.getElementById('ai-mpi-kelas');
@@ -4038,6 +4039,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.closeAiMpiModal = () => {
         const modal = document.getElementById('modal-ai-mpi');
         if (modal) modal.classList.add('hidden');
+        if (currentPreviewBlobUrl) {
+            try { URL.revokeObjectURL(currentPreviewBlobUrl); } catch (_) {}
+            currentPreviewBlobUrl = null;
+        }
+        const iframe = document.getElementById('ai-mpi-preview-iframe');
+        if (iframe) {
+            iframe.removeAttribute('srcdoc');
+            iframe.src = 'about:blank';
+        }
     };
 
     window.setAiMpiQuickPrompt = (promptText) => {
@@ -4120,8 +4130,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (iframe) {
-            iframe.removeAttribute('src');
-            iframe.srcdoc = currentAiMpiState.html;
+            if (currentPreviewBlobUrl) {
+                try { URL.revokeObjectURL(currentPreviewBlobUrl); } catch (_) {}
+                currentPreviewBlobUrl = null;
+            }
+            const blob = new Blob([currentAiMpiState.html], { type: 'text/html;charset=utf-8' });
+            currentPreviewBlobUrl = URL.createObjectURL(blob);
+            iframe.removeAttribute('srcdoc');
+            iframe.src = currentPreviewBlobUrl;
         }
     }
 
@@ -4229,11 +4245,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.reloadAiMpiPreview = () => {
-        const iframe = document.getElementById('ai-mpi-preview-iframe');
-        if (iframe && currentAiMpiState.html) {
-            iframe.removeAttribute('src');
-            iframe.srcdoc = currentAiMpiState.html;
-        }
+        renderAiMpiPreview();
     };
 
     window.openCurrentAiMpiInTab = () => {
