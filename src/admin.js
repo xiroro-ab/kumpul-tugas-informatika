@@ -13,7 +13,8 @@ import {
     aiGenerateFormQuestions,
     aiEvaluateFormSubmission,
     aiGenerateMpiHtml,
-    aiRefineMpiHtml
+    aiRefineMpiHtml,
+    aiEnhancePrompt
 } from './gemini.js';
 import { sanitizeAndEnhanceHtml, openHtmlInNewTab, downloadHtmlFile } from './htmlEnhancer.js';
 import { 
@@ -4145,6 +4146,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (instruksiEl) instruksiEl.value = '';
         const refinePromptEl = document.getElementById('ai-mpi-refine-prompt');
         if (refinePromptEl) refinePromptEl.value = '';
+        const difEl = document.getElementById('ai-mpi-diferensiasi');
+        if (difEl) difEl.value = 'reguler';
 
         const btnSave = document.getElementById('btn-save-ai-mpi');
         if (btnSave) {
@@ -4166,6 +4169,146 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ==========================================
+    // ANATOMI PROMPT & RESEP PEDAGOGIS AI
+    // ===================================
+    window.applyPromptRecipe = (recipeKey) => {
+        const gayaSelect = document.getElementById('ai-mpi-gaya');
+        const diferensiasiSelect = document.getElementById('ai-mpi-diferensiasi');
+        const instruksiEl = document.getElementById('ai-mpi-instruksi');
+        if (!instruksiEl) return;
+
+        let recipeText = '';
+        if (recipeKey === 'lab') {
+            if (gayaSelect) gayaSelect.value = 'lab';
+            recipeText = 'Sediakan simulasi laboratorium interaktif dengan slider parameter, visualisasi perubahan state real-time, tombol reset, dan tugas eksplorasi terbimbing dengan pertanyaan pemantik.';
+        } else if (recipeKey === 'game') {
+            if (gayaSelect) gayaSelect.value = 'quiz';
+            recipeText = 'Rancang dalam bentuk petualangan kuis game berpoin. Berikan feedback instan untuk setiap pilihan, indikator kemajuan, badge pencapaian, dan rangkuman skor di akhir.';
+        } else if (recipeKey === 'remedial') {
+            if (diferensiasiSelect) diferensiasiSelect.value = 'remedial';
+            recipeText = 'Gunakan pendekatan remedial: fokus pada 3 konsep inti paling mendasar, gunakan analogi benda konkret sehari-hari, bahasa santai dan ramah, hindari jargon rumit, serta sediakan glosarium bantuan cepat.';
+        } else if (recipeKey === 'hots') {
+            if (diferensiasiSelect) diferensiasiSelect.value = 'hots';
+            recipeText = 'Sajikan studi kasus dilema nyata yang menuntut penalaran kritis (HOTS). Berikan tantangan pemecahan masalah komputasional, komparasi dua solusi alternatif, dan pertanyaan refleksi tingkat tinggi.';
+        }
+
+        if (recipeText) {
+            instruksiEl.value = recipeText;
+            instruksiEl.focus();
+        }
+    };
+
+    window.insertPromptSnippet = (snippet) => {
+        const instruksiEl = document.getElementById('ai-mpi-instruksi');
+        if (!instruksiEl || !snippet) return;
+        const current = instruksiEl.value.trim();
+        if (!current) {
+            instruksiEl.value = snippet;
+        } else if (!current.includes(snippet)) {
+            instruksiEl.value = `${current}\n${snippet}`;
+        }
+        instruksiEl.focus();
+    };
+
+    window.runAiEnhanceMpiPrompt = async () => {
+        const mapel = document.getElementById('ai-mpi-mapel')?.value || 'Informatika';
+        const kelas = document.getElementById('ai-mpi-kelas')?.value || 'Kelas 7';
+        const gaya = document.getElementById('ai-mpi-gaya')?.value || 'tab';
+        const topik = document.getElementById('ai-mpi-topik')?.value.trim();
+        const instruksiEl = document.getElementById('ai-mpi-instruksi');
+        const currentInstruksi = instruksiEl ? instruksiEl.value.trim() : '';
+
+        if (!topik && !currentInstruksi) {
+            showCustomModal("Harap isi topik pembelajaran atau draf instruksi terlebih dahulu sebelum dipoles AI!");
+            return;
+        }
+
+        const btn = document.getElementById('btn-ai-enhance-mpi-prompt');
+        const origText = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Memoles...</span>';
+        }
+
+        try {
+            const polished = await aiEnhancePrompt({
+                mapel,
+                kelas,
+                topik,
+                instruksi: currentInstruksi,
+                gaya
+            });
+
+            if (instruksiEl) {
+                instruksiEl.value = polished;
+                instruksiEl.focus();
+            }
+            showCustomModal("Prompt berhasil dipoles dengan formula pedagogis! Anda dapat menyesuaikannya lagi atau langsung klik Generate.");
+        } catch (e) {
+            showCustomModal("Gagal memoles prompt: " + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origText || '<span>✨ Poles dengan AI</span>';
+            }
+        }
+    };
+
+    window.insertMaterialPromptSnippet = (snippet) => {
+        const el = document.getElementById('ai-mat-topik');
+        if (!el || !snippet) return;
+        const current = el.value.trim();
+        if (!current) {
+            el.value = snippet;
+        } else if (!current.includes(snippet)) {
+            el.value = `${current}\n${snippet}`;
+        }
+        el.focus();
+    };
+
+    window.runAiEnhanceMaterialPrompt = async () => {
+        const mapel = document.getElementById('ai-mat-mapel')?.value || currentTeacher?.mapel || 'Informatika';
+        const kelas = document.getElementById('ai-mat-kelas')?.value || stateKelas[0] || 'Semua Kelas';
+        const gaya = document.getElementById('ai-mat-gaya')?.value || 'konseptual';
+        const el = document.getElementById('ai-mat-topik');
+        const currentText = el ? el.value.trim() : '';
+
+        if (!currentText) {
+            showCustomModal("Masukkan materi pokok / capaian pembelajaran terlebih dahulu sebelum dipoles AI!");
+            return;
+        }
+
+        const btn = document.getElementById('btn-ai-enhance-material-prompt');
+        const origText = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳ Memoles...</span>';
+        }
+
+        try {
+            const polished = await aiEnhancePrompt({
+                mapel,
+                kelas,
+                topik: currentText,
+                instruksi: '',
+                gaya
+            });
+
+            if (el) {
+                el.value = polished;
+                el.focus();
+            }
+            showCustomModal("Materi pokok berhasil dipoles dengan formula pembelajaran aktif! Silakan periksa lalu klik Generate.");
+        } catch (e) {
+            showCustomModal("Gagal memoles prompt materi: " + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origText || '<span>✨ Poles dengan AI</span>';
+            }
+        }
+    };
+
     // AI STUDIO MEDIA PEMBELAJARAN INTERAKTIF (MPI)
     // ==========================================
     let currentAiMpiState = {
@@ -4205,6 +4348,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (instruksiEl) instruksiEl.value = '';
         const refinePromptEl = document.getElementById('ai-mpi-refine-prompt');
         if (refinePromptEl) refinePromptEl.value = '';
+        const difEl = document.getElementById('ai-mpi-diferensiasi');
+        if (difEl) difEl.value = 'reguler';
 
         setAiMpiPreviewDevice('mobile');
         renderAiMpiPreview();
@@ -4322,6 +4467,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mapel = document.getElementById('ai-mpi-mapel')?.value || 'Informatika';
         const kelas = document.getElementById('ai-mpi-kelas')?.value || 'Kelas 7';
         const gaya = document.getElementById('ai-mpi-gaya')?.value || 'tab';
+        const diferensiasi = document.getElementById('ai-mpi-diferensiasi')?.value || 'reguler';
         const topik = document.getElementById('ai-mpi-topik')?.value.trim();
         const instruksiTambahan = document.getElementById('ai-mpi-instruksi')?.value.trim();
 
@@ -4350,7 +4496,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 kelas,
                 topik,
                 gaya,
-                instruksiTambahan
+                instruksiTambahan,
+                diferensiasi
             });
 
             currentAiMpiState.html = html;

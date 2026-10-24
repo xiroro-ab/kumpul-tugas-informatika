@@ -967,7 +967,8 @@ export async function aiGenerateMpiHtml({
     kelas = 'Kelas 7',
     topik = '',
     gaya = 'tab',
-    instruksiTambahan = ''
+    instruksiTambahan = '',
+    diferensiasi = 'reguler'
 }) {
     if (!topik) throw new Error('Topik atau materi pembelajaran wajib diisi.');
 
@@ -978,16 +979,29 @@ export async function aiGenerateMpiHtml({
         infografis: 'Infografis Interaktif & Alur Prosedural (Tampilan visual terstruktur dengan accordion buka-tutup, kartu rangkuman poin penting, dan glosarium interaktif)'
     };
 
+    const diferensiasiDescriptions = {
+        remedial: 'Tingkat Pemula / Remedial: Fokus pada 3 konsep inti paling mendasar, kalimat sederhana, analogi konkret, dan langkah mikro yang mudah dicerna.',
+        reguler: 'Tingkat Reguler: Standar Capaian Pembelajaran Kurikulum Merdeka Fase D, memadukan teori terapan, eksplorasi visual, dan studi kasus.',
+        hots: 'Tingkat Pengayaan (HOTS): Mendorong analisis kritis, pemecahan masalah komputasional tingkat tinggi, dan evaluasi alternatif solusi.'
+    };
+
     const deskripsiGaya = gayaDescriptions[gaya] || gayaDescriptions.tab;
+    const deskripsiDiferensiasi = diferensiasiDescriptions[diferensiasi] || diferensiasiDescriptions.reguler;
 
     const systemInstruction = `Anda adalah Pengembang Media Pembelajaran Interaktif (MPI) dan Pakar EduTech untuk jenjang SMP Kurikulum Merdeka.
 Tugas Anda adalah menulis kode aplikasi web Media Pembelajaran Interaktif (MPI) utuh dalam satu file HTML5 mandiri.
 
-PERSYARATAN WAJIB DAN KETAT:
-1. FORMAT KELUARAN:
+ANATOMI PEDAGOGIS & PERSYARATAN WAJIB:
+1. PERAN & SASARAN BELAJAR:
+   - Mata Pelajaran: ${mapel}
+   - Target Tingkat: ${kelas} (SMP)
+   - Topik Pembelajaran: ${topik}
+   - Gaya Format: ${deskripsiGaya}
+   - Diferensiasi Belajar: ${deskripsiDiferensiasi}
+2. FORMAT KELUARAN:
    - Tuliskan HANYA kode HTML5 lengkap dimulai dari <!DOCTYPE html> hingga </html>.
    - Jangan menambahkan penjelasan di luar kode HTML.
-2. FRAMEWORK & TAMPILAN:
+3. FRAMEWORK & TAMPILAN:
    - Wajib menyertakan CDN Tailwind CSS di bagian <head>:
      <script src="https://cdn.tailwindcss.com"></script>
    - Wajib menyertakan meta viewport untuk HP siswa:
@@ -995,13 +1009,9 @@ PERSYARATAN WAJIB DAN KETAT:
    - Tampilan wajib modern, bersih, kontras tinggi (WCAG AA), dan sangat rapi di layar HP (lebar 360px - 414px) maupun laptop/PC.
    - Gunakan skema warna Tailwind yang segar dan menyenangkan (seperti indigo, sky, emerald, amber, slate).
    - Seluruh tombol dan kontrol interaktif wajib memiliki tinggi sentuh minimal 44px (h-11 atau py-2.5 px-4) agar nyaman disentuh jari siswa di layar HP.
-3. KONTEN & STRUKTUR:
-   - Mata Pelajaran: ${mapel}
-   - Target Tingkat: ${kelas}
-   - Topik Pembelajaran: ${topik}
-   - Gaya Penyajian: ${deskripsiGaya}
+4. KONTEN & STRUKTUR:
    - Konten materi harus akurat, mendidik, ringkas, mudah dipahami siswa SMP, dan tidak bertele-tele.
-4. INTERAKTIVITAS & JAVASCRIPT TAB (SANGAT PENTING):
+5. INTERAKTIVITAS & JAVASCRIPT TAB (SANGAT PENTING):
    - Jika menggunakan gaya Tab Navigasi, Anda WAJIB mengikuti pola standar yang terbukti bekerja berikut agar tab PASTI dapat diklik dan berganti konten:
      a. Setiap tombol tab menggunakan atribut:
         class="tab-btn px-4 py-3 font-bold text-sm min-h-[44px] cursor-pointer" onclick="window.switchTab('tab-1')" id="btn-tab-1"
@@ -1034,12 +1044,54 @@ Mata Pelajaran: ${mapel}
 Target Siswa: ${kelas} (SMP)
 Topik / Materi: ${topik}
 Gaya Format: ${deskripsiGaya}
+Diferensiasi Belajar: ${deskripsiDiferensiasi}
 ${instruksiTambahan ? `Instruksi Tambahan Guru:\n${instruksiTambahan}\n` : ''}
 
 Tuliskan kode dokumen HTML5 mandiri selengkapnya sekarang:`;
 
     const raw = await callGemini(userPrompt, systemInstruction, false);
     return sanitizeAndEnhanceHtml(raw);
+}
+
+/**
+ * AI Prompt Enhancer / Poles Prompt dengan Anatomi Pedagogis Lengkap (R-C-T-I-C-O)
+ * Mengubah input sederhana guru menjadi prompt instruksional kaya konteks untuk Media Pembelajaran.
+ */
+export async function aiEnhancePrompt({
+    mapel = 'Informatika',
+    kelas = 'Kelas 7',
+    topik = '',
+    instruksi = '',
+    gaya = 'tab'
+}) {
+    if (!topik && !instruksi) throw new Error('Silakan isi topik atau draf instruksi terlebih dahulu.');
+
+    const systemInstruction = `Anda adalah Spesialis Prompt Engineering Edukasi dan Konsultan Pedagogis Kurikulum Merdeka SMP.
+Tugas Anda adalah memperkaya dan memoles draft topik/instruksi guru menjadi satu prompt instruksi khusus yang SANGAT DETAIL, TERSTRUKTUR, dan SIAP DIEKSEKUSI untuk membuat Media Pembelajaran Interaktif (MPI).
+
+Gunakan prinsip Anatomi Prompt Guru (R-C-T-I-C-O):
+1. Role: Guru teladan dan pengembang media digital kreatif
+2. Context: Kehidupan nyata remaja SMP (kontekstual, seru, mudah dipahami di layar HP)
+3. Task: Pokok bahasan materi
+4. Instruction: Gunakan analogi konkret yang akrab bagi siswa, studi kasus nyata, dan panduan langkah demi langkah
+5. Constraints: Wajib interaktif, mobile-friendly, tanpa istilah teoritis yang membosankan
+6. Output: Struktur komponen yang jelas (ringkasan visual, simulasi interaktif, studi kasus nyata, dan kuis uji diri berpoin)
+
+PERSYARATAN FORMAT KELUARAN:
+- Tuliskan instruksi yang telah dipoles dalam 2 sampai 4 kalimat/paragraf padat dan terarah dalam Bahasa Indonesia.
+- Jangan gunakan formatting markdown codeblock, langsung hasilkan teks instruksinya saja.`;
+
+    const userPrompt = `Tolong poles dan perkaya instruksi guru berikut menjadi prompt media pembelajaran yang sangat kuat:
+Mata Pelajaran: ${mapel}
+Tingkat: ${kelas} (SMP)
+Topik Dasar: ${topik || '(Lihat draf guru)'}
+Format Sajian: ${gaya}
+Catatan/Draf Guru Saat Ini: ${instruksi || 'Kembangkan topik ini agar interaktif, menarik, dan relevan dengan kehidupan siswa SMP.'}
+
+Hasil polesan instruksi detail:`;
+
+    const enhanced = await callGemini(userPrompt, systemInstruction, false);
+    return enhanced.trim().replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/i, '').trim();
 }
 
 /**
