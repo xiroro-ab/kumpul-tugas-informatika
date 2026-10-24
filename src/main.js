@@ -80,6 +80,67 @@ export function parseQuizConfig(petunjukRaw, quizObj = {}) {
     };
 }
 
+// Kompresi Gambar Otomatis di Sisi Klien (Canvas-based)
+export async function compressImageIfNeeded(file, maxDimension = 1600, quality = 0.82) {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+        return file;
+    }
+    if (file.type === 'image/svg+xml' || file.type === 'image/gif' || file.size < 300 * 1024) {
+        return file;
+    }
+
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    let { width, height } = img;
+                    if (width <= maxDimension && height <= maxDimension && file.size < 600 * 1024) {
+                        return resolve(file);
+                    }
+
+                    if (width > maxDimension || height > maxDimension) {
+                        if (width > height) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        } else {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (!blob || blob.size >= file.size) {
+                            return resolve(file);
+                        }
+                        const newName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+                        const compressed = new File([blob], newName, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        console.log(`[Kompresi Foto] ${file.name} dioptimalkan dari ${(file.size / (1024 * 1024)).toFixed(2)} MB ke ${(compressed.size / 1024).toFixed(1)} KB`);
+                        resolve(compressed);
+                    }, 'image/jpeg', quality);
+                } catch (err) {
+                    console.warn('[Kompresi Foto] Menggunakan berkas asli:', err);
+                    resolve(file);
+                }
+            };
+            img.onerror = () => resolve(file);
+            img.src = e.target.result;
+        };
+        reader.onerror = () => resolve(file);
+        reader.readAsDataURL(file);
+    });
+}
+
 export function parseAssignmentQuestions(assignment) {
     if (!assignment || !assignment.deskripsi) {
         return { petunjuk: '', questions: [], tipe_pengumpulan: 'bebas' };
@@ -90,6 +151,8 @@ export function parseAssignmentQuestions(assignment) {
     let qList = [];
     let token = '';
     let tokenRequired = false;
+    let lockDeadline = false;
+    let isArchived = false;
 
     if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
@@ -101,6 +164,8 @@ export function parseAssignmentQuestions(assignment) {
                 tipePengumpulan = parsed.tipe_pengumpulan || '';
                 token = (parsed.token || '').toString().trim().toUpperCase();
                 tokenRequired = parsed.token_required !== undefined ? !!parsed.token_required : !!token;
+                lockDeadline = Boolean(parsed.lock_deadline);
+                isArchived = Boolean(parsed.is_archived);
                 if (Array.isArray(parsed.questions)) {
                     qList = parsed.questions;
                 }
@@ -136,7 +201,7 @@ export function parseAssignmentQuestions(assignment) {
         }
     }
 
-    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan, token, token_required: tokenRequired };
+    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan, token, token_required: tokenRequired, lock_deadline: lockDeadline, is_archived: isArchived };
 }
 
 export function detectPlatform(url) {
@@ -906,6 +971,70 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderStudentAssignments();
     };
 
+    
+    // ==========================================
+    // PAPAN PENGUMUMAN SISWA
+    // ==========================================
+    async function loadStudentAnnouncement() {
+        try {
+            const { data, error } = await supabase.from('options').select('*').eq('type', 'pengumuman').maybeSingle();
+            const banner = document.getElementById('student-announcement-banner');
+            if (!banner) return;
+
+            if (!error && data && data.name) {
+                let parsed = { text: '', author: '', updated_at: '' };
+                try {
+                    parsed = JSON.parse(data.name);
+                } catch (_) {
+                    parsed = { text: data.name, author: '', updated_at: '' };
+                }
+
+                if (!parsed.text || !parsed.text.trim()) {
+                    banner.classList.add('hidden');
+                    banner.classList.remove('flex');
+                    return;
+                }
+
+                const bannerKey = `dismissed_announcement_${data.id || ''}_${parsed.updated_at || parsed.text.slice(0, 20)}`;
+                if (sessionStorage.getItem(bannerKey)) {
+                    banner.classList.add('hidden');
+                    banner.classList.remove('flex');
+                    return;
+                }
+
+                window.currentAnnouncementDismissKey = bannerKey;
+
+                const textEl = document.getElementById('announcement-banner-text');
+                const authorEl = document.getElementById('announcement-banner-author');
+                const dateEl = document.getElementById('announcement-banner-date');
+
+                if (textEl) textEl.textContent = parsed.text;
+                if (authorEl) authorEl.textContent = parsed.author ? `Pengirim: ${parsed.author}` : '';
+                if (dateEl && parsed.updated_at) {
+                    const d = new Date(parsed.updated_at);
+                    dateEl.textContent = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+                }
+
+                banner.classList.remove('hidden');
+                banner.classList.add('flex');
+            } else {
+                banner.classList.add('hidden');
+                banner.classList.remove('flex');
+            }
+        } catch (_) {}
+    }
+
+    window.dismissStudentAnnouncement = () => {
+        const banner = document.getElementById('student-announcement-banner');
+        if (banner) {
+            banner.classList.add('hidden');
+            banner.classList.remove('flex');
+        }
+        if (window.currentAnnouncementDismissKey) {
+            sessionStorage.setItem(window.currentAnnouncementDismissKey, 'true');
+        }
+    };
+
     function renderStudentAssignments() {
         const container = document.getElementById('student-assignments-list');
         const filterMapel = document.getElementById('filter-tugas-mapel')?.value || '';
@@ -914,8 +1043,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!container) return;
         container.innerHTML = '';
 
-        // Kumpulan tugas relevan berdasarkan filter Mapel & Kelas
+        // Kumpulan tugas relevan berdasarkan filter Mapel & Kelas (sembunyikan tugas diarsipkan)
         const relevant = allAssignments.filter(a => {
+            const parsed = parseAssignmentQuestions(a);
+            if (parsed.is_archived) return false;
             const matchMapel = !filterMapel || a.mapel === filterMapel;
             const matchKelas = !studentKelas || isClassMatch(a.kelas, studentKelas);
             return matchMapel && matchKelas;
@@ -990,16 +1121,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 (f.materi && f.materi.toLowerCase().trim() === a.judul_tugas.toLowerCase().trim())
             );
 
-            // Periksa deadline
+            const parsed = parseAssignmentQuestions(a);
+            // Periksa deadline & lock
             let deadlineBadge = '';
+            let isPast = false;
+            let formattedDate = '';
             if (a.deadline) {
                 const dlDate = new Date(a.deadline);
                 const now = new Date();
-                const isPast = dlDate < now;
-                const formattedDate = dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                isPast = dlDate < now;
+                formattedDate = dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
                 
                 if (isPast) {
-                    deadlineBadge = `<span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Lewat Tenggat (${formattedDate})</span>`;
+                    if (parsed.lock_deadline) {
+                        deadlineBadge = `<span class="bg-rose-100 text-rose-900 border border-rose-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Pengumpulan Ditutup (${formattedDate})</span>`;
+                    } else {
+                        deadlineBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Lewat Tenggat (${formattedDate})</span>`;
+                    }
                 } else {
                     deadlineBadge = `<span class="bg-yellow-100 text-yellow-900 border border-yellow-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Batas: ${formattedDate} WIB</span>`;
                 }
@@ -1007,7 +1145,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 deadlineBadge = `<span class="bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Tanpa Batas Waktu</span>`;
             }
 
-            const parsed = parseAssignmentQuestions(a);
             const isForm = parsed.tipe_pengumpulan === 'form' && parsed.questions && parsed.questions.length > 0;
             const tipeTugas = parsed.tipe_pengumpulan || 'bebas';
 
@@ -1038,6 +1175,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 actionBtnText = isForm ? 'Lembar Jawaban (Terkunci)' : 'Lihat Pengumpulan (Terkunci)';
                 actionBtnClass = 'bg-white hover:bg-slate-100 text-black border-2 border-black';
+            } else if (isPast && parsed.lock_deadline) {
+                submissionBadge = `<span class="bg-rose-100 text-rose-900 border border-rose-300 font-bold text-xs px-2 py-0.5 rounded-lg">Waktu Habis (Terkunci)</span>`;
+                actionBtnText = 'Pengumpulan Ditutup';
+                actionBtnClass = 'bg-slate-200 text-slate-600 border-2 border-slate-300 cursor-not-allowed';
+            } else if (isPast) {
+                submissionBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-2 py-0.5 rounded-lg">Belum Dikerjakan (Terlambat)</span>`;
             } else {
                 submissionBadge = `<span class="bg-red-100 text-red-800 border border-red-300 font-bold text-xs px-2 py-0.5 rounded-lg">Belum Dikerjakan</span>`;
             }
@@ -1064,14 +1207,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line">${escapeHtml(parsed.petunjuk || a.deskripsi || '')}</p>
 
                     ${mySubmission && mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '' ? `
-                        <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 text-xs mb-3">
+                        <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 text-xs mb-3 shadow-sm">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="font-black text-emerald-950 text-xs">Hasil Koreksi Guru:</span>
                                 <span class="font-black text-sm bg-emerald-300 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-500">${mySubmission.nilai} / 100</span>
                             </div>
-                            ${mySubmission.catatan_guru ? `<p class="text-[11px] font-medium text-slate-800 italic">"${mySubmission.catatan_guru}"</p>` : ''}
+                            ${mySubmission.catatan_guru ? `
+                                <div class="mt-2 bg-amber-50 border border-amber-300 rounded-lg p-2 text-slate-800">
+                                    <span class="font-black text-[11px] text-amber-950 block mb-0.5">💬 Catatan & Masukan Guru:</span>
+                                    <p class="text-[11px] font-bold italic leading-relaxed">"${escapeHtml(mySubmission.catatan_guru)}"</p>
+                                </div>
+                            ` : ''}
                         </div>
-                    ` : ''}
+                    ` : (mySubmission && mySubmission.catatan_guru ? `
+                        <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 text-xs mb-3 shadow-sm">
+                            <span class="font-black text-[11px] text-amber-950 block mb-0.5">💬 Catatan Guru:</span>
+                            <p class="text-[11px] font-bold text-slate-800 italic leading-relaxed">"${escapeHtml(mySubmission.catatan_guru)}"</p>
+                        </div>
+                    ` : '')}
                 </div>
 
                 <div class="pt-3 border-t-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -1259,6 +1412,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.openAssignmentSubmissionModal = async (assignment) => {
         currentActiveAssignment = assignment || null;
         const parsed = parseAssignmentQuestions(assignment);
+
+        const isPastDeadline = assignment.deadline ? (new Date() > new Date(assignment.deadline)) : false;
+        const isLockDeadline = Boolean(parsed.lock_deadline);
+
+        const studentName = getActiveStudentName();
+        let myExistingSub = null;
+        if (studentName) {
+            myExistingSub = studentFiles.find(f => 
+                (f.assignment_id && String(f.assignment_id) === String(assignment.id)) ||
+                (f.materi && f.materi.toLowerCase().trim() === assignment.judul_tugas.toLowerCase().trim())
+            );
+        }
+
+        if (!myExistingSub && isPastDeadline && isLockDeadline) {
+            const deadlineStr = new Date(assignment.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            showCustomModal(`Batas waktu pengumpulan tugas "${assignment.judul_tugas}" telah berakhir pada ${deadlineStr} WIB. Guru telah mengunci pengumpulan tugas ini.`, 'alert', 'Pengumpulan Ditutup', '⛔');
+            return;
+        }
         currentFormQuestions = parsed.questions || [];
 
         subAssignIdInput.value = assignment.id || '';
@@ -1632,8 +1803,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             let names = [];
             for (let i = 0; i < fileInput.files.length; i++) {
                 const file = fileInput.files[i];
-                if (file.size > 10 * 1024 * 1024) {
-                    showCustomModal('Ukuran berkas melebihi batas 10MB.', 'alert', 'Peringatan', '');
+                const isImage = file.type && file.type.startsWith('image/');
+                const maxSize = isImage ? 25 * 1024 * 1024 : 10 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    showCustomModal(`Ukuran berkas ${file.name} melebihi batas (${isImage ? '25MB' : '10MB'}).`, 'alert', 'Peringatan', '');
                     resetFileInput();
                     return;
                 }
@@ -1858,7 +2031,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         } else if (tipe === 'upload_foto') {
                             const fileInputEl = document.getElementById(`student_file_q_${qNum}`);
                             if (fileInputEl && fileInputEl.files && fileInputEl.files[0]) {
-                                const file = fileInputEl.files[0];
+                                let file = fileInputEl.files[0];
+                                if (file.type && file.type.startsWith('image/')) {
+                                    file = await compressImageIfNeeded(file);
+                                }
                                 if (file.size > 10 * 1024 * 1024) {
                                     throw new Error(`Berkas foto pada soal nomor ${qNum} melebihi batas 10MB!`);
                                 }
@@ -2041,7 +2217,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (currentSubmissionMode === 'file') {
                 let fileNames = [];
                 for (let i = 0; i < fileInput.files.length; i++) {
-                    const file = fileInput.files[i];
+                    let file = fileInput.files[i];
+                    if (file.type && file.type.startsWith('image/')) {
+                        file = await compressImageIfNeeded(file);
+                    }
                     const safeFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                     const filePath = `${Date.now()}_${safeFilename}`;
                     
@@ -3750,6 +3929,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (statusEl) statusEl.innerHTML = `<span class="text-indigo-600 font-bold animate-pulse">Mengunggah ${escapeHtml(file.name)}...</span>`;
 
         try {
+            if (file.type && file.type.startsWith('image/')) {
+                file = await compressImageIfNeeded(file);
+            }
             const fileExt = file.name.split('.').pop();
             const safeName = `${Date.now()}_exam_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `exam_submissions/${safeName}`;

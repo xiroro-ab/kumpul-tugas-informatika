@@ -30,6 +30,7 @@ let stateKelas = [];
 let stateStudents = [];
 let pendingFiles = [];
 let assignmentsList = [];
+    let filterArchiveOnly = false;
 let materialsList = [];
 let quizzesList = [];
 let activeGradeItem = null;
@@ -200,6 +201,8 @@ export function parseAssignmentQuestions(assignment) {
     let qList = [];
     let token = '';
     let tokenRequired = false;
+    let lockDeadline = false;
+    let isArchived = false;
 
     if (raw.startsWith('{') || raw.startsWith('[')) {
         try {
@@ -211,6 +214,8 @@ export function parseAssignmentQuestions(assignment) {
                 tipePengumpulan = parsed.tipe_pengumpulan || '';
                 token = (parsed.token || '').toString().trim().toUpperCase();
                 tokenRequired = parsed.token_required !== undefined ? !!parsed.token_required : !!token;
+                lockDeadline = Boolean(parsed.lock_deadline);
+                isArchived = Boolean(parsed.is_archived);
                 if (Array.isArray(parsed.questions)) {
                     qList = parsed.questions;
                 }
@@ -261,7 +266,7 @@ export function parseAssignmentQuestions(assignment) {
         ];
     }
 
-    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan, token, token_required: tokenRequired };
+    return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan, token, token_required: tokenRequired, lock_deadline: lockDeadline, is_archived: isArchived };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1010,6 +1015,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-3 py-3 font-bold text-black border-b-2 border-black border-r-2 text-xs align-middle">
                     <div class="min-w-[160px] max-w-[280px] whitespace-normal break-words leading-relaxed text-slate-900">
                         ${escapeHtml(f.materi)}
+                        ${(() => {
+                            const assign = assignmentsList.find(a => 
+                                (f.assignment_id && String(a.id) === String(f.assignment_id)) ||
+                                (f.materi && a.judul_tugas.toLowerCase().trim() === f.materi.toLowerCase().trim())
+                            );
+                            if (assign && assign.deadline && f.created_at) {
+                                const fileDate = new Date(f.created_at);
+                                const deadlineDate = new Date(assign.deadline);
+                                if (fileDate > deadlineDate) {
+                                    const diffMs = fileDate - deadlineDate;
+                                    const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+                                    const lateStr = diffHours >= 24 ? `${Math.floor(diffHours / 24)} hari` : `${Math.max(1, diffHours)} jam`;
+                                    return `<div class="mt-1"><span class="inline-flex items-center gap-1 bg-amber-100 text-amber-950 border border-amber-300 text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm">🕒 Terlambat ${lateStr}</span></div>`;
+                                }
+                            }
+                            return '';
+                        })()}
                     </div>
                 </td>
                 <td class="px-3 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs">${escapeHtml(f.nama)}</td>
@@ -1039,6 +1061,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('grade-modal-student').textContent = item.nama;
         document.getElementById('grade-modal-meta').textContent = `Kelas: ${item.kelas} • Tugas: ${item.materi}`;
+        const assignForGrade = assignmentsList.find(a => 
+            (item.assignment_id && String(a.id) === String(item.assignment_id)) ||
+            (item.materi && a.judul_tugas.toLowerCase().trim() === item.materi.toLowerCase().trim())
+        );
+        if (assignForGrade && assignForGrade.deadline && item.created_at && new Date(item.created_at) > new Date(assignForGrade.deadline)) {
+            const diffHours = Math.round((new Date(item.created_at) - new Date(assignForGrade.deadline)) / (1000 * 60 * 60));
+            const lateStr = diffHours >= 24 ? `${Math.floor(diffHours / 24)} hari` : `${Math.max(1, diffHours)} jam`;
+            document.getElementById('grade-modal-meta').innerHTML += ` <span class="bg-amber-200 text-amber-950 border border-amber-400 px-2 py-0.5 rounded font-black text-[10px]">TERLAMBAT ${lateStr}</span>`;
+        }
         
         const formSection = document.getElementById('grade-form-responses-section');
         const formContainer = document.getElementById('grade-form-responses-container');
@@ -2047,7 +2078,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 assignmentsList.forEach(a => {
                     const opt = document.createElement('option');
                     opt.value = a.id;
-                    opt.textContent = `${a.judul_tugas} — Kelas ${a.kelas}`;
+                    opt.textContent = `${a.judul_tugas} - Kelas ${a.kelas}`;
                     filterAssignmentSelect.appendChild(opt);
                 });
             }
@@ -2069,13 +2100,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (_) {}
             }
 
+            assignmentsList.forEach(a => {
+                const p = parseAssignmentQuestions(a);
+                a.is_archived = Boolean(p.is_archived);
+                a.lock_deadline = Boolean(p.lock_deadline);
+            });
+
+            const activeList = assignmentsList.filter(a => !a.is_archived);
+            const archivedList = assignmentsList.filter(a => a.is_archived);
+            const countActiveEl = document.getElementById('count-active-assign');
+            if (countActiveEl) countActiveEl.textContent = activeList.length;
+            const countArchivedEl = document.getElementById('count-archived-assign');
+            if (countArchivedEl) countArchivedEl.textContent = archivedList.length;
+
+            const displayList = filterArchiveOnly ? archivedList : activeList;
+
             container.innerHTML = '';
-            if (assignmentsList.length === 0) {
-                container.innerHTML = '<div class="col-span-2 bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">Belum ada tugas/PR yang dibuat guru.</div>';
+            if (displayList.length === 0) {
+                container.innerHTML = `<div class="col-span-2 bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">${filterArchiveOnly ? 'Belum ada tugas yang diarsipkan.' : 'Belum ada tugas/PR aktif yang dibuat guru.'}</div>`;
                 return;
             }
 
-            assignmentsList.forEach(a => {
+            displayList.forEach(a => {
                 const card = document.createElement('div');
                 card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
                 const deadlineText = a.deadline ? new Date(a.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tidak ada batas waktu';
@@ -2135,9 +2181,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${tipeBadgeHtml}
                                 ${tokenBadgeHtml}
                             </div>
-                            <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                Batas: ${deadlineText}
-                            </span>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                    Batas: ${deadlineText}
+                                </span>
+                                ${a.lock_deadline ? `<span class="bg-rose-100 text-rose-900 border border-rose-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Kunci Deadline</span>` : ''}
+                                ${a.is_archived ? `<span class="bg-slate-200 text-slate-800 border border-slate-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">Diarsipkan</span>` : ''}
+                            </div>
                         </div>
                         <h4 class="font-black text-lg text-black mb-1">${escapeHtml(a.judul_tugas)}</h4>
                         <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line line-clamp-3">${escapeHtml(descText)}</p>
@@ -2156,6 +2206,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                     Tambah Soal
                                 </button>
                             ` : ''}
+                            <button type="button" onclick="toggleArchiveAssignment('${a.id}')" title="${a.is_archived ? 'Kembalikan tugas ke daftar aktif' : 'Sembunyikan tugas dari siswa (arsip)'}" class="h-9 px-3 ${a.is_archived ? 'bg-indigo-100 hover:bg-indigo-200 text-indigo-900' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'} border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center cursor-pointer">
+                                ${a.is_archived ? 'Buka Arsip' : 'Arsipkan'}
+                            </button>
                             <button type="button" onclick="openAssignmentSubmissionsModal('${a.id}')" class="h-9 px-3.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center col-span-2 sm:col-span-1">
                                 Periksa (${matchingSubs.length})
                             </button>
@@ -3018,6 +3071,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const assignTokenEnabled = document.getElementById('assign-token-enabled')?.checked ?? true;
         const assignToken = (document.getElementById('assign-token')?.value || '').trim().toUpperCase();
+        const assignLockDeadline = document.getElementById('assign-lock-deadline')?.checked ?? false;
+
+        let existingArchived = false;
+        if (editingAssignmentId) {
+            const existingAssign = assignmentsList.find(a => String(a.id) === String(editingAssignmentId));
+            if (existingAssign) {
+                existingArchived = Boolean(parseAssignmentQuestions(existingAssign).is_archived);
+            }
+        }
 
         try {
             const payloadDeskripsi = JSON.stringify({
@@ -3025,7 +3087,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 petunjuk: petunjuk || 'Ikuti petunjuk pengerjaan tugas berikut dengan teliti.',
                 questions: tipePengumpulan === 'form' ? formBuilderQuestions : [],
                 token: assignToken,
-                token_required: assignTokenEnabled && !!assignToken
+                token_required: assignTokenEnabled && !!assignToken,
+                lock_deadline: assignLockDeadline,
+                is_archived: existingArchived
             });
 
             const cleanRubrik = 'Kesesuaian pemahaman konsep materi, kelengkapan uraian nalar, dan ketepatan pengerjaan butir soal.';
@@ -3560,6 +3624,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             window.closeAdminMaterialPreview();
+            if (typeof window.closeLegerExportModal === 'function') {
+                window.closeLegerExportModal();
+            }
         }
     });
 
@@ -6442,6 +6509,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!error && data) {
             stateKelas = data.filter(d => d.type === 'kelas').map(d => d.name);
             renderOptions();
+            loadAnnouncement();
             
             const classSelectIds = [
                 'assign-kelas',
@@ -6465,7 +6533,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 assignmentsList.forEach(a => {
                     const opt = document.createElement('option');
                     opt.value = a.id;
-                    opt.textContent = `${a.judul_tugas} — Kelas ${a.kelas}`;
+                    opt.textContent = `${a.judul_tugas} - Kelas ${a.kelas}`;
                     filterAssignmentSelect.appendChild(opt);
                 });
             }
@@ -7106,6 +7174,316 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Ekspor Data Siswa ke CSV Excel
+    
+    // ==========================================
+    // SISTEM ARSIP TUGAS & FILTER STATUS
+    // ==========================================
+    window.setAssignmentArchiveFilter = (isArchived) => {
+        filterArchiveOnly = Boolean(isArchived);
+        const activeBtn = document.getElementById('filter-assign-active-btn');
+        const archivedBtn = document.getElementById('filter-assign-archived-btn');
+        if (filterArchiveOnly) {
+            if (activeBtn) activeBtn.className = "h-8 px-3 rounded-xl text-xs font-black uppercase border-2 border-black bg-white hover:bg-slate-100 text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer";
+            if (archivedBtn) archivedBtn.className = "h-8 px-3 rounded-xl text-xs font-black uppercase border-2 border-black bg-black text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer";
+        } else {
+            if (activeBtn) activeBtn.className = "h-8 px-3 rounded-xl text-xs font-black uppercase border-2 border-black bg-black text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer";
+            if (archivedBtn) archivedBtn.className = "h-8 px-3 rounded-xl text-xs font-black uppercase border-2 border-black bg-white hover:bg-slate-100 text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer";
+        }
+        loadAssignments();
+    };
+
+    window.toggleArchiveAssignment = async (assignmentId) => {
+        const a = assignmentsList.find(x => String(x.id) === String(assignmentId));
+        if (!a) return;
+        const parsed = parseAssignmentQuestions(a);
+        const newArchived = !parsed.is_archived;
+        parsed.is_archived = newArchived;
+
+        try {
+            const { error } = await supabase.from('assignments').update({
+                deskripsi: JSON.stringify(parsed)
+            }).eq('id', assignmentId);
+            if (error) throw error;
+            await showCustomModal(`Tugas "${a.judul_tugas}" berhasil ${newArchived ? 'dipindahkan ke arsip (disembunyikan dari siswa)' : 'diaktifkan kembali di portal siswa'}!`);
+            loadAssignments();
+        } catch (err) {
+            showCustomModal("Gagal mengubah status arsip: " + err.message);
+        }
+    };
+
+    // ==========================================
+    // REKAP LEGER NILAI 1 KELAS UTUH KE EXCEL (.CSV)
+    // ==========================================
+    window.openLegerExportModal = () => {
+        const modal = document.getElementById('modal-export-leger');
+        if (!modal) return;
+        const select = document.getElementById('export-leger-kelas-select');
+        if (select) {
+            select.innerHTML = '';
+            const classList = (stateKelas && stateKelas.length > 0) ? stateKelas : ['7.1', '7.2', '7.3', '7.4', '7.5', '7.6', '8.1', '8.2', '8.3', '8.4', '8.5', '8.6', '9.1', '9.2', '9.3', '9.4', '9.5', '9.6'];
+            classList.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.textContent = `Kelas ${k}`;
+                select.appendChild(opt);
+            });
+            const filterKelasVal = document.getElementById('filter-kelas')?.value;
+            if (filterKelasVal && classList.includes(filterKelasVal)) {
+                select.value = filterKelasVal;
+            }
+        }
+        modal.classList.remove('hidden');
+    };
+
+    window.closeLegerExportModal = () => {
+        const modal = document.getElementById('modal-export-leger');
+        if (modal) modal.classList.add('hidden');
+    };
+
+    window.runExportLegerCSV = async () => {
+        const targetKelas = document.getElementById('export-leger-kelas-select')?.value;
+        if (!targetKelas) {
+            showCustomModal("Silakan pilih kelas terlebih dahulu.");
+            return;
+        }
+
+        const btn = document.getElementById('btn-run-export-leger');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Mengolah Data Leger...";
+        }
+
+        try {
+            // 1. Ambil daftar siswa kelas ini
+            let classStudents = stateStudents.filter(s => String(s.kelas).trim() === targetKelas);
+            if (classStudents.length === 0) {
+                const { data: sData } = await supabase.from('students').select('*').eq('kelas', targetKelas);
+                if (sData && sData.length > 0) {
+                    classStudents = sData;
+                }
+            }
+
+            if (classStudents.length === 0) {
+                showCustomModal(`Tidak ditemukan data siswa untuk Kelas ${targetKelas} di Roster Master Siswa. Mohon pastikan data siswa sudah ada di tab Siswa.`);
+                if (btn) { btn.disabled = false; btn.innerText = "Unduh File CSV (.csv)"; }
+                return;
+            }
+
+            // Urutkan siswa berdasarkan nama
+            classStudents = [...classStudents].sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
+
+            // 2. Ambil penugasan untuk kelas ini
+            const isSuperadmin = currentTeacher?.role === 'superadmin';
+            let classAssignments = assignmentsList.filter(a => isClassMatch(a.kelas, targetKelas));
+            if (!isSuperadmin && currentTeacher?.id) {
+                classAssignments = classAssignments.filter(a => a.guru_id === currentTeacher.id || a.teacher_id === currentTeacher.id);
+            }
+            classAssignments = [...classAssignments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+            // 3. Ambil kuis untuk kelas ini
+            let classQuizzes = (allQuizzes || []).filter(q => isClassMatch(q.kelas, targetKelas));
+            if (!isSuperadmin && currentTeacher?.id) {
+                classQuizzes = classQuizzes.filter(q => q.teacher_id === currentTeacher.id || q.guru_id === currentTeacher.id);
+            }
+            classQuizzes = [...classQuizzes].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+            // 4. Ambil pengumpulan tugas (files) untuk kelas ini
+            let { data: fileSubs } = await supabase.from('files').select('*').eq('kelas', targetKelas);
+            fileSubs = fileSubs || [];
+
+            // 5. Ambil pengumpulan kuis (quiz_submissions) untuk kelas ini
+            let { data: quizSubs } = await supabase.from('quiz_submissions').select('*').eq('kelas', targetKelas);
+            quizSubs = quizSubs || [];
+
+            // 6. Susun Header Kolom CSV
+            const headers = [
+                'No',
+                'NISN',
+                'Nama Siswa',
+                'Kelas',
+                'Jenis Kelamin'
+            ];
+
+            classAssignments.forEach((a, i) => {
+                const cleanTitle = a.judul_tugas.replace(/"/g, '""');
+                headers.push(`"Tugas ${i + 1}: ${cleanTitle}"`);
+            });
+
+            classQuizzes.forEach((q, i) => {
+                const cleanTitle = q.judul_kuis.replace(/"/g, '""');
+                headers.push(`"Kuis ${i + 1}: ${cleanTitle}"`);
+            });
+
+            headers.push('Rata-Rata Nilai');
+            headers.push('Predikat Kurikulum Merdeka');
+
+            // 7. Susun Baris per Siswa
+            const rows = classStudents.map((s, idx) => {
+                const nisn = s.nisn || s.id || '';
+                const nama = `"${String(s.nama || '').replace(/"/g, '""')}"`;
+                const kelas = `"${String(s.kelas || targetKelas).replace(/"/g, '""')}"`;
+                const jk = s.jenis_kelamin || 'Laki-Laki';
+
+                let totalNilai = 0;
+                let countDinilai = 0;
+
+                const tugasVals = classAssignments.map(a => {
+                    const sub = fileSubs.find(f => 
+                        ((f.assignment_id && String(f.assignment_id) === String(a.id)) ||
+                         (f.materi && f.materi.toLowerCase().trim() === a.judul_tugas.toLowerCase().trim())) &&
+                        String(f.nama || '').trim().toLowerCase() === String(s.nama || '').trim().toLowerCase()
+                    );
+                    if (sub && sub.nilai !== null && sub.nilai !== undefined && sub.nilai !== '') {
+                        const val = Number(sub.nilai);
+                        totalNilai += val;
+                        countDinilai++;
+                        return val;
+                    }
+                    return '';
+                });
+
+                const kuisVals = classQuizzes.map(q => {
+                    const sub = quizSubs.find(qs => 
+                        String(qs.quiz_id) === String(q.id) &&
+                        (
+                            (qs.student_id && String(qs.student_id) === String(s.id || s.nisn)) ||
+                            String(qs.nama_siswa || '').trim().toLowerCase() === String(s.nama || '').trim().toLowerCase()
+                        )
+                    );
+                    if (sub && sub.total_nilai !== null && sub.total_nilai !== undefined) {
+                        const val = Number(sub.total_nilai);
+                        totalNilai += val;
+                        countDinilai++;
+                        return val;
+                    }
+                    return '';
+                });
+
+                const rataRata = countDinilai > 0 ? (totalNilai / countDinilai).toFixed(1) : '';
+                let predikat = '';
+                if (rataRata !== '') {
+                    const num = Number(rataRata);
+                    if (num >= 88) predikat = 'Sangat Baik (A)';
+                    else if (num >= 76) predikat = 'Baik (B)';
+                    else if (num >= 65) predikat = 'Cukup (C)';
+                    else predikat = 'Perlu Bimbingan (D)';
+                }
+
+                return [
+                    idx + 1,
+                    nisn,
+                    nama,
+                    kelas,
+                    jk,
+                    ...tugasVals,
+                    ...kuisVals,
+                    rataRata,
+                    `"${predikat}"`
+                ].join(',');
+            });
+
+            // 8. Tulis CSV dengan BOM UTF-8
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const cleanName = `Leger_Nilai_Kelas_${targetKelas.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.download = cleanName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            closeLegerExportModal();
+            showCustomModal(`Leger Nilai Kelas ${targetKelas} berhasil diunduh (${classStudents.length} siswa, ${classAssignments.length} tugas, ${classQuizzes.length} kuis)!`);
+        } catch (err) {
+            showCustomModal("Gagal mengekspor leger nilai: " + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "Unduh File CSV (.csv)";
+            }
+        }
+    };
+
+    // ==========================================
+    // PAPAN PENGUMUMAN SISWA
+    // ==========================================
+    window.loadAnnouncement = async () => {
+        try {
+            const { data, error } = await supabase.from('options').select('*').eq('type', 'pengumuman').maybeSingle();
+            const textInput = document.getElementById('announcement-text-input');
+            const authorInput = document.getElementById('announcement-author-input');
+            const badge = document.getElementById('announcement-live-badge');
+
+            if (!error && data && data.name) {
+                let parsed = { text: '', author: '' };
+                try {
+                    parsed = JSON.parse(data.name);
+                } catch (_) {
+                    parsed = { text: data.name, author: '' };
+                }
+                if (textInput) textInput.value = parsed.text || '';
+                if (authorInput) authorInput.value = parsed.author || '';
+                if (badge) badge.classList.remove('hidden');
+            } else {
+                if (badge) badge.classList.add('hidden');
+            }
+        } catch (_) {}
+    };
+
+    window.saveAnnouncement = async () => {
+        const text = (document.getElementById('announcement-text-input')?.value || '').trim();
+        const author = (document.getElementById('announcement-author-input')?.value || '').trim() || (currentTeacher?.nama_guru || 'Guru / Kurikulum');
+        const status = document.getElementById('announcement-status');
+
+        if (!text) {
+            showCustomModal("Isi pesan pengumuman wajib diisi.");
+            return;
+        }
+
+        try {
+            await supabase.from('options').delete().eq('type', 'pengumuman');
+            const payload = JSON.stringify({
+                text,
+                author,
+                updated_at: new Date().toISOString()
+            });
+            const { error } = await supabase.from('options').insert([{
+                type: 'pengumuman',
+                name: payload
+            }]);
+            if (error) throw error;
+            if (status) status.innerHTML = '<span class="text-emerald-700">Pengumuman berhasil diterbitkan ke portal siswa!</span>';
+            const badge = document.getElementById('announcement-live-badge');
+            if (badge) badge.classList.remove('hidden');
+            showCustomModal("Pengumuman berhasil dipublikasikan ke portal siswa!");
+        } catch (err) {
+            showCustomModal("Gagal menerbitkan pengumuman: " + err.message);
+        }
+    };
+
+    window.deleteAnnouncement = async () => {
+        const confirmed = await showCustomModal("Apakah Anda yakin ingin menghapus pengumuman aktif ini dari portal siswa?", 'confirm', 'Hapus Pengumuman', '⚠️');
+        if (!confirmed) return;
+
+        try {
+            await supabase.from('options').delete().eq('type', 'pengumuman');
+            const textInput = document.getElementById('announcement-text-input');
+            const authorInput = document.getElementById('announcement-author-input');
+            const badge = document.getElementById('announcement-live-badge');
+            const status = document.getElementById('announcement-status');
+            if (textInput) textInput.value = '';
+            if (authorInput) authorInput.value = '';
+            if (badge) badge.classList.add('hidden');
+            if (status) status.innerHTML = '<span class="text-slate-600">Pengumuman dinonaktifkan.</span>';
+            showCustomModal("Pengumuman telah dinonaktifkan dari portal siswa.");
+        } catch (err) {
+            showCustomModal("Gagal menghapus pengumuman: " + err.message);
+        }
+    };
+
     window.exportStudentsRosterCSV = () => {
         if (!stateStudents || stateStudents.length === 0) {
             showCustomModal("Belum ada data siswa untuk diekspor.");

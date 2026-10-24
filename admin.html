@@ -195,6 +195,10 @@
                             <p class="text-black font-bold text-xs md:text-sm mt-0.5">Kelola penugasan, rancang formulir tugas, dan periksa lembar jawaban siswa secara mendalam.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+                            <button type="button" onclick="openLegerExportModal()" class="h-11 bg-emerald-400 hover:bg-emerald-500 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer" title="Ekspor Matriks Leger Nilai 1 Kelas Utuh ke Excel">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                Leger Nilai (.csv)
+                            </button>
                             <button type="button" onclick="exportCSV()" class="h-11 bg-white hover:bg-slate-100 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
                                 Unduh CSV
                             </button>
@@ -222,6 +226,22 @@
 
                     <!-- SUB-VIEW 1: CARDS PENUGASAN -->
                     <div id="penugasan-cards-view" class="space-y-4">
+                        <!-- Filter Arsip & Status Tugas -->
+                        <div class="flex items-center justify-between gap-3 flex-wrap bg-white border-2 border-black rounded-2xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-black uppercase text-black">Filter Tugas:</span>
+                                <button type="button" id="filter-assign-active-btn" onclick="setAssignmentArchiveFilter(false)" class="h-8 px-3 rounded-xl text-xs font-black uppercase border-2 border-black bg-black text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer">
+                                    Tugas Aktif (<span id="count-active-assign">0</span>)
+                                </button>
+                                <button type="button" id="filter-assign-archived-btn" onclick="setAssignmentArchiveFilter(true)" class="h-8 px-3 rounded-xl text-xs font-black uppercase border-2 border-black bg-white hover:bg-slate-100 text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer">
+                                    Arsip (<span id="count-archived-assign">0</span>)
+                                </button>
+                            </div>
+                            <div class="text-[11px] font-bold text-slate-600">
+                                Tugas diarsipkan otomatis disembunyikan dari siswa tanpa menghapus nilai.
+                            </div>
+                        </div>
+
                         <div id="assignments-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <!-- Kartu Penugasan Guru diisi via JS -->
                         </div>
@@ -548,6 +568,46 @@
                         </div>
                     </div>
 
+                    <!-- CARD PAPAN PENGUMUMAN SISWA -->
+                    <div class="bg-white border-2 sm:border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 bg-yellow-300 border-2 border-black rounded-xl flex items-center justify-center font-bold text-base shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                    📢
+                                </div>
+                                <div>
+                                    <h3 class="font-black text-sm uppercase text-black">Papan Pengumuman Siswa</h3>
+                                    <p class="text-xs text-slate-600 font-medium">Pengumuman singkat langsung tayang di portal beranda seluruh siswa.</p>
+                                </div>
+                            </div>
+                            <span id="announcement-live-badge" class="hidden text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border border-emerald-500 bg-emerald-100 text-emerald-900">
+                                Sedang Tayang
+                            </span>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-[11px] font-black uppercase text-black mb-1">Isi Pesan / Pengumuman</label>
+                                <textarea id="announcement-text-input" rows="3" placeholder="Contoh: Remedial Informatika dilaksanakan hari Kamis di Lab Komputer. Batas pengumpulan tugas Bab 3 hari Sabtu." class="w-full p-3 border-2 border-black rounded-xl font-bold text-xs bg-white focus:outline-none"></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-black uppercase text-black mb-1">Pengirim / Guru</label>
+                                    <input type="text" id="announcement-author-input" placeholder="Nama Guru / Tim Kurikulum" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                                </div>
+                                <div class="flex items-end gap-2">
+                                    <button type="button" onclick="saveAnnouncement()" class="h-10 px-4 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex-1 cursor-pointer">
+                                        Terbitkan
+                                    </button>
+                                    <button type="button" onclick="deleteAnnouncement()" class="h-10 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                                        Hapus
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="announcement-status" class="text-xs font-black empty:hidden"></div>
+                        </div>
+                    </div>
+
                 </div>
 
             </div>
@@ -777,6 +837,10 @@
                         <div>
                             <label class="block text-[11px] font-black uppercase text-black mb-1">Batas Waktu (Deadline)</label>
                             <input type="datetime-local" id="assign-deadline" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white">
+                            <label class="mt-2 flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="assign-lock-deadline" class="w-4 h-4 rounded border-2 border-black text-rose-600 focus:ring-0">
+                                <span class="text-xs font-bold text-slate-800">Kunci Pengumpulan (Tolak upload jika melewati deadline)</span>
+                            </label>
                         </div>
                     </div>
 
@@ -2105,6 +2169,53 @@
             <div id="admin-preview-body" class="flex-1 w-full bg-slate-900 relative overflow-y-auto overflow-x-auto">
                 <iframe id="admin-preview-iframe" class="w-full min-h-[850px] border-0 hidden block" allow="fullscreen; autoplay; clipboard-write; encrypted-media" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" scrolling="yes"></iframe>
                 <div id="admin-preview-text" class="hidden w-full h-full bg-white p-6 sm:p-8 overflow-y-auto max-w-3xl mx-auto space-y-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- MODAL EKSPOR LEGER NILAI 1 KELAS UTUH KE EXCEL (.CSV)   -->
+    <!-- ======================================================= -->
+    <div id="modal-export-leger" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white border-[3px] border-black rounded-[28px] max-w-lg w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden my-auto animate-in fade-in zoom-in duration-150">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b-2 border-black bg-emerald-300 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📊</span>
+                    <h3 class="font-black text-base uppercase text-black">Ekspor Leger Nilai Kelas</h3>
+                </div>
+                <button type="button" onclick="closeLegerExportModal()" class="w-8 h-8 rounded-lg border-2 border-black bg-white hover:bg-red-50 text-black hover:text-red-600 flex items-center justify-center font-black text-base cursor-pointer">
+                    &times;
+                </button>
+            </div>
+            <!-- Body -->
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-700 font-medium leading-relaxed">
+                    Hasilkan matriks nilai rekap lengkap (Siswa x Seluruh Tugas & Kuis + Rata-rata dan Predikat) dalam format CSV kompatibel Microsoft Excel.
+                </p>
+
+                <div>
+                    <label class="block text-xs font-black uppercase text-black mb-1">Pilih Kelas</label>
+                    <select id="export-leger-kelas-select" class="w-full h-11 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white"></select>
+                </div>
+
+                <div class="bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-xs text-slate-600 space-y-1 font-medium">
+                    <p class="font-bold text-slate-800">Format Leger Nilai:</p>
+                    <p>&bull; No, NISN, Nama Siswa, Kelas, L/P</p>
+                    <p>&bull; Kolom Tugas 1 s/d N (Nilai tugas)</p>
+                    <p>&bull; Kolom Kuis 1 s/d N (Nilai kuis/ujian)</p>
+                    <p>&bull; Kolom Nilai Rata-rata & Predikat Kurikulum Merdeka (A/B/C/D)</p>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    <button type="button" onclick="closeLegerExportModal()" class="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 border-2 border-black rounded-xl font-black text-xs uppercase cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="button" id="btn-run-export-leger" onclick="runExportLegerCSV()" class="h-10 px-5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5 cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Unduh File CSV (.csv)
+                    </button>
+                </div>
             </div>
         </div>
     </div>
