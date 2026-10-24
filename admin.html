@@ -1309,8 +1309,8 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"></path></svg>
                     </span>
                     <div>
-                        <h3 class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Buat Modul Ajar (Input Mandiri)</h3>
-                        <p class="text-[11px] font-bold text-black/80">Susun materi belajar interaktif berstandar Capaian Pembelajaran</p>
+                        <h3 id="material-modal-title" class="text-lg md:text-xl font-black text-black uppercase tracking-tight">Buat Modul Ajar (Input Mandiri)</h3>
+                        <p id="material-modal-subtitle" class="text-[11px] font-bold text-black/80">Susun materi belajar interaktif berstandar Capaian Pembelajaran</p>
                     </div>
                 </div>
                 <button onclick="closeMaterialModal()" class="w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black hover:bg-white text-lg">
@@ -1438,9 +1438,12 @@
                         </button>
                         <span id="mat-html-file-info" class="text-xs font-bold text-slate-600 truncate max-w-[260px]">Belum ada file dipilih</span>
                     </div>
-                    <div id="mat-html-preview-actions" class="hidden flex items-center gap-2 pt-1">
+                    <div id="mat-html-preview-actions" class="hidden flex items-center gap-2 pt-1 flex-wrap">
                         <button type="button" onclick="previewLoadedLocalHtml()" class="h-8 px-3 bg-white hover:bg-slate-100 text-black font-black text-[11px] uppercase rounded-lg border-2 border-black cursor-pointer">
                             👁 Pratinjau Tampilan File
+                        </button>
+                        <button type="button" id="btn-edit-mpi-in-ai" onclick="openCurrentMaterialInAiStudio()" class="h-8 px-3 bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-950 font-black text-[11px] uppercase rounded-lg border border-fuchsia-300 cursor-pointer flex items-center gap-1">
+                            🎮 Edit / Revisi di AI Studio
                         </button>
                         <button type="button" onclick="clearLoadedLocalHtml()" class="h-8 px-3 bg-red-100 hover:bg-red-200 text-red-900 font-black text-[11px] uppercase rounded-lg border border-red-300 cursor-pointer">
                             Hapus File

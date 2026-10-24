@@ -3753,15 +3753,30 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ${badgeText}
                                 </span>
                             </div>
-                            <button onclick="deleteMaterial('${m.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase cursor-pointer">Hapus</button>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" onclick="editMaterial('${m.id}')" class="text-indigo-600 hover:text-indigo-800 font-black text-xs uppercase tracking-wider flex items-center gap-0.5 cursor-pointer" title="Edit materi ini">
+                                    <span>✏️</span> Edit
+                                </button>
+                                <button type="button" onclick="deleteMaterial('${m.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-wider cursor-pointer" title="Hapus materi ini">Hapus</button>
+                            </div>
                         </div>
                         <h4 class="font-black text-lg text-black mb-2">${m.judul}</h4>
                         <p class="text-xs text-slate-700 font-medium line-clamp-3 leading-relaxed mb-3 whitespace-pre-line">${meta.deskripsi || m.konten}</p>
                     </div>
                     <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                        <button type="button" onclick="openAdminMaterialPreview('${m.id}')" class="px-3 h-8 bg-black hover:bg-slate-800 text-white rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer">
-                            Pratinjau Materi
-                        </button>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <button type="button" onclick="openAdminMaterialPreview('${m.id}')" class="px-3 h-8 bg-black hover:bg-slate-800 text-white rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer">
+                                Pratinjau Materi
+                            </button>
+                            <button type="button" onclick="editMaterial('${m.id}')" class="px-3 h-8 bg-amber-300 hover:bg-amber-400 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer" title="Edit materi ini">
+                                Edit
+                            </button>
+                            ${meta.tipe === 'mpi_html' ? `
+                                <button type="button" onclick="editMaterialInAiStudio('${m.id}')" class="px-2.5 h-8 bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-950 border border-fuchsia-300 rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer" title="Buka di AI Studio untuk perbaikan atau revisi AI">
+                                    AI Studio
+                                </button>
+                            ` : ''}
+                        </div>
                         ${meta.html_content ? `
                             <button type="button" onclick="openAdminHtmlDirectInTab('${m.id}')" class="text-xs font-bold text-fuchsia-700 hover:text-black underline flex items-center gap-1 cursor-pointer">
                                 <span>Buka di Tab Baru</span> ↗
@@ -3780,7 +3795,96 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let editingMaterialId = null;
+
+    window.editMaterial = (id) => {
+        const mat = materialsList.find(m => String(m.id) === String(id));
+        if (!mat) {
+            showCustomModal("Materi tidak ditemukan!");
+            return;
+        }
+
+        editingMaterialId = id;
+        const meta = parseMaterialData(mat);
+
+        // Siapkan pilihan kelas
+        const matKelasSelect = document.getElementById('mat-kelas');
+        populateTargetClassSelect(matKelasSelect, 'Semua Kelas');
+        if (matKelasSelect && mat.kelas) {
+            matKelasSelect.value = mat.kelas;
+        }
+
+        const matMapelSelect = document.getElementById('mat-mapel');
+        if (matMapelSelect && mat.mapel) {
+            matMapelSelect.value = mat.mapel;
+        }
+
+        if (document.getElementById('mat-judul')) document.getElementById('mat-judul').value = mat.judul || '';
+        if (document.getElementById('mat-konten')) document.getElementById('mat-konten').value = meta.deskripsi || mat.konten || '';
+        if (document.getElementById('mat-video')) document.getElementById('mat-video').value = meta.url_materi || mat.link_video || '';
+        if (document.getElementById('mat-tipe')) document.getElementById('mat-tipe').value = meta.tipe || 'modul';
+        if (document.getElementById('mat-kategori')) document.getElementById('mat-kategori').value = meta.kategori || 'modul';
+        if (document.getElementById('mat-level')) document.getElementById('mat-level').value = meta.level || 'menengah';
+
+        // Konten HTML jika ada
+        const storageEl = document.getElementById('mat-html-content-storage');
+        const infoEl = document.getElementById('mat-html-file-info');
+        const previewActions = document.getElementById('mat-html-preview-actions');
+        const fileInput = document.getElementById('mat-html-file-input');
+
+        if (fileInput) fileInput.value = '';
+
+        if (meta.html_content) {
+            if (storageEl) storageEl.value = meta.html_content;
+            const sizeKb = (new Blob([meta.html_content]).size / 1024).toFixed(1);
+            if (infoEl) infoEl.textContent = `Dokumen HTML Tersimpan (${sizeKb} KB)`;
+            if (previewActions) previewActions.classList.remove('hidden');
+        } else {
+            if (storageEl) storageEl.value = '';
+            if (infoEl) infoEl.textContent = 'Belum ada file dipilih';
+            if (previewActions) previewActions.classList.add('hidden');
+        }
+
+        // Populate tugas terkait
+        const tugasSelect = document.getElementById('mat-tugas-terkait');
+        if (tugasSelect) {
+            tugasSelect.innerHTML = '<option value="">Tanpa Penugasan Langsung (Hanya Membaca / Mempelajari)</option>';
+            if (Array.isArray(assignmentsList) && assignmentsList.length > 0) {
+                assignmentsList.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.id;
+                    opt.textContent = `[Tugas] ${a.judul_tugas} (${a.kelas || 'Semua Kelas'})`;
+                    if (String(meta.tugas_id) === String(a.id)) {
+                        opt.selected = true;
+                    }
+                    tugasSelect.appendChild(opt);
+                });
+            }
+        }
+
+        // Ubah teks judul dan tombol modal ke mode Edit
+        const titleEl = document.getElementById('material-modal-title');
+        if (titleEl) titleEl.textContent = 'Edit Materi Pembelajaran';
+        const subtitleEl = document.getElementById('material-modal-subtitle');
+        if (subtitleEl) subtitleEl.textContent = 'Perbarui judul, uraian, file HTML, atau tautan media materi';
+        const saveBtn = document.getElementById('btn-save-material');
+        if (saveBtn) saveBtn.innerHTML = '<span>SIMPAN PERUBAHAN MATERI</span>';
+
+        updateTeacherMateriVisibility();
+        document.getElementById('material-modal').classList.remove('hidden');
+    };
+
     window.openMaterialModal = () => {
+        editingMaterialId = null;
+
+        // Ubah teks judul dan tombol modal ke mode Tambah Baru
+        const titleEl = document.getElementById('material-modal-title');
+        if (titleEl) titleEl.textContent = 'Buat Modul Ajar (Input Mandiri)';
+        const subtitleEl = document.getElementById('material-modal-subtitle');
+        if (subtitleEl) subtitleEl.textContent = 'Susun materi belajar interaktif berstandar Capaian Pembelajaran';
+        const saveBtn = document.getElementById('btn-save-material');
+        if (saveBtn) saveBtn.innerHTML = '<span>SIMPAN & TERBITKAN MATERI</span>';
+
         const matKelasSelect = document.getElementById('mat-kelas');
         populateTargetClassSelect(matKelasSelect, 'Semua Kelas');
         const matMapelSelect = document.getElementById('mat-mapel');
@@ -3819,6 +3923,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.closeMaterialModal = () => {
+        editingMaterialId = null;
         document.getElementById('material-modal').classList.add('hidden');
     };
 
@@ -3873,7 +3978,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('btn-save-material');
         if (btn) {
             btn.disabled = true;
-            btn.innerText = "Menyimpan Materi...";
+            btn.innerText = editingMaterialId ? "Menyimpan Perubahan..." : "Menyimpan Materi...";
         }
 
         try {
@@ -3888,26 +3993,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 html_content: htmlContent || ''
             });
 
-            const { error } = await supabase.from('materials').insert([{
-                teacher_id: currentSession?.user?.id,
-                guru_id: currentTeacher?.id || currentSession?.user?.id,
-                mapel,
-                kelas,
-                judul,
-                konten: structuredKonten,
-                link_video: video
-            }]);
+            if (editingMaterialId) {
+                const { error } = await supabase.from('materials').update({
+                    mapel,
+                    kelas,
+                    judul,
+                    konten: structuredKonten,
+                    link_video: video
+                }).eq('id', editingMaterialId);
 
-            if (error) throw error;
+                if (error) throw error;
+                showCustomModal(`Materi pembelajaran "${judul}" berhasil diperbarui!`);
+            } else {
+                const { error } = await supabase.from('materials').insert([{
+                    teacher_id: currentSession?.user?.id,
+                    guru_id: currentTeacher?.id || currentSession?.user?.id,
+                    mapel,
+                    kelas,
+                    judul,
+                    konten: structuredKonten,
+                    link_video: video
+                }]);
+
+                if (error) throw error;
+                showCustomModal(`Modul materi "${judul}" berhasil disimpan dan dapat diakses siswa ${kelas}!`);
+            }
+
+            editingMaterialId = null;
             closeMaterialModal();
             loadMaterials();
-            showCustomModal(`Modul materi "${judul}" berhasil disimpan dan dapat diakses siswa ${kelas}!`);
         } catch (e) {
             showCustomModal("Gagal menyimpan materi: " + e.message);
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = "SIMPAN & TERBITKAN MATERI";
+                btn.innerHTML = editingMaterialId ? "<span>SIMPAN PERUBAHAN MATERI</span>" : "<span>SIMPAN & TERBITKAN MATERI</span>";
             }
         }
     };
@@ -3994,6 +4114,57 @@ document.addEventListener('DOMContentLoaded', () => {
         if (previewActions) previewActions.classList.add('hidden');
     };
 
+    window.editMaterialInAiStudio = (id) => {
+        const mat = materialsList.find(m => String(m.id) === String(id));
+        if (!mat) return;
+        const meta = parseMaterialData(mat);
+
+        const kelasSelect = document.getElementById('ai-mpi-kelas');
+        populateTargetClassSelect(kelasSelect, 'Semua Kelas');
+        if (kelasSelect && mat.kelas) {
+            kelasSelect.value = mat.kelas;
+        }
+
+        const mapelSelect = document.getElementById('ai-mpi-mapel');
+        if (mapelSelect && mat.mapel) {
+            mapelSelect.value = mat.mapel;
+        }
+
+        currentAiMpiState = {
+            editingId: mat.id,
+            html: meta.html_content || '',
+            mapel: mat.mapel || 'Informatika',
+            kelas: mat.kelas || 'Semua Kelas',
+            topik: mat.judul || '',
+            device: 'mobile'
+        };
+
+        const topikEl = document.getElementById('ai-mpi-topik');
+        if (topikEl) topikEl.value = mat.judul || '';
+        const instruksiEl = document.getElementById('ai-mpi-instruksi');
+        if (instruksiEl) instruksiEl.value = '';
+        const refinePromptEl = document.getElementById('ai-mpi-refine-prompt');
+        if (refinePromptEl) refinePromptEl.value = '';
+
+        const btnSave = document.getElementById('btn-save-ai-mpi');
+        if (btnSave) {
+            btnSave.innerHTML = '<span>SIMPAN PERUBAHAN MPI</span>';
+        }
+
+        setAiMpiPreviewDevice('mobile');
+        renderAiMpiPreview();
+
+        const modal = document.getElementById('modal-ai-mpi');
+        if (modal) modal.classList.remove('hidden');
+    };
+
+    window.openCurrentMaterialInAiStudio = () => {
+        if (!editingMaterialId) return;
+        const targetId = editingMaterialId;
+        closeMaterialModal();
+        window.editMaterialInAiStudio(targetId);
+    };
+
     // ==========================================
     // AI STUDIO MEDIA PEMBELAJARAN INTERAKTIF (MPI)
     // ==========================================
@@ -4015,12 +4186,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentAiMpiState = {
+            editingId: null,
             html: '',
             mapel: mapelSelect ? mapelSelect.value : 'Informatika',
             kelas: kelasSelect ? kelasSelect.value : 'Semua Kelas',
             topik: '',
             device: 'mobile'
         };
+
+        const btnSave = document.getElementById('btn-save-ai-mpi');
+        if (btnSave) {
+            btnSave.innerHTML = '<span>SIMPAN KE MATERI SISWA</span>';
+        }
 
         const topikEl = document.getElementById('ai-mpi-topik');
         if (topikEl) topikEl.value = '';
@@ -4321,21 +4498,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 html_content: currentAiMpiState.html
             });
 
-            const { error } = await supabase.from('materials').insert([{
-                teacher_id: currentSession?.user?.id,
-                guru_id: currentTeacher?.id || currentSession?.user?.id,
-                mapel,
-                kelas,
-                judul,
-                konten: structuredKonten,
-                link_video: ''
-            }]);
+            if (currentAiMpiState.editingId) {
+                const { error } = await supabase.from('materials').update({
+                    mapel,
+                    kelas,
+                    judul,
+                    konten: structuredKonten
+                }).eq('id', currentAiMpiState.editingId);
 
-            if (error) throw error;
+                if (error) throw error;
+                showCustomModal(`Perubahan Web MPI "${judul}" berhasil disimpan!`);
+            } else {
+                const { error } = await supabase.from('materials').insert([{
+                    teacher_id: currentSession?.user?.id,
+                    guru_id: currentTeacher?.id || currentSession?.user?.id,
+                    mapel,
+                    kelas,
+                    judul,
+                    konten: structuredKonten,
+                    link_video: ''
+                }]);
+
+                if (error) throw error;
+                showCustomModal(`Media Pembelajaran Interaktif "${judul}" berhasil disimpan dan diterbitkan untuk siswa ${kelas}!`);
+            }
 
             closeAiMpiModal();
             loadMaterials();
-            showCustomModal(`Media Pembelajaran Interaktif "${judul}" berhasil disimpan dan diterbitkan untuk siswa ${kelas}!`);
         } catch (e) {
             showCustomModal("Gagal menyimpan Web MPI: " + e.message);
         } finally {
