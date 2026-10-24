@@ -62,131 +62,120 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
     const tabAutoHealerScript = `
 <script id="mpi-tab-autohealer">
 (function() {
-  // Pengendali universal tab interaktif MPI
-  function universalSwitchTab(targetId) {
-    if (!targetId && targetId !== 0) return;
-    var cleanId = String(targetId).trim().replace(/^[#]/, '');
+  // Pengendali Universal Tab & Interaktivitas MPI (Rock-Solid Index & ID Auto-Pairing)
+  function initMpiTabController() {
+    // 1. Temukan semua tombol tab navigasi
+    var tabButtons = Array.prototype.slice.call(document.querySelectorAll(
+      '.tab-btn, [role="tab"], nav button, [role="tablist"] button, .tab-buttons button, [data-tab]'
+    )).filter(function(b) {
+      // Pastikan bukan tombol kuis atau tombol dalam panel simulasi
+      return !b.closest('.quiz-options, .quiz-card, .sim-controls');
+    });
 
-    // Cari elemen panel tujuan
-    var targetPanel = document.getElementById(cleanId) ||
-                      document.querySelector('[data-tab-content="' + cleanId + '"]') ||
-                      document.querySelector('[data-content="' + cleanId + '"]');
-
-    if (!targetPanel) {
-      targetPanel = document.querySelector('[id*="' + cleanId + '"]:not(button):not(a):not(nav)');
-    }
-
-    // Kumpulkan seluruh panel konten tab di halaman
-    var panels = Array.prototype.slice.call(document.querySelectorAll(
-      '[role="tabpanel"], .tab-content, .tab-pane, [id*="tab-content"], [id*="content-tab"], [id^="tab-"], [id^="tab_"], [data-tab-panel]'
+    // 2. Temukan semua panel konten tab
+    var tabPanels = Array.prototype.slice.call(document.querySelectorAll(
+      '.tab-content, .tab-pane, [role="tabpanel"], [id^="tab-"], [id^="tab_"], [id*="content-"]'
     )).filter(function(p) {
       return !p.matches('button, a, nav, [role="tab"], .tab-btn');
     });
 
-    if (targetPanel && panels.length > 0) {
-      panels.forEach(function(p) {
-        if (p !== targetPanel) {
-          p.classList.add('hidden');
-          p.style.display = 'none';
+    if (tabPanels.length === 0) {
+      // Fallback deteksi panel utama
+      tabPanels = Array.prototype.slice.call(document.querySelectorAll('main > div, main > section, .container > div, .container > section')).filter(function(d) {
+        return d.id && !d.matches('nav, header, footer, [role="tablist"]');
+      });
+    }
+
+    function activateTab(index, targetId) {
+      var activePanel = null;
+
+      // Cari panel yang cocok dengan ID jika ada
+      if (targetId) {
+        var cleanId = String(targetId).trim().replace(/^[#]/, '');
+        activePanel = document.getElementById(cleanId) ||
+                      document.getElementById('tab-' + cleanId) ||
+                      document.querySelector('[data-tab-content="' + cleanId + '"]') ||
+                      document.querySelector('[data-content="' + cleanId + '"]');
+      }
+
+      // Jika tidak ditemukan dengan ID, pasangkan berdasarkan indeks tombol
+      if (!activePanel && tabPanels[index]) {
+        activePanel = tabPanels[index];
+      }
+
+      if (activePanel) {
+        tabPanels.forEach(function(p) {
+          if (p === activePanel) {
+            p.classList.remove('hidden');
+            p.style.removeProperty('display');
+            p.style.display = 'block';
+          } else {
+            p.classList.add('hidden');
+            p.style.display = 'none';
+          }
+        });
+      }
+
+      // Perbarui tampilan aktif tombol tab
+      tabButtons.forEach(function(btn, i) {
+        var btnOnclick = btn.getAttribute('onclick') || '';
+        var btnDataTab = btn.getAttribute('data-tab') || '';
+        var isThis = (activePanel && (btn.id === 'btn-' + activePanel.id || btnDataTab === activePanel.id || btnOnclick.indexOf(activePanel.id) !== -1)) || (i === index);
+
+        if (isThis) {
+          btn.classList.add('active', 'border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
+          btn.classList.remove('border-transparent', 'text-slate-500');
+          btn.setAttribute('aria-selected', 'true');
+        } else {
+          btn.classList.remove('active', 'border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
+          btn.classList.add('border-transparent', 'text-slate-500');
+          btn.setAttribute('aria-selected', 'false');
         }
       });
-      targetPanel.classList.remove('hidden');
-      targetPanel.style.display = 'block';
     }
 
-    // Perbarui HANYA tombol tab navigasi (JANGAN sentuh tombol kuis/simulasi!)
-    var tabButtons = document.querySelectorAll('.tab-btn, [role="tab"], nav button, [role="tablist"] button');
-    tabButtons.forEach(function(btn) {
-      var onclickAttr = btn.getAttribute('onclick') || '';
-      var dataTabAttr = btn.getAttribute('data-tab') || btn.getAttribute('data-target') || '';
-      var hrefAttr = btn.getAttribute('href') || '';
-      var isMatch = onclickAttr.indexOf(cleanId) !== -1 ||
-                    dataTabAttr === cleanId ||
-                    hrefAttr === '#' + cleanId ||
-                    (btn.id && btn.id.indexOf(cleanId) !== -1);
-
-      if (isMatch) {
-        btn.classList.add('active', 'border-indigo-600', 'text-indigo-600', 'font-black');
-        btn.classList.remove('text-slate-500', 'border-transparent', 'text-slate-600');
-        btn.setAttribute('aria-selected', 'true');
-      } else if (onclickAttr.match(/(?:Tab|tab)/i) || dataTabAttr || btn.classList.contains('tab-btn') || btn.getAttribute('role') === 'tab') {
-        btn.classList.remove('active', 'border-indigo-600', 'text-indigo-600');
-        btn.classList.add('text-slate-500', 'border-transparent');
-        btn.setAttribute('aria-selected', 'false');
-      }
+    // Pasang direct click listener pada setiap tombol tab
+    tabButtons.forEach(function(btn, idx) {
+      btn.addEventListener('click', function(e) {
+        var onclickStr = btn.getAttribute('onclick') || '';
+        var dataTab = btn.getAttribute('data-tab') || '';
+        var m = onclickStr.match(/(?:switchTab|showTab|openTab|selectTab|pilihTab|changeTab|setTab)\s*\(\s*['"]?([^'")]+)['"]?\s*\)/i);
+        var targetId = dataTab || (m ? m[1] : null);
+        activateTab(idx, targetId);
+      });
     });
+
+    // Daftarkan fungsi global switchTab, showTab, openTab dsb ke window
+    ['switchTab', 'showTab', 'openTab', 'selectTab', 'pilihTab', 'changeTab', 'setTab', 'activateTab'].forEach(function(fn) {
+      window[fn] = function(id) {
+        var clean = String(id || '').trim().replace(/^[#]/, '');
+        var foundIdx = -1;
+        tabPanels.forEach(function(p, idx) {
+          if (p.id === clean || p.getAttribute('data-tab-content') === clean || p.id === 'tab-' + clean) {
+            foundIdx = idx;
+          }
+        });
+        if (foundIdx === -1 && typeof id === 'number') foundIdx = id;
+        activateTab(foundIdx >= 0 ? foundIdx : 0, clean);
+      };
+    });
+
+    // Pastikan tab pertama aktif saat pertama kali dimuat
+    if (tabButtons.length > 0 && tabPanels.length > 0) {
+      var hasVisible = tabPanels.some(function(p) {
+        return !p.classList.contains('hidden') && p.style.display !== 'none';
+      });
+      if (!hasVisible) {
+        activateTab(0, null);
+      }
+    }
   }
 
-  // Daftarkan semua nama fungsi tab yang sering ditulis AI ke window global
-  ['switchTab', 'showTab', 'openTab', 'selectTab', 'pilihTab', 'changeTab', 'setTab', 'activateTab'].forEach(function(fnName) {
-    var existing = window[fnName];
-    window[fnName] = function(id) {
-      try {
-        if (typeof existing === 'function' && existing !== window[fnName]) {
-          existing(id);
-        }
-      } catch (_) {}
-      universalSwitchTab(id);
-    };
-  });
-
-  // Event Delegation: tangkap klik tab HANYA jika tombol adalah tab navigasi
-  document.addEventListener('click', function(e) {
-    var btn = e.target.closest('button, [role="tab"], a[href^="#tab"]');
-    if (!btn) return;
-
-    var onclickStr = btn.getAttribute('onclick') || '';
-    var dataTab = btn.getAttribute('data-tab') || btn.getAttribute('data-target') || '';
-    var href = btn.getAttribute('href') || '';
-
-    // 1. Ekstrak target ID dari onclick inline jika memanggil switchTab/openTab dsb
-    var target = dataTab;
-    if (!target && onclickStr) {
-      var m = onclickStr.match(/(?:switchTab|showTab|openTab|selectTab|pilihTab|changeTab|setTab)\s*\(\s*['"]?([^'")]+)['"]?\s*\)/i);
-      if (m) target = m[1];
-    }
-    if (!target && href.indexOf('#tab') === 0) {
-      target = href.substring(1);
-    }
-
-    if (target) {
-      universalSwitchTab(target);
-      return;
-    }
-
-    // 2. Deteksi tab navigasi HANYA di dalam wadah tablist/tab-nav
-    var nav = btn.closest('[role="tablist"], .tab-nav, .tab-buttons');
-    if (nav && (btn.classList.contains('tab-btn') || btn.getAttribute('role') === 'tab')) {
-      var buttons = Array.prototype.slice.call(nav.querySelectorAll('.tab-btn, [role="tab"]'));
-      var idx = buttons.indexOf(btn);
-      if (idx >= 0) {
-        var panels = Array.prototype.slice.call(document.querySelectorAll(
-          '[role="tabpanel"], .tab-content, .tab-pane, [id*="tab-content"], [id*="content-tab"], [data-tab-panel]'
-        )).filter(function(p) { return !p.matches('button, a, nav'); });
-
-        if (panels[idx]) {
-          panels.forEach(function(p, i) {
-            if (i === idx) {
-              p.classList.remove('hidden');
-              p.style.display = 'block';
-            } else {
-              p.classList.add('hidden');
-              p.style.display = 'none';
-            }
-          });
-          buttons.forEach(function(b, i) {
-            if (i === idx) {
-              b.classList.add('active', 'border-indigo-600', 'text-indigo-600', 'font-black');
-              b.classList.remove('text-slate-500', 'border-transparent');
-            } else {
-              b.classList.remove('active', 'border-indigo-600', 'text-indigo-600');
-              b.classList.add('text-slate-500', 'border-transparent');
-            }
-          });
-        }
-      }
-    }
-  });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMpiTabController);
+  } else {
+    initMpiTabController();
+  }
 })();
 </script>`;
 

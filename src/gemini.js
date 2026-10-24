@@ -1020,22 +1020,30 @@ HEADER GAMIFIKASI & TAMPILAN MODERN:
 - Desain visual menggunakan Tailwind CSS: gaya Neobrutalism modern (border-2 border-black, bayangan pop shadow-[3px_3px_0px_0px_rgba(0,0,0,1)], rounded-2xl).
 - Seluruh kontrol sentuh wajib memiliki tinggi minimal 44px (min-h-[44px]) agar responsif dan nyaman di layar HP siswa (360px-414px) maupun laptop.
 
-PERSYARATAN TEKNIS JAVASCRIPT TAB:
-- Deklarasikan window.switchTab secara GLOBAL agar inline onclick tab selalu bekerja:
-  window.switchTab = function(tabId) {
-    document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.add('hidden'); });
-    var target = document.getElementById(tabId);
-    if (target) target.classList.remove('hidden');
-    document.querySelectorAll('.tab-btn').forEach(function(b) {
-      b.classList.remove('border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
-      b.classList.add('border-transparent', 'text-slate-500');
-    });
-    var activeBtn = document.getElementById('btn-' + tabId) || document.querySelector('[onclick*=\"' + tabId + '\"]');
-    if (activeBtn) {
-      activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
-      activeBtn.classList.remove('border-transparent', 'text-slate-500');
-    }
-  };
+PERSYARATAN TEKNIS JAVASCRIPT (WAJIB BERFUNGSI SEMUA TOMBOL):
+1. SEMUA fungsi JavaScript (switchTab, nextSimStep, prevSimStep, resetSim, checkQuiz, dsb) WAJIB dideklarasikan LANGSUNG pada window global:
+   window.switchTab = function(tabId) {
+     document.querySelectorAll('.tab-content').forEach(function(el) {
+       el.classList.add('hidden');
+       el.style.display = 'none';
+     });
+     var target = document.getElementById(tabId);
+     if (target) {
+       target.classList.remove('hidden');
+       target.style.display = 'block';
+     }
+     document.querySelectorAll('.tab-btn').forEach(function(b) {
+       b.classList.remove('border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
+       b.classList.add('border-transparent', 'text-slate-500');
+     });
+     var btn = document.getElementById('btn-' + tabId) || document.querySelector('[onclick*=\"' + tabId + '\"]');
+     if (btn) {
+       btn.classList.add('border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
+       btn.classList.remove('border-transparent', 'text-slate-500');
+     }
+   };
+2. DILARANG KERAS membungkus script di dalam document.addEventListener('DOMContentLoaded', ...) atau IIFE closure tertutup tanpa menempelkan fungsinya ke window!
+3. Gunakan inline onclick yang memanggil window.namaFungsi() persis seperti yang dideklarasikan.
 
 FORMAT KELUARAN:
 - Tuliskan HANYA kode HTML5 lengkap dimulai dari <!DOCTYPE html> hingga </html>. Tanpa teks obrolan di luar kode.`;
