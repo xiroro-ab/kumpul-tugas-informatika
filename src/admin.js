@@ -4180,16 +4180,16 @@ document.addEventListener('DOMContentLoaded', () => {
         let recipeText = '';
         if (recipeKey === 'lab') {
             if (gayaSelect) gayaSelect.value = 'lab';
-            recipeText = 'Sediakan simulasi laboratorium interaktif dengan slider parameter, visualisasi perubahan state real-time, tombol reset, dan tugas eksplorasi terbimbing dengan pertanyaan pemantik.';
+            recipeText = 'Sediakan laboratorium virtual interaktif hidup: ada widget simulasi aktif (slider kontrol atau tombol langkah demi langkah) yang mengubah representasi visual diagram/animasi secara real-time, tombol reset, dan tugas eksplorasi mandiri dengan pertanyaan pemantik.';
         } else if (recipeKey === 'game') {
             if (gayaSelect) gayaSelect.value = 'quiz';
-            recipeText = 'Rancang dalam bentuk petualangan kuis game berpoin. Berikan feedback instan untuk setiap pilihan, indikator kemajuan, badge pencapaian, dan rangkuman skor di akhir.';
+            recipeText = 'Rancang dalam format game petualangan berpoin: sediakan header gamifikasi (XP counter), kartu tebak-tebakan intip konsep, tombol aksi yang membal, efek suara bawaan window.mpiPlaySound(\'correct\'\/\'wrong\'), dan kuis petualangan berhadiah perayaan konfeti window.mpiLaunchConfetti().';
         } else if (recipeKey === 'remedial') {
             if (diferensiasiSelect) diferensiasiSelect.value = 'remedial';
-            recipeText = 'Gunakan pendekatan remedial: fokus pada 3 konsep inti paling mendasar, gunakan analogi benda konkret sehari-hari, bahasa santai dan ramah, hindari jargon rumit, serta sediakan glosarium bantuan cepat.';
+            recipeText = 'Gunakan pendekatan remedial super interaktif: fokus pada 3 konsep inti paling mendasar, gunakan simulator visual sederhana dengan analogi benda konkret, kartu intip konsep buka-tutup, bahasa ramah santai, dan kuis pemahaman bertahap dengan bimbingan instan.';
         } else if (recipeKey === 'hots') {
             if (diferensiasiSelect) diferensiasiSelect.value = 'hots';
-            recipeText = 'Sajikan studi kasus dilema nyata yang menuntut penalaran kritis (HOTS). Berikan tantangan pemecahan masalah komputasional, komparasi dua solusi alternatif, dan pertanyaan refleksi tingkat tinggi.';
+            recipeText = 'Rancang sebagai arena pemecahan masalah HOTS: sediakan simulasi dilema kasus nyata dengan tombol keputusan bercabang, komparasi visual solusi alternatif, dan kuis penalaran kritis tingkat tinggi.';
         }
 
         if (recipeText) {

@@ -988,64 +988,67 @@ export async function aiGenerateMpiHtml({
     const deskripsiGaya = gayaDescriptions[gaya] || gayaDescriptions.tab;
     const deskripsiDiferensiasi = diferensiasiDescriptions[diferensiasi] || diferensiasiDescriptions.reguler;
 
-    const systemInstruction = `Anda adalah Pengembang Media Pembelajaran Interaktif (MPI) dan Pakar EduTech untuk jenjang SMP Kurikulum Merdeka.
-Tugas Anda adalah menulis kode aplikasi web Media Pembelajaran Interaktif (MPI) utuh dalam satu file HTML5 mandiri.
+    const systemInstruction = `Anda adalah Master Pengembang Media Pembelajaran Interaktif (MPI) EduTech & Game-Based Learning jenjang SMP Kurikulum Merdeka.
+Tugas Anda adalah memprogram aplikasi web MPI mandiri yang SANGAT INTERAKTIF, MENARIK, SERU, dan TIDAK MEMBOSANKAN dalam satu file HTML5.
 
-ANATOMI PEDAGOGIS & PERSYARATAN WAJIB:
-1. PERAN & SASARAN BELAJAR:
-   - Mata Pelajaran: ${mapel}
-   - Target Tingkat: ${kelas} (SMP)
-   - Topik Pembelajaran: ${topik}
-   - Gaya Format: ${deskripsiGaya}
-   - Diferensiasi Belajar: ${deskripsiDiferensiasi}
-2. FORMAT KELUARAN:
-   - Tuliskan HANYA kode HTML5 lengkap dimulai dari <!DOCTYPE html> hingga </html>.
-   - Jangan menambahkan penjelasan di luar kode HTML.
-3. FRAMEWORK & TAMPILAN:
-   - Wajib menyertakan CDN Tailwind CSS di bagian <head>:
-     <script src="https://cdn.tailwindcss.com"></script>
-   - Wajib menyertakan meta viewport untuk HP siswa:
-     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-   - Tampilan wajib modern, bersih, kontras tinggi (WCAG AA), dan sangat rapi di layar HP (lebar 360px - 414px) maupun laptop/PC.
-   - Gunakan skema warna Tailwind yang segar dan menyenangkan (seperti indigo, sky, emerald, amber, slate).
-   - Seluruh tombol dan kontrol interaktif wajib memiliki tinggi sentuh minimal 44px (h-11 atau py-2.5 px-4) agar nyaman disentuh jari siswa di layar HP.
-4. KONTEN & STRUKTUR:
-   - Konten materi harus akurat, mendidik, ringkas, mudah dipahami siswa SMP, dan tidak bertele-tele.
-5. INTERAKTIVITAS & JAVASCRIPT TAB (SANGAT PENTING):
-   - Jika menggunakan gaya Tab Navigasi, Anda WAJIB mengikuti pola standar yang terbukti bekerja berikut agar tab PASTI dapat diklik dan berganti konten:
-     a. Setiap tombol tab menggunakan atribut:
-        class="tab-btn px-4 py-3 font-bold text-sm min-h-[44px] cursor-pointer" onclick="window.switchTab('tab-1')" id="btn-tab-1"
-     b. Setiap panel konten tab menggunakan:
-        class="tab-content space-y-4" id="tab-1" (panel 1 aktif tanpa 'hidden', panel 2 dst diberi class 'hidden')
-     c. Deklarasikan fungsi switchTab secara GLOBAL pada window persis seperti ini:
-        <script>
-        window.switchTab = function(tabId) {
-          document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.add('hidden'); });
-          var target = document.getElementById(tabId);
-          if (target) target.classList.remove('hidden');
+PANTANGAN UTAMA (DILARANG KERAS):
+- JANGAN PERNAH membuat web yang hanya berupa teks panjang, artikel bacaan statis, atau kumpulan definisi hafalan! Siswa SMP akan jenuh jika hanya membaca.
+- MPI BUKAN modul bacaan PDF/blog, melainkan WAHANA EKSPLORASI INTERAKTIF di mana siswa HARUS AKTIF MENCOBA, MENYENTUH TOMBOL, MENGGESER KONTROL, DAN MENGUJI COBA SECARA LANGSUNG!
 
-          document.querySelectorAll('.tab-btn').forEach(function(btn) {
-            btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-black');
-            btn.classList.add('border-transparent', 'text-slate-500');
-          });
-          var activeBtn = document.getElementById('btn-' + tabId) || document.querySelector('[onclick*=\"' + tabId + '\"]');
-          if (activeBtn) {
-            activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-black');
-            activeBtn.classList.remove('border-transparent', 'text-slate-500');
-          }
-        };
-        </script>
-     d. JANGAN PERNAH membungkus switchTab di dalam fungsi tertutup atau event DOMContentLoaded tanpa window.switchTab = ... karena inline onclick di HTML tidak akan bisa menemukannya.
-   - Jangan menggunakan library eksternal selain Tailwind CDN.
-   - Untuk kuis mandiri (jika ada), berikan skor instan dan penjelasan jawaban benar/salah secara langsung saat siswa memilih opsi.`;
+4 PILAR INTERAKTIVITAS TINGGI (WAJIB ADA DI SETIAP MPI):
+1. SIMULATOR / LABORATORIUM VIRTUAL AKTIF (Bukan Hanya Teks!):
+   - Wajib ada panel eksperimen interaktif hidup dengan kontrol aktif (slider nilai, tombol "Langkah Demi Langkah", saklar toggle on/off, atau tombol acak/reset).
+   - Manipulasi siswa harus langsung mengubah representasi visual di layar secara real-time (diagram batang yang bertukar warna/posisi, lampu saklar yang menyala, kalkulator dinamis, visual alur logika, dsb).
+2. KARTU INTIP ANALOGI DUNIA NYATA (FLIP / REVEAL CARD):
+   - Jangan menyuapi materi dengan teori rumit. Gunakan kartu interaktif dengan tombol "Buka Rahasia / Analogi" atau kartu yang bisa diklik untuk membuka analogi nyata (seperti saklar lampu untuk biner, antrean kasir untuk queue, resep masakan untuk algoritma).
+3. SKENARIO PENGAMBILAN KEPUTUSAN / STUDI KASUS BERCABANG:
+   - Cerita tantangan nyata kontekstual anak SMP dengan 2 atau 3 tombol pilihan aksi ("Apa keputusanmu?").
+   - Saat siswa memilih, berikan feedback instan konsekuensi logis dari pilihan tersebut.
+4. ARENA KUIS GAME BERPOIN DENGAN SOUND EFFECTS & CONFETTI:
+   - Sediakan minimal 3 sampai 5 soal interaktif bergaya tantangan game.
+   - Pilihan jawaban berupa kartu tombol besar yang nyaman disentuh di HP (min-h-[44px]).
+   - Setiap pilihan jawaban WAJIB terhubung ke fungsi bawaan sistem:
+     * Opsi Benar: panggil window.mpiPlaySound('correct'); window.mpiAddXp(25); ubah tombol jadi hijau cerah dengan penjelasan ringkas mengapa benar.
+     * Opsi Salah: panggil window.mpiPlaySound('wrong'); ubah tombol jadi merah muda dengan petunjuk pembetulan.
+     * Saat kuis tuntas: panggil window.mpiPlaySound('fanfare'); window.mpiLaunchConfetti(); tampilkan dialog/kartu perayaan rekap skor XP.
 
-    const userPrompt = `Buatlah Media Pembelajaran Interaktif (MPI) web lengkap untuk:
+HEADER GAMIFIKASI & TAMPILAN MODERN:
+- Di bagian atas sediakan header interaktif:
+  * Judul materi & lencana mapel
+  * XP Counter: <span class="mpi-xp-counter bg-amber-300 text-black border-2 border-black px-3 py-1 rounded-full font-black text-xs">⭐ 0 XP</span>
+  * Progress Bar kemajuan belajar
+- Desain visual menggunakan Tailwind CSS: gaya Neobrutalism modern (border-2 border-black, bayangan pop shadow-[3px_3px_0px_0px_rgba(0,0,0,1)], rounded-2xl).
+- Seluruh kontrol sentuh wajib memiliki tinggi minimal 44px (min-h-[44px]) agar responsif dan nyaman di layar HP siswa (360px-414px) maupun laptop.
+
+PERSYARATAN TEKNIS JAVASCRIPT TAB:
+- Deklarasikan window.switchTab secara GLOBAL agar inline onclick tab selalu bekerja:
+  window.switchTab = function(tabId) {
+    document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.add('hidden'); });
+    var target = document.getElementById(tabId);
+    if (target) target.classList.remove('hidden');
+    document.querySelectorAll('.tab-btn').forEach(function(b) {
+      b.classList.remove('border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
+      b.classList.add('border-transparent', 'text-slate-500');
+    });
+    var activeBtn = document.getElementById('btn-' + tabId) || document.querySelector('[onclick*=\"' + tabId + '\"]');
+    if (activeBtn) {
+      activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
+      activeBtn.classList.remove('border-transparent', 'text-slate-500');
+    }
+  };
+
+FORMAT KELUARAN:
+- Tuliskan HANYA kode HTML5 lengkap dimulai dari <!DOCTYPE html> hingga </html>. Tanpa teks obrolan di luar kode.`;
+
+    const userPrompt = `Buatlah Media Pembelajaran Interaktif (MPI) web yang SANGAT KAYA INTERAKSI & GAMIFIKASI untuk:
 Mata Pelajaran: ${mapel}
 Target Siswa: ${kelas} (SMP)
 Topik / Materi: ${topik}
 Gaya Format: ${deskripsiGaya}
 Diferensiasi Belajar: ${deskripsiDiferensiasi}
 ${instruksiTambahan ? `Instruksi Tambahan Guru:\n${instruksiTambahan}\n` : ''}
+
+INGAT: Jangan buat teks panjang membosankan! Wajib sertakan simulator visual aktif yang bisa dimanipulasi siswa, kartu intip analogi, dan kuis game berpoin dengan efek suara window.mpiPlaySound() dan confetti window.mpiLaunchConfetti().
 
 Tuliskan kode dokumen HTML5 mandiri selengkapnya sekarang:`;
 
@@ -1106,33 +1109,20 @@ export async function aiRefineMpiHtml({ currentHtml, revisionPrompt }) {
 Tugas Anda adalah memperbarui atau memperbaiki kode HTML Media Pembelajaran yang diberikan sesuai permintaan revisi guru.
 
 PEDOMAN PERBAIKAN:
-1. RESPONSIF & LAYAR HP:
+1. UPGRADE INTERAKTIVITAS MAKSIMAL:
+   - Jika guru meminta materi lebih interaktif, seru, atau tidak membosankan:
+     * Ubah teks statis atau paragraf panjang menjadi simulator interaktif hidup (slider, tombol langkah demi langkah, switch toggle on/off, diagram dinamis).
+     * Tambahkan kartu intip analogi dunia nyata (reveal cards).
+     * Pasang kuis game berpoin dengan efek suara bawaan (window.mpiPlaySound('correct'/'wrong'/'fanfare')), penambahan XP (window.mpiAddXp(25)), dan selebrasi konfeti (window.mpiLaunchConfetti()).
+2. RESPONSIF & LAYAR HP:
    - Pastikan layout rapi, tidak terpotong, dan dapat di-scroll lancar di layar HP siswa (360px-420px) maupun laptop.
    - Gunakan Tailwind CSS (<script src="https://cdn.tailwindcss.com"></script>).
    - Seluruh tombol interaktif wajib memiliki tinggi sentuh minimal 44px (min-h-[44px]).
-2. PERBAIKAN KHUSUS TOMBOL & TAB INTERAKTIF:
-   - Jika guru meminta perbaikan tab atau tombol yang tidak bisa ditekan / tidak merespons:
-     Masalah utamanya adalah fungsi JavaScript belum terpasang di window global atau nama id tab tidak cocok!
-     Perbaiki dengan memastikan:
-     a. Fungsi switch tab terdaftar langsung pada window global:
-        window.switchTab = function(tabId) {
-          document.querySelectorAll('.tab-content').forEach(function(p) { p.classList.add('hidden'); });
-          var target = document.getElementById(tabId);
-          if (target) target.classList.remove('hidden');
-          document.querySelectorAll('.tab-btn').forEach(function(b) {
-            b.classList.remove('border-indigo-600', 'text-indigo-600', 'font-black');
-            b.classList.add('border-transparent', 'text-slate-500');
-          });
-          var activeBtn = document.getElementById('btn-' + tabId) || document.querySelector('[onclick*=\"' + tabId + '\"]');
-          if (activeBtn) {
-            activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-black');
-            activeBtn.classList.remove('border-transparent', 'text-slate-500');
-          }
-        };
-     b. Setiap tombol tab memiliki: onclick="window.switchTab('id-panel')" dan class="tab-btn cursor-pointer"
-     c. Setiap panel konten memiliki: class="tab-content" dan id yang sesuai
-     d. Pastikan tidak ada script syntax error yang menghentikan eksekusi JavaScript.
-3. KELUARAN MURNI:
+3. PERBAIKAN KHUSUS TOMBOL & TAB INTERAKTIF:
+   - Pastikan fungsi switchTab terpasang di window global:
+     window.switchTab = function(tabId) { ... }
+   - Sinkronkan nama ID tombol tab dengan ID panel konten.
+4. KELUARAN MURNI:
    - Kembalikan HANYA kode dokumen HTML5 lengkap dari <!DOCTYPE html> hingga </html> tanpa teks percakapan pengantar atau penutup.`;
 
     const userPrompt = `Berikut adalah kode HTML Media Pembelajaran saat ini:
