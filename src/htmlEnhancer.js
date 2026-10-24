@@ -76,14 +76,14 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
       targetPanel = document.querySelector('[id*="' + cleanId + '"]:not(button):not(a):not(nav)');
     }
 
-    // Kumpulkan seluruh panel konten di halaman
+    // Kumpulkan seluruh panel konten tab di halaman
     var panels = Array.prototype.slice.call(document.querySelectorAll(
       '[role="tabpanel"], .tab-content, .tab-pane, [id*="tab-content"], [id*="content-tab"], [id^="tab-"], [id^="tab_"], [data-tab-panel]'
     )).filter(function(p) {
-      return !p.matches('button, a, nav, [role="tab"]');
+      return !p.matches('button, a, nav, [role="tab"], .tab-btn');
     });
 
-    if (targetPanel) {
+    if (targetPanel && panels.length > 0) {
       panels.forEach(function(p) {
         if (p !== targetPanel) {
           p.classList.add('hidden');
@@ -94,9 +94,9 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
       targetPanel.style.display = 'block';
     }
 
-    // Perbarui status aktif visual tombol tab
-    var allTabButtons = document.querySelectorAll('button, [role="tab"], .tab-btn');
-    allTabButtons.forEach(function(btn) {
+    // Perbarui HANYA tombol tab navigasi (JANGAN sentuh tombol kuis/simulasi!)
+    var tabButtons = document.querySelectorAll('.tab-btn, [role="tab"], nav button, [role="tablist"] button');
+    tabButtons.forEach(function(btn) {
       var onclickAttr = btn.getAttribute('onclick') || '';
       var dataTabAttr = btn.getAttribute('data-tab') || btn.getAttribute('data-target') || '';
       var hrefAttr = btn.getAttribute('href') || '';
@@ -109,7 +109,7 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
         btn.classList.add('active', 'border-indigo-600', 'text-indigo-600', 'font-black');
         btn.classList.remove('text-slate-500', 'border-transparent', 'text-slate-600');
         btn.setAttribute('aria-selected', 'true');
-      } else if (onclickAttr.match(/(?:Tab|tab)/i) || dataTabAttr || btn.classList.contains('tab-btn')) {
+      } else if (onclickAttr.match(/(?:Tab|tab)/i) || dataTabAttr || btn.classList.contains('tab-btn') || btn.getAttribute('role') === 'tab') {
         btn.classList.remove('active', 'border-indigo-600', 'text-indigo-600');
         btn.classList.add('text-slate-500', 'border-transparent');
         btn.setAttribute('aria-selected', 'false');
@@ -130,7 +130,7 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
     };
   });
 
-  // Event Delegation: tangkap klik tombol tab di fase capture
+  // Event Delegation: tangkap klik tab HANYA jika tombol adalah tab navigasi
   document.addEventListener('click', function(e) {
     var btn = e.target.closest('button, [role="tab"], a[href^="#tab"]');
     if (!btn) return;
@@ -138,15 +138,14 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
     var onclickStr = btn.getAttribute('onclick') || '';
     var dataTab = btn.getAttribute('data-tab') || btn.getAttribute('data-target') || '';
     var href = btn.getAttribute('href') || '';
-    var btnText = (btn.textContent || '').trim().toLowerCase();
 
-    // 1. Ekstrak target ID dari onclick inline
+    // 1. Ekstrak target ID dari onclick inline jika memanggil switchTab/openTab dsb
     var target = dataTab;
     if (!target && onclickStr) {
       var m = onclickStr.match(/(?:switchTab|showTab|openTab|selectTab|pilihTab|changeTab|setTab)\s*\(\s*['"]?([^'")]+)['"]?\s*\)/i);
       if (m) target = m[1];
     }
-    if (!target && href.indexOf('#') === 0) {
+    if (!target && href.indexOf('#tab') === 0) {
       target = href.substring(1);
     }
 
@@ -155,10 +154,10 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
       return;
     }
 
-    // 2. Deteksi tab berdasarkan container pembungkus tombol
-    var nav = btn.closest('[role="tablist"], nav, .tabs, .tab-buttons') || btn.parentElement;
-    if (nav && (btnText.indexOf('tab') !== -1 || btn.classList.contains('tab-btn') || btn.hasAttribute('role'))) {
-      var buttons = Array.prototype.slice.call(nav.querySelectorAll('button, [role="tab"]'));
+    // 2. Deteksi tab navigasi HANYA di dalam wadah tablist/tab-nav
+    var nav = btn.closest('[role="tablist"], .tab-nav, .tab-buttons');
+    if (nav && (btn.classList.contains('tab-btn') || btn.getAttribute('role') === 'tab')) {
+      var buttons = Array.prototype.slice.call(nav.querySelectorAll('.tab-btn, [role="tab"]'));
       var idx = buttons.indexOf(btn);
       if (idx >= 0) {
         var panels = Array.prototype.slice.call(document.querySelectorAll(
@@ -187,7 +186,7 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
         }
       }
     }
-  }, true);
+  });
 })();
 </script>`;
 
@@ -366,14 +365,16 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
 
   // 4. Delegasi klik: bunyi klik pop otomatis pada tombol yang belum memiliki suara
   document.addEventListener('click', function(e) {
-    var btn = e.target.closest('button, [role="tab"], .tab-btn, .interactive-btn');
-    if (btn && !btn.hasAttribute('data-no-sound')) {
-      var onclickStr = btn.getAttribute('onclick') || '';
-      if (onclickStr.indexOf('mpiPlaySound') === -1) {
-        window.mpiPlaySound('click');
+    try {
+      var btn = e.target.closest('button, [role="tab"], .tab-btn, .interactive-btn');
+      if (btn && !btn.hasAttribute('data-no-sound')) {
+        var onclickStr = btn.getAttribute('onclick') || '';
+        if (onclickStr.indexOf('mpiPlaySound') === -1) {
+          window.mpiPlaySound('click');
+        }
       }
-    }
-  }, true);
+    } catch (_) {}
+  });
 })();
 </script>`;
 
@@ -491,4 +492,18 @@ export function downloadHtmlFile(htmlContent, fileName = 'materi-interaktif.html
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 15000);
+}
+
+/**
+ * Membersihkan skrip dan style pelindung yang disisipkan agar kode bersih saat dikirim ke AI
+ * @param {string} html - HTML lengkap
+ * @returns {string} HTML murni tanpa injeksi internal
+ */
+export function stripInjectedEnhancements(html) {
+    if (!html || typeof html !== 'string') return '';
+    return html
+        .replace(/<style id="mpi-mobile-shield">[\s\S]*?<\/style>/gi, '')
+        .replace(/<script id="mpi-tab-autohealer">[\s\S]*?<\/script>/gi, '')
+        .replace(/<script id="mpi-interactive-toolkit">[\s\S]*?<\/script>/gi, '')
+        .trim();
 }

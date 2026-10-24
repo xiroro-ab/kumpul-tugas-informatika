@@ -4,7 +4,7 @@
 // Gemini 3 Flash (Preview) (Bawaan GuruPro), Gemini 2.5 Pro, atau kustom manual.
 
 import { balanceExamWeights } from './examScoring.js';
-import { sanitizeAndEnhanceHtml } from './htmlEnhancer.js';
+import { sanitizeAndEnhanceHtml, stripInjectedEnhancements } from './htmlEnhancer.js';
 
 export const GEMINI_MODEL_PRESETS = [
     { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash' },
@@ -1105,38 +1105,56 @@ export async function aiRefineMpiHtml({ currentHtml, revisionPrompt }) {
     if (!currentHtml) throw new Error('Kode HTML yang akan diperbaiki tidak ditemukan.');
     if (!revisionPrompt) throw new Error('Instruksi perbaikan wajib diisi.');
 
-    const systemInstruction = `Anda adalah Pengembang Frontend dan Ahli UI/UX Media Pembelajaran Interaktif (MPI).
-Tugas Anda adalah memperbarui atau memperbaiki kode HTML Media Pembelajaran yang diberikan sesuai permintaan revisi guru.
+    // Bersihkan script internal terlebih dahulu agar AI menerima kode HTML murni tanpa noise
+    const cleanHtml = stripInjectedEnhancements(currentHtml);
 
-PEDOMAN PERBAIKAN:
-1. UPGRADE INTERAKTIVITAS MAKSIMAL:
-   - Jika guru meminta materi lebih interaktif, seru, atau tidak membosankan:
-     * Ubah teks statis atau paragraf panjang menjadi simulator interaktif hidup (slider, tombol langkah demi langkah, switch toggle on/off, diagram dinamis).
-     * Tambahkan kartu intip analogi dunia nyata (reveal cards).
-     * Pasang kuis game berpoin dengan efek suara bawaan (window.mpiPlaySound('correct'/'wrong'/'fanfare')), penambahan XP (window.mpiAddXp(25)), dan selebrasi konfeti (window.mpiLaunchConfetti()).
-2. RESPONSIF & LAYAR HP:
-   - Pastikan layout rapi, tidak terpotong, dan dapat di-scroll lancar di layar HP siswa (360px-420px) maupun laptop.
-   - Gunakan Tailwind CSS (<script src="https://cdn.tailwindcss.com"></script>).
-   - Seluruh tombol interaktif wajib memiliki tinggi sentuh minimal 44px (min-h-[44px]).
-3. PERBAIKAN KHUSUS TOMBOL & TAB INTERAKTIF:
-   - Pastikan fungsi switchTab terpasang di window global:
-     window.switchTab = function(tabId) { ... }
-   - Sinkronkan nama ID tombol tab dengan ID panel konten.
-4. KELUARAN MURNI:
-   - Kembalikan HANYA kode dokumen HTML5 lengkap dari <!DOCTYPE html> hingga </html> tanpa teks percakapan pengantar atau penutup.`;
+    const systemInstruction = `Anda adalah Ahli Frontend & Fullstack UI/UX Media Pembelajaran Interaktif (MPI).
+Tugas Anda adalah MEMPERBAIKI DAN MENYEMPURNAKAN kode HTML Media Pembelajaran sesuai permintaan guru.
 
-    const userPrompt = `Berikut adalah kode HTML Media Pembelajaran saat ini:
+PEDOMAN PERBAIKAN & STANDAR KUALITAS TINGGI:
+1. PERBAIKAN KRUSIAL SEMUA TOMBOL INTERAKTIF (AGAR WAJIB BISA DIKLIK):
+   - Masalah utama tombol tidak merespons adalah fungsi JavaScript dideklarasikan di dalam closure atau DOMContentLoaded sehingga atribut inline onclick="namaFungsi()" di HTML tidak menemukannya!
+   - Anda WAJIB mendaftarkan SETIAP fungsi interaktif langsung pada window global:
+     window.switchTab = function(tabId) { ... };
+     window.nextStep = function() { ... };
+     window.prevStep = function() { ... };
+     window.checkAnswer = function(opt) { ... };
+     window.resetSim = function() { ... };
+     window.flipCard = function(id) { ... };
+     window.pilihOpsi = function(id) { ... };
+   - DILARANG KERAS membungkus fungsi-fungsi di dalam document.addEventListener('DOMContentLoaded', ...) atau IIFE tanpa menempelkannya ke window.
+   - Pastikan nama fungsi pada onclick="..." sama persis dengan yang ada di window.
+   - Jangan gunakan class="tab-btn" atau role="tab" pada tombol kuis atau simulasi; class tersebut HANYA untuk tombol tab navigasi modul.
+
+2. TAMPILAN INTERAKTIF HIDUP (BUKAN TEKS PANJANG):
+   - Jika guru meminta materi lebih interaktif atau tidak membosankan:
+     * Ubah paragraf panjang menjadi simulator visual aktif (diagram langkah, slider parameter, saklar lampu/biner).
+     * Sediakan kartu intip analogi dunia nyata (reveal card) dengan tombol buka rahasia.
+     * Pasang kuis game berpoin dengan efek suara bawaan:
+       - Opsi benar: window.mpiPlaySound('correct'); window.mpiAddXp(25); ubah tombol jadi hijau cerah dengan penjelasan.
+       - Opsi salah: window.mpiPlaySound('wrong'); ubah tombol jadi merah muda dengan petunjuk.
+       - Selesai kuis: window.mpiPlaySound('fanfare'); window.mpiLaunchConfetti(); tampilkan dialog perayaan skor.
+
+3. RESPONSIF LAYAR HP:
+   - Gunakan CDN Tailwind CSS (<script src="https://cdn.tailwindcss.com"></script>).
+   - Seluruh tombol wajib touch-friendly dengan tinggi minimal 44px (min-h-[44px]).
+   - Tata letak satu kolom vertikal yang rapi di layar HP (360px - 414px) dan tidak ada elemen terpotong.
+
+4. FORMAT KELUARAN MURNI:
+   - Kembalikan HANYA dokumen HTML5 utuh dari <!DOCTYPE html> hingga </html> tanpa teks percakapan di luar kode.`;
+
+    const userPrompt = `Berikut adalah kode HTML Media Pembelajaran yang perlu diperbaiki:
 \`\`\`html
-${currentHtml}
+${cleanHtml}
 \`\`\`
 
 Permintaan Perbaikan Guru:
 ${revisionPrompt}
 
-PANDUAN TAMBAHAN:
-Jika perbaikan berkaitan dengan tab navigasi atau tombol yang tidak merespons, pastikan skrip pergantian tab dipasang pada window.switchTab secara global dan sinkronkan ID tombol dengan ID panel konten.
+PERHATIAN KHUSUS JAVASCRIPT:
+Pastikan SEMUA fungsi tombol (switch tab, simulasi langkah, kuis, flip card, reset) dideklarasikan langsung pada window global (window.namaFungsi = function() { ... }) agar saat diklik di HP maupun desktop LANGSUNG MERESPONS dan memberikan visual feedback nyata!
 
-Tuliskan kode HTML5 lengkap hasil penyempurnaan sekarang:`;
+Tuliskan kode dokumen HTML5 lengkap hasil perbaikan sekarang:`;
 
     const raw = await callGemini(userPrompt, systemInstruction, false);
     return sanitizeAndEnhanceHtml(raw);
