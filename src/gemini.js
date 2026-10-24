@@ -4,6 +4,7 @@
 // Gemini 3 Flash (Preview) (Bawaan GuruPro), Gemini 2.5 Pro, atau kustom manual.
 
 import { balanceExamWeights } from './examScoring.js';
+import { sanitizeAndEnhanceHtml } from './htmlEnhancer.js';
 
 export const GEMINI_MODEL_PRESETS = [
     { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash' },
@@ -955,4 +956,97 @@ Berikan skor per nomor secara adil dan total nilai akhir (0-100), serta catatan 
         catatan_guru: parsed?.catatan_guru || parsed?.catatan || 'Tugas telah diperiksa oleh AI Asesmen.',
         evaluasi_per_soal: Array.isArray(parsed?.evaluasi_per_soal) ? parsed.evaluasi_per_soal : []
     };
+}
+
+/**
+ * AI Generator Media Pembelajaran Interaktif (HTML5 + Tailwind CSS)
+ * Menghasilkan aplikasi web pembelajaran mandiri yang responsif di HP dan PC.
+ */
+export async function aiGenerateMpiHtml({
+    mapel = 'Informatika',
+    kelas = 'Kelas 7',
+    topik = '',
+    gaya = 'tab',
+    instruksiTambahan = ''
+}) {
+    if (!topik) throw new Error('Topik atau materi pembelajaran wajib diisi.');
+
+    const gayaDescriptions = {
+        tab: 'Modul Interaktif Tab Navigasi (Tab 1: Konsep Pokok & Ilustrasi; Tab 2: Eksplorasi Visual / Kartu Interaktif; Tab 3: Studi Kasus Nyata; Tab 4: Kuis Mandiri Cek Pemahaman)',
+        lab: 'Laboratorium Virtual & Eksplorasi Interaktif (Terdapat diagram visual / simulasi interaktif yang merespons klik siswa dengan penjelasan langkah demi langkah)',
+        quiz: 'Game Kuis Interaktif & Tantangan Poin (Pertanyaan bertahap, perhitungan skor otomatis secara langsung, umpan balik visual instan saat opsi dipilih, dan evaluasi hasil akhir)',
+        infografis: 'Infografis Interaktif & Alur Prosedural (Tampilan visual terstruktur dengan accordion buka-tutup, kartu rangkuman poin penting, dan glosarium interaktif)'
+    };
+
+    const deskripsiGaya = gayaDescriptions[gaya] || gayaDescriptions.tab;
+
+    const systemInstruction = `Anda adalah Pengembang Media Pembelajaran Interaktif (MPI) dan Pakar EduTech untuk jenjang SMP Kurikulum Merdeka.
+Tugas Anda adalah menulis kode aplikasi web Media Pembelajaran Interaktif (MPI) utuh dalam satu file HTML5 mandiri.
+
+PERSYARATAN WAJIB DAN KETAT:
+1. FORMAT KELUARAN:
+   - Tuliskan HANYA kode HTML5 lengkap dimulai dari <!DOCTYPE html> hingga </html>.
+   - Jangan menambahkan penjelasan di luar kode HTML.
+2. FRAMEWORK & TAMPILAN:
+   - Wajib menyertakan CDN Tailwind CSS di bagian <head>:
+     <script src="https://cdn.tailwindcss.com"></script>
+   - Wajib menyertakan meta viewport untuk HP siswa:
+     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+   - Tampilan wajib modern, bersih, kontras tinggi (WCAG AA), dan sangat rapi di layar HP (lebar 360px - 414px) maupun laptop/PC.
+   - Gunakan skema warna Tailwind yang segar dan menyenangkan (seperti indigo, sky, emerald, amber, slate).
+   - Seluruh tombol dan kontrol interaktif wajib memiliki tinggi sentuh minimal 44px (h-11 atau py-2.5 px-4) agar nyaman disentuh jari siswa di layar HP.
+3. KONTEN & STRUKTUR:
+   - Mata Pelajaran: ${mapel}
+   - Target Tingkat: ${kelas}
+   - Topik Pembelajaran: ${topik}
+   - Gaya Penyajian: ${deskripsiGaya}
+   - Konten materi harus akurat, mendidik, ringkas, mudah dipahami siswa SMP, dan tidak bertele-tele.
+4. INTERAKTIVITAS & JAVASCRIPT:
+   - Seluruh interaktivitas (pergantian tab, klik kartu, simulasi, perhitungan kuis, buka-tutup accordion) wajib ditulis dengan Vanilla JavaScript bersih di dalam tag <script> sebelum </body>.
+   - Jangan menggunakan library eksternal selain Tailwind CDN.
+   - Untuk kuis mandiri (jika ada), berikan skor instan dan penjelasan jawaban benar/salah secara langsung saat siswa memilih opsi.`;
+
+    const userPrompt = `Buatlah Media Pembelajaran Interaktif (MPI) web lengkap untuk:
+Mata Pelajaran: ${mapel}
+Target Siswa: ${kelas} (SMP)
+Topik / Materi: ${topik}
+Gaya Format: ${deskripsiGaya}
+${instruksiTambahan ? `Instruksi Tambahan Guru:\n${instruksiTambahan}\n` : ''}
+
+Tuliskan kode dokumen HTML5 mandiri selengkapnya sekarang:`;
+
+    const raw = await callGemini(userPrompt, systemInstruction, false);
+    return sanitizeAndEnhanceHtml(raw);
+}
+
+/**
+ * AI Refiner / Perbaikan Tampilan & Fitur Dokumen HTML MPI
+ * Memperbaiki tampilan HP, mempercantik CSS Tailwind, atau menambah interaksi sesuai instruksi guru.
+ */
+export async function aiRefineMpiHtml({ currentHtml, revisionPrompt }) {
+    if (!currentHtml) throw new Error('Kode HTML yang akan diperbaiki tidak ditemukan.');
+    if (!revisionPrompt) throw new Error('Instruksi perbaikan wajib diisi.');
+
+    const systemInstruction = `Anda adalah Pengembang Frontend dan Ahli UI/UX Media Pembelajaran Interaktif (MPI).
+Tugas Anda adalah memperbarui atau memperbaiki kode HTML Media Pembelajaran yang diberikan sesuai permintaan revisi guru.
+
+PEDOMAN PERBAIKAN:
+1. Pastikan perbaikan sepenuhnya responsif di layar HP siswa (360px-420px) dan laptop/desktop.
+2. Gunakan Tailwind CSS (<script src="https://cdn.tailwindcss.com"></script>).
+3. Pastikan seluruh tombol memiliki touch target minimal 44px dan teks memiliki kontras yang mudah dibaca (WCAG AA).
+4. Pertahankan seluruh materi ajar dan logika interaktif yang sudah berfungsi dengan baik, hanya ubah/tambahkan bagian yang diminta oleh guru.
+5. Kembalikan HANYA kode dokumen HTML5 lengkap dari <!DOCTYPE html> hingga </html> tanpa teks pengantar atau penutup.`;
+
+    const userPrompt = `Berikut adalah kode HTML Media Pembelajaran saat ini:
+\`\`\`html
+${currentHtml}
+\`\`\`
+
+Permintaan Perbaikan Guru:
+${revisionPrompt}
+
+Tuliskan kode HTML5 lengkap hasil penyempurnaan sekarang:`;
+
+    const raw = await callGemini(userPrompt, systemInstruction, false);
+    return sanitizeAndEnhanceHtml(raw);
 }

@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js';
 import { fetchStudentsFromDB, getCachedStudents } from './rosterData.js';
+import { sanitizeAndEnhanceHtml, openHtmlInNewTab } from './htmlEnhancer.js';
 
 let rosterStudents = [];
 let allAssignments = [];
@@ -2420,7 +2421,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 url_materi: parsed.url_materi || m.link_video || '',
                 tugas_id: parsed.tugas_id || '',
                 kategori: parsed.kategori || 'modul',
-                level: parsed.level || 'menengah'
+                level: parsed.level || 'menengah',
+                html_content: parsed.html_content || ''
             };
         }
 
@@ -2431,7 +2433,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             url_materi: url,
             tugas_id: '',
             kategori: 'modul',
-            level: 'menengah'
+            level: 'menengah',
+            html_content: ''
         };
     }
 
@@ -2561,7 +2564,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (badgeEl) {
-            if (meta.tipe === 'mpi') {
+            if (meta.tipe === 'mpi_html') {
+                badgeEl.textContent = 'MPI Interaktif (HTML)';
+                badgeEl.className = 'bg-fuchsia-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            } else if (meta.tipe === 'mpi') {
                 badgeEl.textContent = 'MPI Interaktif';
                 badgeEl.className = 'bg-indigo-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
             } else if (meta.tipe === 'presentasi') {
@@ -2576,12 +2582,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        if (meta.url_materi) {
+        if (meta.html_content) {
             if (textContainer) textContainer.classList.add('hidden');
             if (iframe) {
                 iframe.classList.remove('hidden');
                 iframe.style.minHeight = "850px";
                 iframe.style.height = "auto";
+                iframe.removeAttribute('src');
+                iframe.srcdoc = sanitizeAndEnhanceHtml(meta.html_content);
+                const modeBtn = document.getElementById('focus-btn-view-mode-text');
+                if (modeBtn) modeBtn.textContent = 'Mode Scroll Bebas';
+                currentModalHeightMode = 'scroll';
+            }
+            if (extBtn) {
+                extBtn.classList.remove('hidden');
+                extBtn.onclick = (e) => {
+                    e.preventDefault();
+                    openHtmlInNewTab(meta.html_content, mat.judul);
+                };
+            }
+        } else if (meta.url_materi) {
+            if (extBtn) {
+                extBtn.onclick = null;
+                extBtn.href = meta.url_materi;
+                extBtn.classList.remove('hidden');
+            }
+            if (textContainer) textContainer.classList.add('hidden');
+            if (iframe) {
+                iframe.classList.remove('hidden');
+                iframe.style.minHeight = "850px";
+                iframe.style.height = "auto";
+                iframe.removeAttribute('srcdoc');
                 iframe.src = getEmbedUrl(meta.url_materi, meta.tipe);
                 const modeBtn = document.getElementById('focus-btn-view-mode-text');
                 if (modeBtn) modeBtn.textContent = 'Mode Scroll Bebas';
@@ -2614,8 +2645,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         const modal = document.getElementById('student-material-focus-modal');
         const iframe = document.getElementById('focus-modal-iframe');
         if (modal) modal.classList.add('hidden');
-        if (iframe) iframe.src = 'about:blank';
+        if (iframe) {
+            iframe.removeAttribute('srcdoc');
+            iframe.src = 'about:blank';
+        }
         currentActiveFocusMaterial = null;
+    };
+
+    window.openStudentHtmlDirectInTab = (id) => {
+        const mat = allMaterials.find(m => String(m.id) === String(id));
+        if (!mat) return;
+        const meta = parseMaterialData(mat);
+        if (meta.html_content) {
+            openHtmlInNewTab(meta.html_content, mat.judul);
+        }
     };
 
     window.toggleCurrentFocusProgress = () => {
@@ -2760,7 +2803,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const matchKelas = !studentKelas || isClassMatch(m.kelas, studentKelas);
 
             // Match Tipe
-            const matchTipe = !filterTipe || matTipe === filterTipe;
+            const matchTipe = !filterTipe || matTipe === filterTipe || (filterTipe === 'mpi' && (matTipe === 'mpi_html' || matTipe === 'mpi'));
 
             return matchMapel && matchKelas && matchTipe;
         });
@@ -2777,7 +2820,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             let badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
             let badgeText = 'Modul Bacaan';
 
-            if (meta.tipe === 'mpi') {
+            if (meta.tipe === 'mpi_html') {
+                badgeClass = 'bg-fuchsia-100 text-fuchsia-950 border-fuchsia-300';
+                badgeText = 'MPI Interaktif (HTML)';
+            } else if (meta.tipe === 'mpi') {
                 badgeClass = 'bg-indigo-100 text-indigo-900 border-indigo-300';
                 badgeText = 'MPI Interaktif';
             } else if (meta.tipe === 'presentasi') {
@@ -2813,20 +2859,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2 flex-wrap">
                         <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="flex-1 min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
-                            <span>${meta.url_materi ? 'Pelajari Materi (Mode Fokus)' : 'Baca Modul Lengkap'}</span>
+                            <span>${meta.url_materi || meta.html_content ? 'Pelajari Materi (Mode Fokus)' : 'Baca Modul Lengkap'}</span>
                         </button>
                         <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="min-h-[44px] px-3 border-2 border-black rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
                             ${completed ? 'Batal Selesai' : 'Tandai Selesai'}
                         </button>
                     </div>
-                    ${meta.url_materi ? `
+                    ${meta.html_content ? `
+                        <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 pt-1">
+                            <span class="text-fuchsia-800 font-bold">Dokumen Interaktif (HTML + Tailwind)</span>
+                            <button type="button" onclick="openStudentHtmlDirectInTab('${m.id}')" class="text-indigo-600 hover:text-black underline flex items-center gap-0.5 cursor-pointer">
+                                <span>Buka Tab Baru</span> ↗
+                            </button>
+                        </div>
+                    ` : (meta.url_materi ? `
                         <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 pt-1">
                             <span class="truncate max-w-[200px]">${meta.url_materi.replace(/^https?:\/\//, '')}</span>
                             <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-black underline flex items-center gap-0.5">
                                 <span>Buka Tab Baru</span> ↗
                             </a>
                         </div>
-                    ` : ''}
+                    ` : '')}
                 </div>
             `;
             container.appendChild(card);

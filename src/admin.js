@@ -11,8 +11,11 @@ import {
     aiEvaluateSubmission,
     aiGradeQuizEssay,
     aiGenerateFormQuestions,
-    aiEvaluateFormSubmission
+    aiEvaluateFormSubmission,
+    aiGenerateMpiHtml,
+    aiRefineMpiHtml
 } from './gemini.js';
+import { sanitizeAndEnhanceHtml, openHtmlInNewTab, downloadHtmlFile } from './htmlEnhancer.js';
 import { 
     fetchStudentsFromDB, 
     addStudentToDB, 
@@ -3426,7 +3429,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 url_materi: parsed.url_materi || m.link_video || '',
                 tugas_id: parsed.tugas_id || '',
                 kategori: parsed.kategori || 'modul',
-                level: parsed.level || 'menengah'
+                level: parsed.level || 'menengah',
+                html_content: parsed.html_content || ''
             };
         }
 
@@ -3437,7 +3441,8 @@ document.addEventListener('DOMContentLoaded', () => {
             url_materi: url,
             tugas_id: '',
             kategori: 'modul',
-            level: 'menengah'
+            level: 'menengah',
+            html_content: ''
         };
     }
 
@@ -3528,7 +3533,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (badgeEl) {
-            if (meta.tipe === 'mpi') {
+            if (meta.tipe === 'mpi_html') {
+                badgeEl.textContent = 'MPI Interaktif (HTML)';
+                badgeEl.className = 'bg-fuchsia-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
+            } else if (meta.tipe === 'mpi') {
                 badgeEl.textContent = 'MPI Interaktif';
                 badgeEl.className = 'bg-indigo-600 text-white font-black text-[10px] px-2.5 py-1 rounded uppercase tracking-wider shrink-0';
             } else if (meta.tipe === 'presentasi') {
@@ -3543,12 +3551,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (meta.url_materi) {
+        if (meta.html_content) {
             if (textContainer) textContainer.classList.add('hidden');
             if (iframe) {
                 iframe.classList.remove('hidden');
                 iframe.style.minHeight = "850px";
                 iframe.style.height = "auto";
+                iframe.removeAttribute('src');
+                iframe.srcdoc = sanitizeAndEnhanceHtml(meta.html_content);
+                const modeBtn = document.getElementById('admin-preview-view-mode-text');
+                if (modeBtn) modeBtn.textContent = 'Mode Scroll Bebas';
+                currentAdminHeightMode = 'scroll';
+            }
+            if (extBtn) {
+                extBtn.classList.remove('hidden');
+                extBtn.onclick = (e) => {
+                    e.preventDefault();
+                    openHtmlInNewTab(meta.html_content, mat.judul);
+                };
+            }
+        } else if (meta.url_materi) {
+            if (extBtn) {
+                extBtn.onclick = null;
+                extBtn.href = meta.url_materi;
+                extBtn.classList.remove('hidden');
+            }
+            if (textContainer) textContainer.classList.add('hidden');
+            if (iframe) {
+                iframe.classList.remove('hidden');
+                iframe.style.minHeight = "850px";
+                iframe.style.height = "auto";
+                iframe.removeAttribute('srcdoc');
                 iframe.src = getEmbedUrl(meta.url_materi, meta.tipe);
                 const modeBtn = document.getElementById('admin-preview-view-mode-text');
                 if (modeBtn) modeBtn.textContent = 'Mode Scroll Bebas';
@@ -3624,6 +3657,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             window.closeAdminMaterialPreview();
+            if (typeof window.closeAiMpiModal === 'function') {
+                window.closeAiMpiModal();
+            }
             if (typeof window.closeLegerExportModal === 'function') {
                 window.closeLegerExportModal();
             }
@@ -3690,7 +3726,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
                 let badgeText = 'Modul Bacaan';
 
-                if (meta.tipe === 'mpi') {
+                if (meta.tipe === 'mpi_html') {
+                    badgeClass = 'bg-fuchsia-100 text-fuchsia-950 border-fuchsia-300';
+                    badgeText = 'MPI Interaktif (HTML)';
+                } else if (meta.tipe === 'mpi') {
                     badgeClass = 'bg-indigo-100 text-indigo-900 border-indigo-300';
                     badgeText = 'MPI Interaktif';
                 } else if (meta.tipe === 'presentasi') {
@@ -3723,11 +3762,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button type="button" onclick="openAdminMaterialPreview('${m.id}')" class="px-3 h-8 bg-black hover:bg-slate-800 text-white rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer">
                             Pratinjau Materi
                         </button>
-                        ${meta.url_materi ? `
+                        ${meta.html_content ? `
+                            <button type="button" onclick="openAdminHtmlDirectInTab('${m.id}')" class="text-xs font-bold text-fuchsia-700 hover:text-black underline flex items-center gap-1 cursor-pointer">
+                                <span>Buka di Tab Baru</span> ↗
+                            </button>
+                        ` : (meta.url_materi ? `
                             <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-indigo-600 hover:text-black underline flex items-center gap-1">
                                 <span>Buka Tautan Sumber</span> ↗
                             </a>
-                        ` : ''}
+                        ` : '')}
                     </div>
                 `;
                 container.appendChild(card);
@@ -3750,6 +3793,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('mat-tipe')) document.getElementById('mat-tipe').value = 'modul';
         if (document.getElementById('mat-kategori')) document.getElementById('mat-kategori').value = 'modul';
         if (document.getElementById('mat-level')) document.getElementById('mat-level').value = 'menengah';
+
+        // Reset file upload HTML
+        if (document.getElementById('mat-html-file-input')) document.getElementById('mat-html-file-input').value = '';
+        if (document.getElementById('mat-html-content-storage')) document.getElementById('mat-html-content-storage').value = '';
+        if (document.getElementById('mat-html-file-info')) document.getElementById('mat-html-file-info').textContent = 'Belum ada file dipilih';
+        if (document.getElementById('mat-html-preview-actions')) document.getElementById('mat-html-preview-actions').classList.add('hidden');
 
         // Populate tugas terkait select
         const tugasSelect = document.getElementById('mat-tugas-terkait');
@@ -3796,13 +3845,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const judul = document.getElementById('mat-judul').value.trim();
         const konten = document.getElementById('mat-konten').value.trim();
         const video = document.getElementById('mat-video').value.trim();
-        const tipe = document.getElementById('mat-tipe')?.value || (video ? detectMaterialType(video) : 'modul');
+        let tipe = document.getElementById('mat-tipe')?.value || (video ? detectMaterialType(video) : 'modul');
         const kategori = document.getElementById('mat-kategori')?.value || 'modul';
         const level = document.getElementById('mat-level')?.value || 'menengah';
         const tugasId = document.getElementById('mat-tugas-terkait')?.value || '';
+        const htmlContent = document.getElementById('mat-html-content-storage')?.value || '';
 
-        if (!judul || !konten) {
-            showCustomModal("Judul dan uraian materi wajib diisi!");
+        if (htmlContent && tipe === 'modul') {
+            tipe = 'mpi_html';
+        }
+
+        if (!judul) {
+            showCustomModal("Judul materi pembelajaran wajib diisi!");
+            return;
+        }
+
+        let finalKonten = konten;
+        if (!finalKonten && htmlContent) {
+            finalKonten = 'Media Pembelajaran Interaktif (HTML) siap dipelajari siswa.';
+        }
+
+        if (!finalKonten) {
+            showCustomModal("Uraian materi atau file HTML wajib diisi!");
             return;
         }
 
@@ -3820,7 +3884,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 level,
                 url_materi: video,
                 tugas_id: tugasId,
-                deskripsi: konten
+                deskripsi: finalKonten,
+                html_content: htmlContent || ''
             });
 
             const { error } = await supabase.from('materials').insert([{
@@ -3856,6 +3921,416 @@ document.addEventListener('DOMContentLoaded', () => {
             loadMaterials();
         } catch (e) {
             showCustomModal("Gagal menghapus: " + e.message);
+        }
+    };
+
+    window.openAdminHtmlDirectInTab = (id) => {
+        const mat = materialsList.find(m => String(m.id) === String(id));
+        if (!mat) return;
+        const meta = parseMaterialData(mat);
+        if (meta.html_content) {
+            openHtmlInNewTab(meta.html_content, mat.judul);
+        }
+    };
+
+    window.handleLocalHtmlFileUpload = (event) => {
+        const file = event?.target?.files?.[0];
+        if (!file) return;
+
+        if (!file.name.toLowerCase().endsWith('.html') && !file.name.toLowerCase().endsWith('.htm')) {
+            showCustomModal("Harap pilih file dengan format .html atau .htm");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const rawContent = e.target.result;
+            const enhanced = sanitizeAndEnhanceHtml(rawContent);
+
+            const storage = document.getElementById('mat-html-content-storage');
+            if (storage) storage.value = enhanced;
+
+            const infoEl = document.getElementById('mat-html-file-info');
+            const sizeKb = (file.size / 1024).toFixed(1);
+            if (infoEl) infoEl.textContent = `${file.name} (${sizeKb} KB)`;
+
+            const previewActions = document.getElementById('mat-html-preview-actions');
+            if (previewActions) previewActions.classList.remove('hidden');
+
+            const tipeSelect = document.getElementById('mat-tipe');
+            if (tipeSelect) tipeSelect.value = 'mpi_html';
+
+            const judulInput = document.getElementById('mat-judul');
+            if (judulInput && !judulInput.value.trim()) {
+                judulInput.value = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+            }
+
+            showCustomModal(`File "${file.name}" berhasil dimuat! Pelindung tampilan HP (Mobile Shield) & Tailwind CSS telah diaktifkan otomatis.`);
+        };
+        reader.onerror = () => {
+            showCustomModal("Gagal membaca file HTML dari komputer.");
+        };
+        reader.readAsText(file);
+    };
+
+    window.previewLoadedLocalHtml = () => {
+        const content = document.getElementById('mat-html-content-storage')?.value;
+        const judul = document.getElementById('mat-judul')?.value || 'Pratinjau File HTML';
+        if (!content) {
+            showCustomModal("Belum ada file HTML yang dimuat.");
+            return;
+        }
+        openHtmlInNewTab(content, judul);
+    };
+
+    window.clearLoadedLocalHtml = () => {
+        const fileInput = document.getElementById('mat-html-file-input');
+        if (fileInput) fileInput.value = '';
+        const storage = document.getElementById('mat-html-content-storage');
+        if (storage) storage.value = '';
+        const infoEl = document.getElementById('mat-html-file-info');
+        if (infoEl) infoEl.textContent = 'Belum ada file dipilih';
+        const previewActions = document.getElementById('mat-html-preview-actions');
+        if (previewActions) previewActions.classList.add('hidden');
+    };
+
+    // ==========================================
+    // AI STUDIO MEDIA PEMBELAJARAN INTERAKTIF (MPI)
+    // ==========================================
+    let currentAiMpiState = {
+        html: '',
+        mapel: 'Informatika',
+        kelas: 'Kelas 7',
+        topik: '',
+        device: 'mobile'
+    };
+
+    window.openAiMpiModal = () => {
+        const kelasSelect = document.getElementById('ai-mpi-kelas');
+        populateTargetClassSelect(kelasSelect, 'Semua Kelas');
+        const mapelSelect = document.getElementById('ai-mpi-mapel');
+        if (mapelSelect && currentTeacher?.mapel) {
+            mapelSelect.value = currentTeacher.mapel;
+        }
+
+        currentAiMpiState = {
+            html: '',
+            mapel: mapelSelect ? mapelSelect.value : 'Informatika',
+            kelas: kelasSelect ? kelasSelect.value : 'Semua Kelas',
+            topik: '',
+            device: 'mobile'
+        };
+
+        const topikEl = document.getElementById('ai-mpi-topik');
+        if (topikEl) topikEl.value = '';
+        const instruksiEl = document.getElementById('ai-mpi-instruksi');
+        if (instruksiEl) instruksiEl.value = '';
+        const refinePromptEl = document.getElementById('ai-mpi-refine-prompt');
+        if (refinePromptEl) refinePromptEl.value = '';
+
+        setAiMpiPreviewDevice('mobile');
+        renderAiMpiPreview();
+
+        const modal = document.getElementById('modal-ai-mpi');
+        if (modal) modal.classList.remove('hidden');
+    };
+
+    window.closeAiMpiModal = () => {
+        const modal = document.getElementById('modal-ai-mpi');
+        if (modal) modal.classList.add('hidden');
+    };
+
+    window.setAiMpiQuickPrompt = (promptText) => {
+        const el = document.getElementById('ai-mpi-refine-prompt');
+        if (el) {
+            el.value = promptText;
+            el.focus();
+        }
+    };
+
+    window.setAiMpiPreviewDevice = (device) => {
+        currentAiMpiState.device = device;
+        const btnMobile = document.getElementById('btn-viewport-mobile');
+        const btnDesktop = document.getElementById('btn-viewport-desktop');
+        const wrapper = document.getElementById('ai-mpi-frame-wrapper');
+        const iframe = document.getElementById('ai-mpi-preview-iframe');
+
+        if (device === 'mobile') {
+            if (btnMobile) {
+                btnMobile.className = 'h-9 px-3 bg-black text-white border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer';
+            }
+            if (btnDesktop) {
+                btnDesktop.className = 'h-9 px-3 bg-white text-black hover:bg-slate-100 border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer';
+            }
+            if (wrapper) {
+                wrapper.className = 'w-[375px] max-w-full h-[667px] sm:h-[720px] max-h-[82vh] rounded-[36px] border-[6px] border-black shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-white overflow-hidden transition-all duration-300';
+            }
+            if (iframe) {
+                iframe.className = 'w-full h-full border-0 block';
+            }
+        } else {
+            if (btnMobile) {
+                btnMobile.className = 'h-9 px-3 bg-white text-black hover:bg-slate-100 border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer';
+            }
+            if (btnDesktop) {
+                btnDesktop.className = 'h-9 px-3 bg-black text-white border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer';
+            }
+            if (wrapper) {
+                wrapper.className = 'w-full h-full rounded-xl border-2 border-black shadow-lg bg-white overflow-hidden transition-all duration-300';
+            }
+            if (iframe) {
+                iframe.className = 'w-full h-full min-h-[500px] border-0 block';
+            }
+        }
+    };
+
+    function renderAiMpiPreview() {
+        const emptyState = document.getElementById('ai-mpi-empty-state');
+        const loadingState = document.getElementById('ai-mpi-loading-state');
+        const frameWrapper = document.getElementById('ai-mpi-frame-wrapper');
+        const iframe = document.getElementById('ai-mpi-preview-iframe');
+        const statusBadge = document.getElementById('ai-mpi-status-badge');
+        const btnSave = document.getElementById('btn-save-ai-mpi');
+        const btnDownload = document.getElementById('btn-download-ai-mpi');
+        const codeEditor = document.getElementById('ai-mpi-code-editor');
+
+        if (!currentAiMpiState.html) {
+            if (emptyState) emptyState.classList.remove('hidden');
+            if (loadingState) loadingState.classList.add('hidden');
+            if (frameWrapper) frameWrapper.classList.add('hidden');
+            if (btnSave) btnSave.disabled = true;
+            if (btnDownload) btnDownload.disabled = true;
+            if (statusBadge) statusBadge.textContent = 'Siap membuat materi interaktif';
+            return;
+        }
+
+        if (emptyState) emptyState.classList.add('hidden');
+        if (loadingState) loadingState.classList.add('hidden');
+        if (frameWrapper) frameWrapper.classList.remove('hidden');
+        if (btnSave) btnSave.disabled = false;
+        if (btnDownload) btnDownload.disabled = false;
+
+        const sizeKb = (new Blob([currentAiMpiState.html]).size / 1024).toFixed(1);
+        if (statusBadge) {
+            statusBadge.innerHTML = `Ukuran: <b>${sizeKb} KB</b> &bull; Tailwind CSS Aktif &bull; Auto-Healer HP Aktif`;
+        }
+
+        if (codeEditor) {
+            codeEditor.value = currentAiMpiState.html;
+        }
+
+        if (iframe) {
+            iframe.removeAttribute('src');
+            iframe.srcdoc = currentAiMpiState.html;
+        }
+    }
+
+    window.runAiGenerateMpi = async () => {
+        const mapel = document.getElementById('ai-mpi-mapel')?.value || 'Informatika';
+        const kelas = document.getElementById('ai-mpi-kelas')?.value || 'Kelas 7';
+        const gaya = document.getElementById('ai-mpi-gaya')?.value || 'tab';
+        const topik = document.getElementById('ai-mpi-topik')?.value.trim();
+        const instruksiTambahan = document.getElementById('ai-mpi-instruksi')?.value.trim();
+
+        if (!topik) {
+            showCustomModal("Harap masukkan topik atau judul materi!");
+            return;
+        }
+
+        const btn = document.getElementById('btn-run-ai-mpi');
+        const emptyState = document.getElementById('ai-mpi-empty-state');
+        const loadingState = document.getElementById('ai-mpi-loading-state');
+        const frameWrapper = document.getElementById('ai-mpi-frame-wrapper');
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Membangun Web MPI...";
+        }
+
+        if (emptyState) emptyState.classList.add('hidden');
+        if (frameWrapper) frameWrapper.classList.add('hidden');
+        if (loadingState) loadingState.classList.remove('hidden');
+
+        try {
+            const html = await aiGenerateMpiHtml({
+                mapel,
+                kelas,
+                topik,
+                gaya,
+                instruksiTambahan
+            });
+
+            currentAiMpiState.html = html;
+            currentAiMpiState.mapel = mapel;
+            currentAiMpiState.kelas = kelas;
+            currentAiMpiState.topik = topik;
+
+            renderAiMpiPreview();
+            showCustomModal(`Media Pembelajaran Interaktif "${topik}" berhasil dibuat dengan Tailwind CSS & Auto-Healer! Periksa tampilannya di panel pratinjau.`);
+        } catch (e) {
+            if (emptyState) emptyState.classList.remove('hidden');
+            if (loadingState) loadingState.classList.add('hidden');
+            showCustomModal("Gagal membuat Web MPI: " + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "🚀 Generate Web MPI (HTML + Tailwind)";
+            }
+        }
+    };
+
+    window.runAiRefineMpi = async () => {
+        if (!currentAiMpiState.html) {
+            showCustomModal("Belum ada kode HTML yang dapat diperbaiki. Buat modul terlebih dahulu.");
+            return;
+        }
+
+        const revisionPrompt = document.getElementById('ai-mpi-refine-prompt')?.value.trim();
+        if (!revisionPrompt) {
+            showCustomModal("Harap ketikkan permintaan perbaikan atau pilih salah satu saran cepat!");
+            return;
+        }
+
+        const btn = document.getElementById('btn-run-refine-mpi');
+        const loadingState = document.getElementById('ai-mpi-loading-state');
+        const frameWrapper = document.getElementById('ai-mpi-frame-wrapper');
+        const loadingTitle = document.getElementById('ai-mpi-loading-title');
+        const loadingDesc = document.getElementById('ai-mpi-loading-desc');
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Memperbaiki Tampilan...";
+        }
+        if (loadingTitle) loadingTitle.textContent = 'Menerapkan Perbaikan AI...';
+        if (loadingDesc) loadingDesc.textContent = 'Menyesuaikan layout responsif, komponen Tailwind, dan logika script.';
+        if (frameWrapper) frameWrapper.classList.add('hidden');
+        if (loadingState) loadingState.classList.remove('hidden');
+
+        try {
+            const refined = await aiRefineMpiHtml({
+                currentHtml: currentAiMpiState.html,
+                revisionPrompt
+            });
+
+            currentAiMpiState.html = refined;
+            renderAiMpiPreview();
+            showCustomModal("Perbaikan berhasil diterapkan! Silakan periksa kembali tampilannya.");
+        } catch (e) {
+            renderAiMpiPreview();
+            showCustomModal("Gagal memperbaiki HTML: " + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "✨ Terapkan Perbaikan AI";
+            }
+            if (loadingTitle) loadingTitle.textContent = 'Merancang Antarmuka MPI...';
+            if (loadingDesc) loadingDesc.textContent = 'Menyusun kode HTML5, utilitas Tailwind, dan logika JavaScript interaktif.';
+        }
+    };
+
+    window.reloadAiMpiPreview = () => {
+        const iframe = document.getElementById('ai-mpi-preview-iframe');
+        if (iframe && currentAiMpiState.html) {
+            iframe.removeAttribute('src');
+            iframe.srcdoc = currentAiMpiState.html;
+        }
+    };
+
+    window.openCurrentAiMpiInTab = () => {
+        if (!currentAiMpiState.html) {
+            showCustomModal("Belum ada kode Web MPI untuk dibuka.");
+            return;
+        }
+        openHtmlInNewTab(currentAiMpiState.html, currentAiMpiState.topik || 'Media Pembelajaran');
+    };
+
+    window.downloadCurrentAiMpiHtml = () => {
+        if (!currentAiMpiState.html) {
+            showCustomModal("Belum ada kode Web MPI untuk diunduh.");
+            return;
+        }
+        const name = (currentAiMpiState.topik || 'materi_interaktif').toLowerCase().replace(/\s+/g, '_');
+        downloadHtmlFile(currentAiMpiState.html, `${name}.html`);
+    };
+
+    window.toggleAiMpiCodeEditor = () => {
+        const container = document.getElementById('ai-mpi-code-container');
+        const btn = document.getElementById('btn-toggle-mpi-code');
+        if (!container) return;
+        const isHidden = container.classList.contains('hidden');
+        if (isHidden) {
+            container.classList.remove('hidden');
+            if (btn) btn.textContent = 'Tutup Editor';
+            const editor = document.getElementById('ai-mpi-code-editor');
+            if (editor) editor.value = currentAiMpiState.html;
+        } else {
+            container.classList.add('hidden');
+            if (btn) btn.textContent = 'Buka Editor';
+        }
+    };
+
+    window.applyAiMpiCodeEditorChanges = () => {
+        const editor = document.getElementById('ai-mpi-code-editor');
+        if (!editor) return;
+        const edited = editor.value.trim();
+        if (!edited) {
+            showCustomModal("Kode HTML tidak boleh kosong!");
+            return;
+        }
+        currentAiMpiState.html = sanitizeAndEnhanceHtml(edited);
+        renderAiMpiPreview();
+        showCustomModal("Perubahan kode berhasil diterapkan ke pratinjau!");
+    };
+
+    window.saveCurrentAiMpiToMaterials = async () => {
+        if (!currentAiMpiState.html) {
+            showCustomModal("Belum ada kode Web MPI yang dapat disimpan.");
+            return;
+        }
+
+        const mapel = currentAiMpiState.mapel || currentTeacher?.mapel || 'Informatika';
+        const kelas = currentAiMpiState.kelas || 'Semua Kelas';
+        const judul = currentAiMpiState.topik || document.getElementById('ai-mpi-topik')?.value.trim() || 'Media Pembelajaran Interaktif';
+
+        const btn = document.getElementById('btn-save-ai-mpi');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Menyimpan ke Materi Siswa...";
+        }
+
+        try {
+            const structuredKonten = JSON.stringify({
+                tipe: 'mpi_html',
+                kategori: 'modul',
+                level: 'menengah',
+                url_materi: '',
+                tugas_id: '',
+                deskripsi: `Media Pembelajaran Interaktif (HTML) berstandar Kurikulum Merdeka topik "${judul}". Dilengkapi navigasi responsif dan pelindung layar HP.`,
+                html_content: currentAiMpiState.html
+            });
+
+            const { error } = await supabase.from('materials').insert([{
+                teacher_id: currentSession?.user?.id,
+                guru_id: currentTeacher?.id || currentSession?.user?.id,
+                mapel,
+                kelas,
+                judul,
+                konten: structuredKonten,
+                link_video: ''
+            }]);
+
+            if (error) throw error;
+
+            closeAiMpiModal();
+            loadMaterials();
+            showCustomModal(`Media Pembelajaran Interaktif "${judul}" berhasil disimpan dan diterbitkan untuk siswa ${kelas}!`);
+        } catch (e) {
+            showCustomModal("Gagal menyimpan Web MPI: " + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "SIMPAN KE MATERI SISWA";
+            }
         }
     };
 
