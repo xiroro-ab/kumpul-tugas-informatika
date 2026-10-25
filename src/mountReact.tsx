@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { AboutCreatorModal } from './AboutCreatorModal.tsx';
 import MpiModalContainer, { MpiViewerOptions } from './mpi/MpiModalContainer.tsx';
 import { curriculumData } from './mpi/data/curriculum.ts';
+import { generateAllMpiMaterials } from './mpi/data/mpiMaterialsGenerator.ts';
 
 let aboutRoot: any = null;
 let mpiRoot: any = null;
@@ -56,3 +57,4 @@ export function closeMpiViewer() {
 (window as any).openMpiViewer = openMpiViewer;
 (window as any).closeMpiViewer = closeMpiViewer;
 (window as any).getMpiCurriculum = () => curriculumData;
+(window as any).getMpiCurriculumMaterials = generateAllMpiMaterials;

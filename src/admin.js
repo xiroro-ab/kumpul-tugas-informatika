@@ -3735,7 +3735,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const { data, error } = await matQuery;
             if (error) throw error;
-            materialsList = data || [];
+            const dbMaterials = data || [];
+            
+            const teacherMapel = (currentTeacher?.mapel || '').trim().toLowerCase();
+            const teachesInformatika = isSuperadmin || !teacherMapel || teacherMapel.includes('informatika') || teacherMapel.includes('tik');
+
+            const getMpiMats = window.getMpiCurriculumMaterials;
+            const mpiMaterials = (teachesInformatika && typeof getMpiMats === 'function') ? getMpiMats() : [];
+            const dbMeetingIds = new Set();
+            dbMaterials.forEach(m => {
+                const meta = parseMaterialData(m);
+                if (meta.mpi_meeting_id) dbMeetingIds.add(meta.mpi_meeting_id);
+            });
+            const freshMpi = mpiMaterials.filter(m => !dbMeetingIds.has(m.mpi_meeting_id));
+            materialsList = [...dbMaterials, ...freshMpi];
 
             container.innerHTML = '';
             if (materialsList.length === 0) {
@@ -3779,10 +3792,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </span>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
-                                <button type="button" onclick="editMaterial('${m.id}')" class="text-indigo-600 hover:text-indigo-800 font-black text-xs uppercase tracking-wider flex items-center gap-0.5 cursor-pointer" title="Edit materi ini">
-                                    <span>✏️</span> Edit
-                                </button>
-                                <button type="button" onclick="deleteMaterial('${m.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-wider cursor-pointer" title="Hapus materi ini">Hapus</button>
+                                ${!m.is_mpi_curriculum ? `
+                                    <button type="button" onclick="editMaterial('${m.id}')" class="text-indigo-600 hover:text-indigo-800 font-black text-xs uppercase tracking-wider flex items-center gap-0.5 cursor-pointer" title="Edit materi ini">
+                                        <span>✏️</span> Edit
+                                    </button>
+                                    <button type="button" onclick="deleteMaterial('${m.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-wider cursor-pointer" title="Hapus materi ini">Hapus</button>
+                                ` : `
+                                    <span class="text-[10px] font-black text-cyan-700 bg-cyan-100 border border-cyan-300 px-2 py-0.5 rounded uppercase">Kurikulum Bawaan</span>
+                                `}
                             </div>
                         </div>
                         <h4 class="font-black text-lg text-black mb-2">${m.judul}</h4>
@@ -3790,12 +3807,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <button type="button" onclick="openAdminMaterialPreview('${m.id}')" class="px-3 h-8 bg-black hover:bg-slate-800 text-white rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer">
-                                Pratinjau Materi
+                            <button type="button" onclick="openAdminMaterialPreview('${m.id}')" class="px-3 h-8 ${meta.tipe === 'mpi_native' ? 'bg-cyan-600 hover:bg-cyan-500 text-white' : 'bg-black hover:bg-slate-800 text-white'} rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer">
+                                ${meta.tipe === 'mpi_native' ? '🎮 Buka Simulasi/Game' : 'Pratinjau Materi'}
                             </button>
-                            <button type="button" onclick="editMaterial('${m.id}')" class="px-3 h-8 bg-amber-300 hover:bg-amber-400 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer" title="Edit materi ini">
-                                Edit
-                            </button>
+                            ${!m.is_mpi_curriculum ? `
+                                <button type="button" onclick="editMaterial('${m.id}')" class="px-3 h-8 bg-amber-300 hover:bg-amber-400 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer" title="Edit materi ini">
+                                    Edit
+                                </button>
+                            ` : ''}
                             ${meta.tipe === 'mpi_html' ? `
                                 <button type="button" onclick="editMaterialInAiStudio('${m.id}')" class="px-2.5 h-8 bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-950 border border-fuchsia-300 rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer" title="Buka di AI Studio untuk perbaikan atau revisi AI">
                                     AI Studio
@@ -8803,162 +8822,3 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 });
-
-    // =======================================================
-    // SINKRONISASI KURIKULUM MPI INTERAKTIF KE MATERI LMS
-    // =======================================================
-    window.openSyncMpiModal = () => {
-        const modal = document.getElementById('modal-sync-mpi');
-        if (modal) modal.classList.remove('hidden');
-    };
-
-    window.closeSyncMpiModal = () => {
-        const modal = document.getElementById('modal-sync-mpi');
-        if (modal) modal.classList.add('hidden');
-    };
-
-    window.executeSyncMpiCurriculum = async () => {
-        const grade7Checked = document.getElementById('sync-mpi-grade-7')?.checked;
-        const grade8Checked = document.getElementById('sync-mpi-grade-8')?.checked;
-        const grade9Checked = document.getElementById('sync-mpi-grade-9')?.checked;
-
-        if (!grade7Checked && !grade8Checked && !grade9Checked) {
-            showCustomModal("Silakan pilih minimal satu jenjang kelas yang ingin diimpor!");
-            return;
-        }
-
-        const getCurr = window.getMpiCurriculum;
-        if (typeof getCurr !== 'function') {
-            showCustomModal("Data kurikulum MPI belum siap. Pastikan script react sudah termuat.");
-            return;
-        }
-
-        const allCurriculum = getCurr();
-        const statusBox = document.getElementById('sync-mpi-status-box');
-        const statusText = document.getElementById('sync-mpi-status-text');
-        const progressBar = document.getElementById('sync-mpi-progress-bar');
-        const btnRun = document.getElementById('btn-run-sync-mpi');
-
-        if (statusBox) statusBox.classList.remove('hidden');
-        if (btnRun) {
-            btnRun.disabled = true;
-            btnRun.innerText = "Mengimpor Data...";
-        }
-
-        try {
-            // 1. Ambil daftar materi yang sudah ada di database untuk mencegah duplikasi
-            const { data: existingMaterials, error: fetchErr } = await supabase
-                .from('materials')
-                .select('id, konten');
-            
-            if (fetchErr) throw fetchErr;
-
-            const existingMeetingIds = new Set();
-            (existingMaterials || []).forEach(m => {
-                const meta = parseMaterialData(m);
-                if (meta.mpi_meeting_id) {
-                    existingMeetingIds.add(meta.mpi_meeting_id);
-                }
-            });
-
-            // 2. Kumpulkan modul yang akan diinsert
-            const toInsert = [];
-            const selectedGrades = [];
-            if (grade7Checked) selectedGrades.push(7);
-            if (grade8Checked) selectedGrades.push(8);
-            if (grade9Checked) selectedGrades.push(9);
-
-            allCurriculum.forEach(gradeData => {
-                if (!selectedGrades.includes(gradeData.grade)) return;
-
-                gradeData.chapters.forEach(chapter => {
-                    chapter.meetings.forEach(meeting => {
-                        if (existingMeetingIds.has(meeting.id)) {
-                            // Sudah pernah diimpor, lewati agar tidak duplikat
-                            return;
-                        }
-
-                        const structuredKonten = JSON.stringify({
-                            tipe: 'mpi_native',
-                            kategori: 'modul',
-                            level: 'menengah',
-                            deskripsi: `${meeting.description}${meeting.objective ? '\n\nTujuan: ' + meeting.objective : ''}`,
-                            mpi_grade: gradeData.grade,
-                            mpi_chapter_id: chapter.id,
-                            mpi_chapter_code: chapter.code,
-                            mpi_chapter_title: chapter.title,
-                            mpi_meeting_id: meeting.id,
-                            mpi_meeting_num: meeting.number,
-                            mpi_duration: meeting.duration || '2 JP'
-                        });
-
-                        const meetingTitleLabel = meeting.number === 0 
-                            ? 'Materi Pokok Teori' 
-                            : (meeting.id.includes('evaluasi') 
-                                ? 'Evaluasi Game Berwaktu' 
-                                : (meeting.id.includes('ujian') 
-                                    ? 'Ujian Akhir Bab' 
-                                    : `Pertemuan 0${meeting.number}: ${meeting.title}`));
-
-                        toInsert.push({
-                            teacher_id: currentSession?.user?.id || null,
-                            guru_id: currentTeacher?.id || currentSession?.user?.id || null,
-                            mapel: 'Informatika',
-                            kelas: String(gradeData.grade),
-                            judul: `[${chapter.code}] ${meetingTitleLabel}`,
-                            konten: structuredKonten,
-                            link_video: ''
-                        });
-                    });
-                });
-            });
-
-            if (toInsert.length === 0) {
-                if (statusText) statusText.innerText = "Semua modul untuk kelas yang dipilih sudah ada di database!";
-                if (progressBar) progressBar.style.width = '100%';
-                setTimeout(() => {
-                    closeSyncMpiModal();
-                    showCustomModal("Seluruh modul MPI untuk kelas yang dipilih sudah terdaftar sebelumnya di database.");
-                    if (btnRun) {
-                        btnRun.disabled = false;
-                        btnRun.innerText = "⚡ Mulai Impor ke LMS";
-                    }
-                }, 1000);
-                return;
-            }
-
-            // 3. Batch insert ke Supabase (20 item per batch)
-            const batchSize = 20;
-            const totalBatches = Math.ceil(toInsert.length / batchSize);
-
-            for (let i = 0; i < totalBatches; i++) {
-                const chunk = toInsert.slice(i * batchSize, (i + 1) * batchSize);
-                if (statusText) statusText.innerText = `Menyimpan batch ${i + 1} dari ${totalBatches} (${chunk.length} modul)...`;
-                const pct = Math.round(((i + 1) / totalBatches) * 100);
-                if (progressBar) progressBar.style.width = `${pct}%`;
-
-                const { error: insertErr } = await supabase.from('materials').insert(chunk);
-                if (insertErr) throw insertErr;
-            }
-
-            if (statusText) statusText.innerText = `Selesai! Berhasil mengimpor ${toInsert.length} modul interaktif.`;
-            setTimeout(async () => {
-                closeSyncMpiModal();
-                if (btnRun) {
-                    btnRun.disabled = false;
-                    btnRun.innerText = "⚡ Mulai Impor ke LMS";
-                }
-                showCustomModal(`Selamat! Berhasil mendaftarkan ${toInsert.length} modul dan game interaktif MPI ke dalam materi pembelajaran LMS.`);
-                await loadMaterials();
-            }, 800);
-
-        } catch (err) {
-            console.error("Gagal sinkronisasi materi MPI:", err);
-            if (statusText) statusText.innerText = `Terjadi kesalahan: ${err.message}`;
-            if (btnRun) {
-                btnRun.disabled = false;
-                btnRun.innerText = "⚡ Mulai Impor ke LMS";
-            }
-            showCustomModal("Gagal mengimpor modul MPI: " + err.message);
-        }
-    };

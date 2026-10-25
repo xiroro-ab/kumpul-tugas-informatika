@@ -2794,7 +2794,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const { data, error } = await supabase.from('materials').select('*').order('created_at', { ascending: false });
             if (error) throw error;
-            allMaterials = data || [];
+            const dbMaterials = data || [];
+            
+            const getMpiMats = window.getMpiCurriculumMaterials;
+            const mpiMaterials = typeof getMpiMats === 'function' ? getMpiMats() : [];
+            const dbMeetingIds = new Set();
+            dbMaterials.forEach(m => {
+                const meta = parseMaterialData(m);
+                if (meta.mpi_meeting_id) dbMeetingIds.add(meta.mpi_meeting_id);
+            });
+            const freshMpi = mpiMaterials.filter(m => !dbMeetingIds.has(m.mpi_meeting_id));
+            allMaterials = [...dbMaterials, ...freshMpi];
 
             // Isi filter mapel secara dinamis tanpa menghapus pilihan yang sedang aktif
             const currentSelectedMapel = (filterSelect?.value || '').trim();

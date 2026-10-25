@@ -256,7 +256,6 @@
                         <select id="filter-materi-tipe" onchange="filterStudentMaterials()" class="w-full sm:w-44 h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer">
                             <option value="">Semua Tipe Media</option>
                             <option value="mpi">MPI Interaktif</option>
-                            <option value="mpi_native">🎮 Wahana Game &amp; Modul</option>
                             <option value="presentasi">Slide Presentasi</option>
                             <option value="video">Video Pembelajaran</option>
                             <option value="modul">Modul Bacaan</option>
@@ -278,24 +277,45 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <!-- Card Web MPI -->
-                        <div id="student-hub-mpi-card" class="bg-gradient-to-br from-indigo-900 via-slate-900 to-cyan-950 text-white border-2 border-black rounded-xl p-4 flex flex-col justify-between gap-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                        <div id="student-hub-mpi-card" class="bg-white border-2 border-black rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                             <div>
-                                <div class="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-                                    <span class="bg-cyan-400 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded uppercase tracking-wider">Wahana MPI Terintegrasi</span>
-                                    <span class="text-[10px] font-mono text-cyan-300 font-bold">Kelas 7, 8, 9</span>
+                                <div class="flex items-center justify-between gap-2 mb-1.5">
+                                    <span class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase">Web MPI Interaktif</span>
+                                    <span class="text-[10px] font-bold text-slate-500">Informatika</span>
                                 </div>
-                                <h5 class="font-black text-sm text-white uppercase tracking-tight">Media Pembelajaran Interaktif (MPI) Informatika</h5>
-                                <p class="text-[11px] text-slate-300 font-medium mt-1 leading-relaxed">Laboratorium virtual, simulasi coding, game edukatif berwaktu, asesmen bab, dan Leaderboard skor langsung di LMS.</p>
+                                <h5 class="font-black text-xs sm:text-sm text-black uppercase">Media Pembelajaran Interaktif (MPI)</h5>
+                                <p class="text-[11px] text-slate-600 font-medium mt-1 leading-snug">Laboratorium simulasi coding, visualisasi konsep komputer, dan game edukatif.</p>
                             </div>
-                            <div class="flex items-center gap-2 pt-1">
-                                <button type="button" onclick="if (window.openMpiViewer) { window.openMpiViewer({ mode: 'explorer' }); } else { openStudentMaterialDirect('https://mpi-informatika.vercel.app/', 'Media Pembelajaran Interaktif (MPI) Informatika', 'mpi'); }" class="flex-1 min-h-[38px] bg-cyan-400 hover:bg-cyan-300 text-slate-950 border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                                    <span>🎮 Buka Wahana Interaktif</span>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="openStudentMaterialDirect('https://mpi-informatika.vercel.app/', 'Media Pembelajaran Interaktif (MPI) Informatika', 'mpi')" class="flex-1 h-9 bg-indigo-600 hover:bg-indigo-700 text-white border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                                    Buka di LMS
                                 </button>
-                                <button type="button" onclick="if (window.openMpiViewer) { window.openMpiViewer({ mode: 'leaderboard' }); }" class="min-h-[38px] px-3 bg-amber-400 hover:bg-amber-300 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" title="Lihat Peringkat Skor Tertinggi Game">
-                                    <span>🏆 Skor</span>
-                                </button>
+                                <a href="https://mpi-informatika.vercel.app/" target="_blank" rel="noopener noreferrer" class="h-9 px-3 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 transition" title="Buka di tab baru">
+                                    Tab Baru ↗
+                                </a>
                             </div>
                         </div>
+
+                        <!-- Card Web Presentasi -->
+                        <div id="student-hub-presentasi-card" class="bg-white border-2 border-black rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div>
+                                <div class="flex items-center justify-between gap-2 mb-1.5">
+                                    <span class="bg-amber-400 text-black border border-black font-black text-[10px] px-2 py-0.5 rounded uppercase">Slide Presentasi</span>
+                                    <span class="text-[10px] font-bold text-slate-500">Semua Bab</span>
+                                </div>
+                                <h5 class="font-black text-xs sm:text-sm text-black uppercase">Bank Slide Presentasi Guru</h5>
+                                <p class="text-[11px] text-slate-600 font-medium mt-1 leading-snug">Koleksi slide tayangan materi ajar bapak/ibu guru untuk belajar mandiri di rumah.</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="openStudentMaterialDirect('https://web-presentasi58.vercel.app/', 'Bank Slide Presentasi Guru SMPN 58', 'presentasi')" class="flex-1 h-9 bg-amber-400 hover:bg-amber-500 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                                    Buka di LMS
+                                </button>
+                                <a href="https://web-presentasi58.vercel.app/" target="_blank" rel="noopener noreferrer" class="h-9 px-3 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-lg font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 transition" title="Buka di tab baru">
+                                    Tab Baru ↗
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="student-materials-list" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
