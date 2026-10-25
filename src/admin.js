@@ -13,6 +13,7 @@ import {
     aiGenerateFormQuestions,
     aiEvaluateFormSubmission,
     aiGenerateMpiHtml,
+    aiGenerateMpiFromRpmHtml,
     aiRefineMpiHtml,
     aiEnhancePrompt
 } from './gemini.js';
@@ -3777,16 +3778,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                     AI Studio
                                 </button>
                             ` : ''}
+                            ${meta.html_content ? `
+                                <button type="button" onclick="openAdminHtmlDirectInTab('${m.id}')" class="px-2.5 h-8 bg-white hover:bg-slate-100 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka materi di tab baru">
+                                    <span>Buka di Tab Baru</span> ↗
+                                </button>
+                            ` : (meta.url_materi ? `
+                                <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="px-2.5 h-8 bg-white hover:bg-slate-100 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka tautan sumber di tab baru">
+                                    <span>Buka Tautan Sumber</span> ↗
+                                </a>
+                            ` : '')}
                         </div>
-                        ${meta.html_content ? `
-                            <button type="button" onclick="openAdminHtmlDirectInTab('${m.id}')" class="text-xs font-bold text-fuchsia-700 hover:text-black underline flex items-center gap-1 cursor-pointer">
-                                <span>Buka di Tab Baru</span> ↗
-                            </button>
-                        ` : (meta.url_materi ? `
-                            <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-indigo-600 hover:text-black underline flex items-center gap-1">
-                                <span>Buka Tautan Sumber</span> ↗
-                            </a>
-                        ` : '')}
                     </div>
                 `;
                 container.appendChild(card);
@@ -4351,6 +4352,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const difEl = document.getElementById('ai-mpi-diferensiasi');
         if (difEl) difEl.value = 'reguler';
 
+        // Inisialisasi kontrol mode RPM
+        const rpmKelasSelect = document.getElementById('ai-mpi-rpm-kelas');
+        if (rpmKelasSelect) {
+            populateTargetClassSelect(rpmKelasSelect, 'Semua Kelas');
+            if (kelasSelect) rpmKelasSelect.value = kelasSelect.value;
+        }
+        const rpmMapelSelect = document.getElementById('ai-mpi-rpm-mapel');
+        if (rpmMapelSelect && mapelSelect) {
+            rpmMapelSelect.value = mapelSelect.value;
+        }
+        const rpmContentEl = document.getElementById('ai-mpi-rpm-content');
+        if (rpmContentEl) rpmContentEl.value = '';
+        const rpmTopikEl = document.getElementById('ai-mpi-rpm-topik');
+        if (rpmTopikEl) rpmTopikEl.value = '';
+        const rpmInstruksiEl = document.getElementById('ai-mpi-rpm-instruksi');
+        if (rpmInstruksiEl) rpmInstruksiEl.value = '';
+        const rpmFileInfoEl = document.getElementById('ai-mpi-rpm-file-info');
+        if (rpmFileInfoEl) rpmFileInfoEl.textContent = 'Belum ada file dipilih';
+        const rpmFileInput = document.getElementById('ai-mpi-rpm-file-input');
+        if (rpmFileInput) rpmFileInput.value = '';
+
+        switchAiMpiSourceMode('topic');
         setAiMpiPreviewDevice('mobile');
         renderAiMpiPreview();
 
@@ -4456,6 +4479,166 @@ document.addEventListener('DOMContentLoaded', () => {
             iframe.srcdoc = currentAiMpiState.html;
         }
     }
+
+    window.switchAiMpiSourceMode = (mode) => {
+        const tabTopic = document.getElementById('tab-src-topic');
+        const tabRpm = document.getElementById('tab-src-rpm');
+        const panelTopic = document.getElementById('ai-mpi-panel-topic');
+        const panelRpm = document.getElementById('ai-mpi-panel-rpm');
+
+        if (mode === 'rpm') {
+            if (tabTopic) {
+                tabTopic.className = 'h-9 px-3 bg-transparent text-slate-700 hover:text-black border-2 border-transparent font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer';
+            }
+            if (tabRpm) {
+                tabRpm.className = 'h-9 px-3 bg-emerald-400 text-black border-2 border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer';
+            }
+            if (panelTopic) panelTopic.classList.add('hidden');
+            if (panelRpm) panelRpm.classList.remove('hidden');
+
+            const rpmKelas = document.getElementById('ai-mpi-rpm-kelas');
+            if (rpmKelas && (!rpmKelas.options || rpmKelas.options.length <= 1)) {
+                populateTargetClassSelect(rpmKelas, 'Semua Kelas');
+            }
+        } else {
+            if (tabTopic) {
+                tabTopic.className = 'h-9 px-3 bg-white text-black border-2 border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer';
+            }
+            if (tabRpm) {
+                tabRpm.className = 'h-9 px-3 bg-transparent text-slate-700 hover:text-black border-2 border-transparent font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer';
+            }
+            if (panelTopic) panelTopic.classList.remove('hidden');
+            if (panelRpm) panelRpm.classList.add('hidden');
+        }
+    };
+
+    window.openAiMpiFromRpmModal = () => {
+        openAiMpiModal();
+        switchAiMpiSourceMode('rpm');
+    };
+
+    window.handleRpmFileUpload = (file) => {
+        if (!file) return;
+        const infoEl = document.getElementById('ai-mpi-rpm-file-info');
+        const textarea = document.getElementById('ai-mpi-rpm-content');
+        const topikInput = document.getElementById('ai-mpi-rpm-topik');
+        const mapelSelect = document.getElementById('ai-mpi-rpm-mapel');
+        const kelasSelect = document.getElementById('ai-mpi-rpm-kelas');
+
+        if (infoEl) {
+            const sizeKb = (file.size / 1024).toFixed(1);
+            infoEl.innerHTML = `<span class="text-emerald-700 font-black">✓ ${file.name}</span> (${sizeKb} KB)`;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            if (textarea) textarea.value = text;
+
+            // Auto-ekstraksi Topik / Materi Pokok jika ada
+            const topikMatch = text.match(/(?:Topik|Materi Pokok|Judul Materi|Materi)\s*[:=]\s*([^\r\n<]+)/i) ||
+                               text.match(/<h[12][^>]*>([^<]+)<\/h[12]>/i);
+            if (topikMatch && topikInput && !topikInput.value.trim()) {
+                topikInput.value = topikMatch[1].trim();
+            }
+
+            // Auto-ekstraksi Mapel jika ada
+            const mapelMatch = text.match(/(?:Mata Pelajaran|Mapel)\s*[:=]\s*([^\r\n<]+)/i);
+            if (mapelMatch && mapelSelect) {
+                const detectedMapel = mapelMatch[1].trim().toLowerCase();
+                for (let opt of mapelSelect.options) {
+                    if (detectedMapel.includes(opt.value.toLowerCase())) {
+                        mapelSelect.value = opt.value;
+                        break;
+                    }
+                }
+            }
+
+            // Auto-ekstraksi Kelas jika ada
+            const kelasMatch = text.match(/(?:Kelas|Fase)\s*[:=]\s*([^\r\n<]+)/i);
+            if (kelasMatch && kelasSelect) {
+                const detectedKelas = kelasMatch[1].trim().toLowerCase();
+                for (let opt of kelasSelect.options) {
+                    if (detectedKelas.includes(opt.value.toLowerCase())) {
+                        kelasSelect.value = opt.value;
+                        break;
+                    }
+                }
+            }
+        };
+        reader.onerror = () => {
+            showCustomModal("Gagal membaca file: " + (reader.error?.message || "Format tidak didukung"));
+        };
+        reader.readAsText(file);
+    };
+
+    window.runAiGenerateMpiFromRpm = async () => {
+        const rpmContent = document.getElementById('ai-mpi-rpm-content')?.value.trim();
+        if (!rpmContent) {
+            showCustomModal("Harap unggah file RPM atau tempelkan teks/HTML dokumen RPM terlebih dahulu!");
+            return;
+        }
+
+        const mapel = document.getElementById('ai-mpi-rpm-mapel')?.value || 'Informatika';
+        const kelas = document.getElementById('ai-mpi-rpm-kelas')?.value || 'Kelas 7';
+        let topik = document.getElementById('ai-mpi-rpm-topik')?.value.trim();
+        const instruksiTambahan = document.getElementById('ai-mpi-rpm-instruksi')?.value.trim();
+
+        if (!topik) {
+            const m = rpmContent.match(/(?:Topik|Materi Pokok|Judul|Bab)\s*[:=]\s*([^\r\n<]+)/i) || rpmContent.match(/<h[12][^>]*>([^<]+)<\/h[12]>/i);
+            topik = m ? m[1].trim() : 'Materi Pembelajaran';
+            if (document.getElementById('ai-mpi-rpm-topik')) {
+                document.getElementById('ai-mpi-rpm-topik').value = topik;
+            }
+        }
+
+        const btn = document.getElementById('btn-run-ai-mpi-rpm');
+        const emptyState = document.getElementById('ai-mpi-empty-state');
+        const loadingState = document.getElementById('ai-mpi-loading-state');
+        const frameWrapper = document.getElementById('ai-mpi-frame-wrapper');
+        const loadingTitle = document.getElementById('ai-mpi-loading-title');
+        const loadingDesc = document.getElementById('ai-mpi-loading-desc');
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "Membaca & Membangun MPI dari RPM...";
+        }
+
+        if (emptyState) emptyState.classList.add('hidden');
+        if (frameWrapper) frameWrapper.classList.add('hidden');
+        if (loadingState) loadingState.classList.remove('hidden');
+        if (loadingTitle) loadingTitle.textContent = 'Membaca Dokumen RPM...';
+        if (loadingDesc) loadingDesc.textContent = 'Menyusun Web MPI interaktif berdasarkan skenario Kegiatan Awal, Inti, Penutup, dan Asesmen RPM.';
+
+        try {
+            const html = await aiGenerateMpiFromRpmHtml({
+                rpmContent,
+                topik,
+                mapel,
+                kelas,
+                instruksiTambahan
+            });
+
+            currentAiMpiState.html = html;
+            currentAiMpiState.mapel = mapel;
+            currentAiMpiState.kelas = kelas;
+            currentAiMpiState.topik = topik;
+
+            renderAiMpiPreview();
+            showCustomModal(`Web MPI berdasarkan RPM "${topik}" berhasil dibuat! Silakan coba langsung pada pratinjau atau buka di tab baru.`);
+        } catch (e) {
+            if (emptyState) emptyState.classList.remove('hidden');
+            if (loadingState) loadingState.classList.add('hidden');
+            showCustomModal("Gagal membuat Web MPI dari RPM: " + e.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = "🚀 Generate Web MPI dari RPM";
+            }
+            if (loadingTitle) loadingTitle.textContent = 'Merancang Antarmuka MPI...';
+            if (loadingDesc) loadingDesc.textContent = 'Menyusun kode HTML5 mandiri bertema Neo-Brutalism dan JavaScript interaktif.';
+        }
+    };
 
     window.runAiGenerateMpi = async () => {
         const mapel = document.getElementById('ai-mpi-mapel')?.value || 'Informatika';

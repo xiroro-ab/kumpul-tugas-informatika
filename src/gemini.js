@@ -1022,6 +1022,7 @@ export async function aiGenerateMpiHtml({
     return sanitizeAndEnhanceHtml(raw);
 }
 
+
 /**
  */
 export async function aiEnhancePrompt({
@@ -1070,6 +1071,66 @@ export async function aiRefineMpiHtml({ currentHtml, revisionPrompt }) {
     if (!revisionPrompt) throw new Error('Instruksi perbaikan wajib diisi.');
 
     const promptText = 'Revisi website pembelajaran interaktif berikut sesuai instruksi. Pertahankan tema Neo Brutalism. Output LANGSUNG kode HTML lengkap, tanpa markdown.\n\nINSTRUKSI: ' + revisionPrompt + '\n\nWEBSITE:\n' + currentHtml;
+
+    const raw = await callGemini(promptText, '', false);
+    return sanitizeAndEnhanceHtml(raw);
+}
+
+/**
+ * AI Generator Media Pembelajaran Interaktif (MPI) Berdasarkan Dokumen RPM
+ * Membaca dokumen RPM (Rencana Pembelajaran Mendalam / Modul Ajar) dan menyusun Web MPI interaktif.
+ */
+export async function aiGenerateMpiFromRpmHtml({
+    rpmContent,
+    topik = '',
+    mapel = 'Informatika',
+    kelas = 'Kelas 7',
+    instruksiTambahan = ''
+}) {
+    if (!rpmContent || !rpmContent.trim()) {
+        throw new Error('Dokumen atau isi teks RPM wajib diisi atau diunggah.');
+    }
+
+    const promptText = [
+        'Buat SATU file HTML website pembelajaran INTERAKTIF untuk SISWA berdasarkan dokumen RPM (Rencana Pembelajaran Mendalam / Modul Ajar) berikut.',
+        'Website ini untuk siswa belajar mandiri, BUKAN dokumen guru.',
+        '',
+        '=== STRUKTUR WAJIB ===',
+        '1. NAVIGASI ATAS / SIDEBAR INTERAKTIF: Header sticky dengan navigasi tab horizontal atau panel sidebar yang PASTI BISA DIKLIK (Beranda, Tujuan, Pertemuan 1/2/dst, Lab Game Interaktif, Evaluasi per Pertemuan).',
+        '2. TIAP PERTEMUAN berisi 3 section berurutan: Kegiatan Awal, Kegiatan Inti, Kegiatan Penutup dengan label yang jelas.',
+        '3. LABEL kegiatan HARUS sama persis dengan di RPM (misal: "Kegiatan Awal", "Fase 1: Orientasi", dll) agar selaras dengan skenario ajar guru.',
+        '4. GAME EDUKASI: Minimal 1 permainan edukatif interaktif dengan JavaScript murni (tebak istilah, teka-teki logika, simulasi mini, atau kartu analogi).',
+        '5. EVALUASI: Kuis interaktif per pertemuan, hitung skor total otomatis di akhir kuis, dan sediakan umpan balik instan tanpa membocorkan kunci jawaban di awal.',
+        '',
+        '=== VISUAL & INTERAKTIVITAS MAKSIMAL ===',
+        'Jika RPM menyebutkan video, gambar, atau ilustrasi:',
+        'BUAT SIMULASI VISUAL interaktif atau diagram SVG/Canvas interaktif bergerak dengan HTML, CSS, dan JavaScript murni (BUKAN embed video eksternal).',
+        'Siswa dapat menekan tombol langkah, menggeser slider/kontrol, atau berinteraksi langsung.',
+        '',
+        '=== ISI PER BAGIAN DARI RPM ===',
+        'A. KEGIATAN AWAL: Pertanyaan pemantik atau asesmen diagnostik dari RPM dibungkus dalam kuis interaktif atau tebak konsep pembuka.',
+        'B. KEGIATAN INTI: Eksplorasi konsep terarah langkah demi langkah dilengkapi lab simulasi visual dinamis.',
+        'C. KEGIATAN PENUTUP: Refleksi mandiri siswa (pilihan emotikon kepahaman atau slider penilaian diri).',
+        'D. EVALUASI: Soal asesmen sumatif dari RPM disajikan per pertemuan dengan perhitungan skor otomatis.',
+        '',
+        '=== GAYA & TEKNIS (NEO-BRUTALISM) ===',
+        '- Neo-Brutalism: border 4px hitam (#000), shadow offset 6px 6px 0 #000 atau 4px 4px 0 #000, sudut rounded-xl',
+        '- Warna kontras: #FFD700, #FF6B6B, #4ECDC4, #6366F1, #000, #fff',
+        '- Satu file HTML utuh, inline CSS (<style>) dan inline JavaScript (<script>) murni',
+        '- ZERO DEPENDENCIES (tidak memerlukan CDN atau library eksternal, jalan 100% offline)',
+        '- Pastikan SEMUA fungsi navigasi tab dan tombol simulasi/kuis dideklarasikan langsung pada window global atau event listener agar pasti berfungsi saat diklik',
+        '- Notifikasi menggunakan div kustom di dalam halaman (bukan alert/confirm bawaan browser)',
+        '- Responsif di layar HP (360px - 414px) maupun laptop/desktop',
+        '- Output LANGSUNG <!DOCTYPE html> tanpa markdown, tanpa teks pengantar lain',
+        '',
+        'MATA PELAJARAN: ' + mapel,
+        'TARGET KELAS: ' + kelas,
+        'TOPIK: ' + (topik || 'Sesuai Dokumen RPM'),
+        instruksiTambahan ? ('INSTRUKSI TAMBAHAN GURU: ' + instruksiTambahan) : '',
+        '',
+        '=== DOKUMEN RPM GURU ===',
+        rpmContent
+    ].filter(Boolean).join('\n');
 
     const raw = await callGemini(promptText, '', false);
     return sanitizeAndEnhanceHtml(raw);

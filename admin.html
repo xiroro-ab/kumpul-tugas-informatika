@@ -317,6 +317,9 @@
                             <p class="text-black font-bold text-xs md:text-sm mt-0.5">Kelola ringkasan materi, modul modul belajar, dan video untuk siswa.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+                            <button type="button" onclick="openAiMpiFromRpmModal()" class="flex-1 sm:flex-none h-11 bg-emerald-400 hover:bg-emerald-300 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer" title="Konversi dokumen RPM menjadi Web MPI interaktif">
+                                📄 Web MPI dari RPM
+                            </button>
                             <button type="button" onclick="openAiMpiModal()" class="flex-1 sm:flex-none h-11 bg-fuchsia-400 hover:bg-fuchsia-300 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
                                 🎮 AI Buat Web MPI
                             </button>
@@ -1625,9 +1628,22 @@
                         <div class="flex items-center justify-between">
                             <span class="font-black text-xs uppercase text-black tracking-wider flex items-center gap-1.5">
                                 <span class="w-5 h-5 rounded-full bg-fuchsia-400 border border-black flex items-center justify-center text-[10px] font-black">1</span>
-                                Konfigurasi Pembelajaran
+                                Sumber &amp; Konfigurasi
                             </span>
                         </div>
+
+                        <!-- Mode Switcher: Topik vs Dokumen RPM -->
+                        <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-200 border-2 border-black rounded-xl">
+                            <button type="button" id="tab-src-topic" onclick="switchAiMpiSourceMode('topic')" class="h-9 px-3 bg-white text-black border-2 border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer">
+                                <span>💡 Dari Topik</span>
+                            </button>
+                            <button type="button" id="tab-src-rpm" onclick="switchAiMpiSourceMode('rpm')" class="h-9 px-3 bg-transparent text-slate-700 hover:text-black border-2 border-transparent font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer">
+                                <span>📄 Baca Dokumen RPM</span>
+                            </button>
+                        </div>
+
+                        <!-- Panel 1A: Buat dari Topik Pembelajaran -->
+                        <div id="ai-mpi-panel-topic" class="space-y-3">
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <div>
@@ -1735,6 +1751,72 @@
                         <button type="button" id="btn-run-ai-mpi" onclick="runAiGenerateMpi()" class="w-full h-11 bg-fuchsia-400 hover:bg-fuchsia-300 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2 cursor-pointer">
                             <span>🚀 Generate Web MPI Interaktif</span>
                         </button>
+                        </div>
+
+                        <!-- Panel 1B: Buat dari Dokumen RPM (Kurikulum Merdeka) -->
+                        <div id="ai-mpi-panel-rpm" class="hidden space-y-3">
+                            <!-- Area Upload Dokumen RPM -->
+                            <div class="border-2 border-dashed border-black rounded-xl p-3.5 bg-emerald-50/70 text-center hover:bg-emerald-50 transition">
+                                <input type="file" id="ai-mpi-rpm-file-input" accept=".html,.htm,.txt,.md,.doc,.docx" class="hidden" onchange="if(this.files && this.files[0]) handleRpmFileUpload(this.files[0])">
+                                <label for="ai-mpi-rpm-file-input" class="cursor-pointer flex flex-col items-center gap-1">
+                                    <span class="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-xl font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                        📁
+                                    </span>
+                                    <span class="text-xs font-black text-black uppercase mt-1">Unggah Dokumen RPM</span>
+                                    <span class="text-[10px] font-bold text-slate-600">Pilih file RPM hasil generate (.html, .htm, .txt, .md, .docx)</span>
+                                </label>
+                                <div id="ai-mpi-rpm-file-info" class="text-[11px] font-bold text-slate-700 mt-2">
+                                    Belum ada file dipilih
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-[11px] font-black uppercase text-black">Isi Dokumen RPM (HTML / Teks)</label>
+                                    <button type="button" onclick="document.getElementById('ai-mpi-rpm-content').value = ''; document.getElementById('ai-mpi-rpm-file-info').textContent = 'Belum ada file dipilih';" class="text-[10px] font-bold text-red-600 hover:text-black cursor-pointer">
+                                        Kosongkan
+                                    </button>
+                                </div>
+                                <textarea id="ai-mpi-rpm-content" rows="5" placeholder="Isi dokumen RPM akan terisi otomatis saat unggah file, atau tempelkan (paste) langsung teks / kode HTML RPM Kurikulum Merdeka di sini..." class="w-full p-2.5 border-2 border-black rounded-xl font-mono text-[11px] bg-slate-50 focus:bg-white outline-none"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-[11px] font-black uppercase text-black mb-1">Mata Pelajaran</label>
+                                    <select id="ai-mpi-rpm-mapel" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer">
+                                        <option value="Informatika">Informatika</option>
+                                        <option value="Matematika">Matematika</option>
+                                        <option value="IPA">IPA</option>
+                                        <option value="IPS">IPS</option>
+                                        <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                                        <option value="Bahasa Inggris">Bahasa Inggris</option>
+                                        <option value="PAI">PAI</option>
+                                        <option value="PPKn">PPKn</option>
+                                        <option value="PJOK">PJOK</option>
+                                        <option value="Seni Budaya">Seni Budaya</option>
+                                        <option value="Prakarya">Prakarya</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-black uppercase text-black mb-1">Target Kelas</label>
+                                    <select id="ai-mpi-rpm-kelas" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white cursor-pointer"></select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-black uppercase text-black mb-1">Topik / Judul Pembelajaran</label>
+                                <input type="text" id="ai-mpi-rpm-topik" placeholder="Otomatis diekstrak dari RPM atau ketik judul materi..." class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-black uppercase text-black mb-1">Instruksi Tambahan Guru (Opsional)</label>
+                                <textarea id="ai-mpi-rpm-instruksi" rows="2" placeholder="Contoh: Fokuskan pada simulasi interaktif kegiatan inti dan kuis asesmen..." class="w-full p-2.5 border-2 border-black rounded-xl font-medium text-xs bg-slate-50 focus:bg-white outline-none"></textarea>
+                            </div>
+
+                            <button type="button" id="btn-run-ai-mpi-rpm" onclick="runAiGenerateMpiFromRpm()" class="w-full h-11 bg-emerald-400 hover:bg-emerald-300 text-black border-2 border-black font-black text-xs uppercase tracking-wider rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-2 cursor-pointer">
+                                <span>🚀 Generate Web MPI dari RPM</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Section 2: Panel Revisi / Perbaikan Tampilan AI (Aktif setelah ada kode) -->
