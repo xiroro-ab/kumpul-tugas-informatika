@@ -972,142 +972,53 @@ export async function aiGenerateMpiHtml({
 }) {
     if (!topik) throw new Error('Topik atau materi pembelajaran wajib diisi.');
 
-    const gayaDescriptions = {
-        tab: 'Modul Interaktif Tab Navigasi (Beranda, Tujuan, Lab Visual & Materi, Game Interaktif, Evaluasi Mandiri)',
-        lab: 'Laboratorium Virtual & Eksplorasi Interaktif (Terdapat diagram visual dinamis dan simulasi interaktif yang merespons klik/slider siswa dengan penjelasan langkah demi langkah)',
-        quiz: 'Game Kuis Interaktif & Tantangan Poin (Pertanyaan bertahap, perhitungan skor otomatis, sound effect, dan konfeti perayaan)',
-        infografis: 'Infografis Interaktif & Alur Prosedural (Tampilan visual terstruktur dengan kartu interaktif, alur proses animasi, dan glosarium istilah)'
+    const diferensiasiInfo = {
+        remedial: 'Tingkat Pemula / Remedial: Kalimat sederhana bersahabat, analogi konkret, dan langkah mikro yang mudah dicerna.',
+        reguler: 'Tingkat Reguler: Standar Capaian Pembelajaran Kurikulum Merdeka Fase D, memadukan teori terapan dan visual interaktif.',
+        hots: 'Tingkat Pengayaan (HOTS): Mendorong analisis kritis dan pemecahan masalah tingkat tinggi.'
     };
+    const difDesc = diferensiasiInfo[diferensiasi] || diferensiasiInfo.reguler;
 
-    const diferensiasiDescriptions = {
-        remedial: 'Tingkat Pemula / Remedial: Fokus pada 3 konsep inti mendasar, kalimat sederhana bersahabat, analogi konkret nyata, dan langkah mikro yang mudah dicerna.',
-        reguler: 'Tingkat Reguler: Standar Capaian Pembelajaran Kurikulum Merdeka Fase D, memadukan teori terapan, eksplorasi visual dinamis, dan studi kasus.',
-        hots: 'Tingkat Pengayaan (HOTS): Mendorong analisis kritis, pemecahan masalah komputasional tingkat tinggi, dan evaluasi alternatif solusi.'
-    };
+    const promptText = [
+      'Buat SATU file HTML website pembelajaran INTERAKTIF untuk SISWA.',
+      'Website ini untuk siswa belajar mandiri, BUKAN dokumen guru.',
+      '',
+      '=== STRUKTUR WAJIB ===',
+      '1. NAVIGASI / SIDEBAR (toggle atau tab bar): Beranda ➔ Tujuan ➔ Materi & Lab Visual ➔ Game Edukasi ➔ Evaluasi Kuis',
+      '2. HEADER sticky: judul mapel & topik + tombol menu / navigasi',
+      '3. MATERI & LAB VISUAL:',
+      '   - Penjelasan materi ringkas bersahabat khas guru muda',
+      '   - ANIMASI atau SVG interaktif yang BENAR-BENAR BAGUS, GERAK, dan MEMBANTU PEMAHAMAN:',
+      '     * Gunakan HTML + CSS + JavaScript murni (bukan embed YouTube/video eksternal)',
+      '     * Animasi harus GERAK, bukan gambar diam - ada transisi, efek, atau tombol interaktif yang bisa diklik/disentuh siswa',
+      '     * SVG/Canvas harus detail, proporsional, dan informatif',
+      '     * Tambahkan tombol "Langkah Demi Langkah", slider, atau saklar yang mengubah visual langsung saat disentuh',
+      '     * Visual ini adalah PENGGANTI video pembelajaran',
+      '4. GAME EDUKASI (min 1, seru, pakai JS murni - puzzle/drag/tebak/jodohkan/logika)',
+      '5. EVALUASI / KUIS:',
+      '   - 3 sampai 5 soal kuis interaktif',
+      '   - Pilihan jawaban berupa tombol besar yang nyaman disentuh di HP',
+      '   - Feedback instan saat siswa memilih (berikan warna hijau dan penjelasan singkat jika benar, warna merah dan petunjuk jika salah)',
+      '   - Hitung skor total otomatis di akhir kuis',
+      '6. TOMBOL ALUR: Di setiap akhir section sediakan tombol lanjut ke section berikutnya (misal: "Lanjut ke Tujuan ➔", "Mulai Lab Visual ➔", "Mainkan Game ➔", "Uji Pemahaman di Kuis ➔")',
+      '',
+      '=== GAYA & TEKNIS (NEO-BRUTALISM) ===',
+      '- Neo Brutalism: border 4px hitam, shadow offset 6px 6px 0 #000 atau 4px 4px 0 #000, sudut rounded-xl',
+      '- Warna: #FFD700, #FF6B6B, #4ECDC4, #6366F1, #000, #fff',
+      '- Satu file HTML, inline CSS (<style>) dan inline JavaScript (<script>) murni',
+      '- ZERO DEPENDENCIES (tidak butuh CDN atau library eksternal, bisa jalan 100% offline)',
+      '- Semua notif pake DIV kustom buatan sendiri (bukan alert/confirm bawaan browser)',
+      '- Responsive mobile: nyaman di layar HP (360px - 414px) maupun laptop',
+      '- Output LANGSUNG <!DOCTYPE html> tanpa markdown, tanpa teks lain',
+      '',
+      'TOPIK: ' + topik,
+      'MATA PELAJARAN: ' + mapel,
+      'TARGET KELAS: ' + kelas,
+      'DIFERENSIASI: ' + difDesc,
+      instruksiTambahan ? ('INSTRUKSI TAMBAHAN GURU: ' + instruksiTambahan) : ''
+    ].filter(Boolean).join('\n');
 
-    const deskripsiGaya = gayaDescriptions[gaya] || gayaDescriptions.tab;
-    const deskripsiDiferensiasi = diferensiasiDescriptions[diferensiasi] || diferensiasiDescriptions.reguler;
-
-    const systemInstruction = `Anda adalah Master Pengembang Media Pembelajaran Interaktif (MPI) EduTech & Game-Based Learning jenjang SMP Kurikulum Merdeka.
-Tugas Anda adalah membuat SATU file HTML website pembelajaran mandiri untuk SISWA yang SANGAT INTERAKTIF, MENARIK, HIDUP, dan BERFUNGSI SEMPURNA di HP maupun Laptop.
-
-PRINSIP UTAMA (BUKAN DOKUMEN BACAAN, TAPI WAHANA EKSPLORASI SISWA):
-- JANGAN PERNAH membuat web yang hanya berisi teks panjang, artikel bacaan statis, atau hafalan definisi! Siswa SMP cepat jenuh jika hanya membaca.
-- MPI adalah WAHANA EKSPLORASI INTERAKTIF di mana siswa HARUS AKTIF MENCOBA, MENYENTUH TOMBOL TAB, MENGGESER KONTROL, DAN MENGUJI COBA SECARA LANGSUNG!
-
-NAVIGASI TAB SELALU TERLIHAT DI ATAS (DILARANG MENYEMBUNYIKAN DI MENU HAMBURGER):
-- Navigasi WAJIB berupa deretan tombol tab horizontal sticky (sticky top-0) yang SELALU TERLIHAT di bagian atas layar HP (360px-414px) maupun desktop:
-  \`\`\`html
-  <nav class="sticky top-0 z-40 bg-white border-b-2 border-black p-2 flex items-center gap-2 overflow-x-auto no-scrollbar shadow-sm">
-    <button type="button" onclick="switchTab('beranda')" id="tab-btn-beranda" class="mpi-tab-btn shrink-0 px-3.5 py-2 bg-indigo-600 text-white font-black text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_#000] cursor-pointer">
-      🏠 Beranda
-    </button>
-    <button type="button" onclick="switchTab('tujuan')" id="tab-btn-tujuan" class="mpi-tab-btn shrink-0 px-3.5 py-2 bg-white text-slate-800 font-bold text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_#000] cursor-pointer">
-      🎯 Tujuan
-    </button>
-    <button type="button" onclick="switchTab('materi')" id="tab-btn-materi" class="mpi-tab-btn shrink-0 px-3.5 py-2 bg-white text-slate-800 font-bold text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_#000] cursor-pointer">
-      🧪 Lab Visual
-    </button>
-    <button type="button" onclick="switchTab('game')" id="tab-btn-game" class="mpi-tab-btn shrink-0 px-3.5 py-2 bg-white text-slate-800 font-bold text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_#000] cursor-pointer">
-      🎮 Game
-    </button>
-    <button type="button" onclick="switchTab('kuis')" id="tab-btn-kuis" class="mpi-tab-btn shrink-0 px-3.5 py-2 bg-white text-slate-800 font-bold text-xs rounded-xl border-2 border-black shadow-[2px_2px_0_#000] cursor-pointer">
-      📝 Kuis
-    </button>
-  </nav>
-  \`\`\`
-- JANGAN gunakan hamburger menu yang menutup navigasi ke dalam sidebar. Siswa harus bisa langsung melihat dan menekan tab mana pun seketika!
-
-STRUKTUR 5 PANEL TAB UTAMA:
-Sediakan 5 panel tab dengan ID persis berikut:
-1. #tab-content-beranda (default: style="display: block;"):
-   - Pertanyaan pemantik kontekstual dunia nyata remaja SMP, analogi kehidupan sehari-hari, dan misi seru.
-   - Di bagian bawah sertakan tombol alur: <button type="button" onclick="switchTab('tujuan')" class="w-full py-3 bg-indigo-600 text-white font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_#000]">Lanjut ke Tujuan Pembelajaran ➔</button>
-2. #tab-content-tujuan (default: style="display: none;"):
-   - Capaian pembelajaran dan indikator kompetensi Kurikulum Merdeka yang ringkas, jelas, dan memotivasi.
-   - Di bagian bawah sertakan tombol: <button type="button" onclick="switchTab('materi')" class="w-full py-3 bg-emerald-500 text-black font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_#000]">Masuk ke Lab Visual & Simulasi ➔</button>
-3. #tab-content-materi (default: style="display: none;"):
-   - Lab Visual Dinamis & Simulasi Interaktif!
-   - Wajib menyertakan animasi SVG/Canvas/CSS dinamis yang GERAK dan BISA DIMANIPULASI siswa (slider nilai, tombol Langkah Demi Langkah, saklar toggle on/off). Visual ini harus menjadi PENGGANTI video pembelajaran!
-   - Di bagian bawah sertakan tombol: <button type="button" onclick="switchTab('game')" class="w-full py-3 bg-fuchsia-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_#000]">Ayo Mainkan Game Edukasi ➔</button>
-4. #tab-content-game (default: style="display: none;"):
-   - Permainan Edukasi Interaktif berbasis JavaScript murni (puzzle susun kata/logika, teka-teki tebak istilah, kartu cocok gambar, atau tantangan berwaktu).
-   - Di bagian bawah sertakan tombol: <button type="button" onclick="switchTab('kuis')" class="w-full py-3 bg-amber-400 text-black font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_#000]">Uji Pemahaman di Kuis ➔</button>
-5. #tab-content-kuis (default: style="display: none;"):
-   - Kuis Mandiri 3-5 butir soal tantangan berpoin.
-   - Pilihan jawaban berupa tombol besar touch-friendly (min-h-[44px]).
-   - Respon instan: Opsi benar memanggil window.mpiPlaySound('correct') dan window.mpiAddXp(25); Opsi salah memanggil window.mpiPlaySound('wrong'). Saat kuis selesai panggil window.mpiLaunchConfetti().
-   - Di bagian akhir sertakan tombol: <button type="button" onclick="switchTab('beranda')" class="w-full py-3 bg-slate-900 text-white font-black text-xs rounded-xl border-2 border-black shadow-[3px_3px_0_#000]">Kembali ke Beranda 🏠</button>
-
-STANDAR DESAIN NEO-BRUTALISM LMS:
-- Border 2-3px hitam pekat (border-2 md:border-[3px] border-black), bayangan offset pop shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] atau shadow-[4px_4px_0px_0px_rgba(0,0,0,1)], rounded-xl atau rounded-2xl.
-- Palet warna cerah: #FFE600 (Kuning), #FF6B6B (Merah Muda), #4ECDC4 (Toska), #6366F1 (Indigo), #000, #FFF.
-- Seluruh tombol dan kontrol interaktif wajib memiliki tinggi minimal 44px (min-h-[44px]) agar nyaman disentuh di HP siswa.
-
-KONTRAK JAVASCRIPT NAVIGASI TAB (WAJIB DITULIS PERSIS):
-<script>
-window.switchTab = function(tabName) {
-  var clean = String(tabName || '').trim().toLowerCase().replace(/^(?:tab-content-|section-|tab-|btn-)/, '');
-  var panels = document.querySelectorAll('.mpi-tab-panel, [id^="tab-content-"]');
-  for (var i = 0; i < panels.length; i++) {
-    panels[i].style.display = 'none';
-    panels[i].classList.add('hidden');
-  }
-  var target = document.getElementById('tab-content-' + clean) || document.getElementById(clean);
-  if (target) {
-    target.style.display = 'block';
-    target.classList.remove('hidden');
-  }
-  var btns = document.querySelectorAll('.mpi-tab-btn');
-  for (var j = 0; j < btns.length; j++) {
-    btns[j].classList.remove('bg-indigo-600', 'text-white');
-    btns[j].classList.add('bg-white', 'text-slate-800');
-  }
-  var activeBtn = document.getElementById('tab-btn-' + clean) || document.querySelector('[onclick*="' + clean + '"]');
-  if (activeBtn) {
-    activeBtn.classList.add('bg-indigo-600', 'text-white');
-    activeBtn.classList.remove('bg-white', 'text-slate-800');
-  }
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-window.showSection = window.switchTab;
-window.openTab = window.switchTab;
-window.showTab = window.switchTab;
-
-document.addEventListener('DOMContentLoaded', function() {
-  window.switchTab('beranda');
-});
-if (document.readyState === 'interactive' || document.readyState === 'complete') {
-  window.switchTab('beranda');
-}
-</script>
-
-FORMAT KELUARAN:
-- Kembalikan HANYA dokumen HTML5 utuh dari <!DOCTYPE html> sampai </html>.
-- Jangan gunakan teks pengantar atau penutup di luar kode HTML.`;
-
-    const userPrompt = `Buatlah Media Pembelajaran Interaktif (MPI) web yang SANGAT KAYA INTERAKSI & GAMIFIKASI untuk:
-Mata Pelajaran: ${mapel}
-Target Siswa: ${kelas} (SMP)
-Topik / Materi: ${topik}
-Gaya Format: ${deskripsiGaya}
-Diferensiasi Belajar: ${deskripsiDiferensiasi}
-${instruksiTambahan ? `Instruksi Tambahan Guru:
-${instruksiTambahan}
-` : ''}
-
-INGAT:
-1. Navigasi wajib berupa deretan tombol tab horizontal (nav.sticky.top-0) dengan 5 tombol tab: Beranda, Tujuan, Lab Visual, Game, Kuis.
-2. Setiap tombol tab memiliki onclick="switchTab('...')" dan id="tab-btn-...".
-3. Setiap panel konten dibungkus <div id="tab-content-..." class="mpi-tab-panel">.
-4. Di bagian bawah setiap tab sediakan tombol alur menuju tab berikutnya.
-5. Di dalam tab Lab Visual (#tab-content-materi) sertakan simulator interaktif dinamis dengan tombol kontrol.
-6. Di dalam tab Game (#tab-content-game) sertakan permainan edukatif interaktif dengan JS murni.
-7. Di dalam tab Kuis (#tab-content-kuis) sertakan kuis interaktif dengan skor instan dan efek suara window.mpiPlaySound().
-
-Tuliskan kode dokumen HTML5 mandiri selengkapnya sekarang:`;
-
-    const raw = await callGemini(userPrompt, systemInstruction, false);
+    const raw = await callGemini(promptText, '', false);
     return sanitizeAndEnhanceHtml(raw);
 }
 
@@ -1158,58 +1069,8 @@ export async function aiRefineMpiHtml({ currentHtml, revisionPrompt }) {
     if (!currentHtml) throw new Error('Kode HTML yang akan diperbaiki tidak ditemukan.');
     if (!revisionPrompt) throw new Error('Instruksi perbaikan wajib diisi.');
 
-    // Bersihkan script internal terlebih dahulu agar AI menerima kode HTML murni tanpa noise
-    const cleanHtml = stripInjectedEnhancements(currentHtml);
+    const promptText = 'Revisi website pembelajaran interaktif berikut sesuai instruksi. Pertahankan tema Neo Brutalism. Output LANGSUNG kode HTML lengkap, tanpa markdown.\n\nINSTRUKSI: ' + revisionPrompt + '\n\nWEBSITE:\n' + currentHtml;
 
-    const systemInstruction = `Anda adalah Ahli Frontend & Fullstack UI/UX Media Pembelajaran Interaktif (MPI) Neo-Brutalism Kurikulum Merdeka.
-Tugas Anda adalah MEMPERBAIKI DAN MENYEMPURNAKAN kode HTML Media Pembelajaran sesuai permintaan guru.
-
-PEDOMAN REVISI KRUSIAL:
-1. SEMUA TOMBOL & TAB WAJIB BERFUNGSI SEPENUHNYA SAAT DIKLIK:
-   - Pastikan navigasi menggunakan bar tab horizontal selalu terlihat di atas:
-     #tab-btn-beranda, #tab-btn-tujuan, #tab-btn-materi, #tab-btn-game, #tab-btn-kuis.
-   - Sediakan dan pertahankan fungsi navigasi global:
-     window.switchTab = function(tabName) { ... };
-     window.showSection = window.switchTab;
-     window.openTab = window.switchTab;
-   - Pastikan SEMUA fungsi tombol simulasi (nextStep, prevStep, resetSim, flipCard, checkAnswer, dsb) dideklarasikan langsung pada window global:
-     window.namaFungsi = function(...) { ... };
-   - Jangan menyembunyikan navigasi di dalam hamburger menu yang macet; gunakan tombol tab yang selalu terlihat.
-
-2. TINGKATKAN INTERAKTIVITAS VISUAL:
-   - Jika guru meminta materi lebih interaktif atau tidak membosankan:
-     * Ubah teks bacaan menjadi simulator visual interaktif dinamis (diagram SVG langkah demi langkah, slider nilai, saklar lampu/biner).
-     * Sediakan kartu intip analogi dunia nyata buka-tutup (flip card).
-     * Sediakan game edukasi seru dengan JS murni.
-     * Pasang kuis game berpoin dengan efek suara:
-       - Opsi benar: window.mpiPlaySound('correct'); window.mpiAddXp(25);
-       - Opsi salah: window.mpiPlaySound('wrong');
-       - Selesai kuis: window.mpiPlaySound('fanfare'); window.mpiLaunchConfetti();
-
-3. RESPONSIF LAYAR HP:
-   - Gunakan CDN Tailwind CSS (<script src="https://cdn.tailwindcss.com"></script>).
-   - Seluruh kontrol sentuh wajib memiliki tinggi minimal 44px (min-h-[44px]).
-   - Tata letak satu kolom vertikal yang rapi di layar HP (360px - 414px) dan tidak ada elemen terpotong.
-
-4. FORMAT KELUARAN MURNI:
-   - Kembalikan HANYA dokumen HTML5 utuh dari <!DOCTYPE html> hingga </html> tanpa teks percakapan di luar kode.`;
-
-    const userPrompt = `Revisi website Media Pembelajaran Interaktif (MPI) berikut sesuai instruksi guru:
-
-INSTRUKSI GURU:
-${revisionPrompt}
-
-KODE WEBSITE SAAT INI:
-\`\`\`html
-${cleanHtml}
-\`\`\`
-
-PERHATIAN KHUSUS JAVASCRIPT:
-Pastikan SEMUA fungsi tombol (switchTab, simulasi langkah, kuis, flip card, reset) dideklarasikan langsung pada window global (window.namaFungsi = function() { ... }) agar saat diklik di HP maupun desktop LANGSUNG MERESPONS dan memberikan visual feedback nyata!
-Pastikan navigasi tab selalu terlihat di bagian atas dan berpindah panel seketika saat diklik!
-
-Tuliskan kode dokumen HTML5 lengkap hasil perbaikan sekarang:`;
-
-    const raw = await callGemini(userPrompt, systemInstruction, false);
+    const raw = await callGemini(promptText, '', false);
     return sanitizeAndEnhanceHtml(raw);
 }

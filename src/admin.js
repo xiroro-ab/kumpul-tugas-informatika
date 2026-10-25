@@ -4444,27 +4444,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const sizeKb = (new Blob([currentAiMpiState.html]).size / 1024).toFixed(1);
         if (statusBadge) {
-            statusBadge.innerHTML = `Ukuran: <b>${sizeKb} KB</b> &bull; Tailwind CSS Aktif &bull; Auto-Healer HP Aktif`;
+            statusBadge.innerHTML = `Ukuran: <b>${sizeKb} KB</b> &bull; Neo-Brutalism &bull; Standalone HTML`;
         }
 
         if (codeEditor) {
             codeEditor.value = currentAiMpiState.html;
         }
 
-        const oldIframe = document.getElementById('ai-mpi-preview-iframe');
-        if (oldIframe && oldIframe.parentNode) {
-            if (currentPreviewBlobUrl) {
-                try { URL.revokeObjectURL(currentPreviewBlobUrl); } catch (_) {}
-                currentPreviewBlobUrl = null;
-            }
-            const isMobile = currentAiMpiState.device === 'mobile';
-            const newIframe = document.createElement('iframe');
-            newIframe.id = 'ai-mpi-preview-iframe';
-            newIframe.className = isMobile ? 'w-full h-full border-0 block' : 'w-full h-full min-h-[500px] border-0 block';
-            newIframe.setAttribute('allow', 'fullscreen; autoplay; clipboard-write; encrypted-media');
-            newIframe.setAttribute('allowfullscreen', 'true');
-            newIframe.srcdoc = currentAiMpiState.html;
-            oldIframe.parentNode.replaceChild(newIframe, oldIframe);
+        if (iframe) {
+            iframe.removeAttribute('src');
+            iframe.srcdoc = currentAiMpiState.html;
         }
     }
 
@@ -4511,7 +4500,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAiMpiState.topik = topik;
 
             renderAiMpiPreview();
-            showCustomModal(`Media Pembelajaran Interaktif "${topik}" berhasil dibuat dengan Tailwind CSS & Auto-Healer! Periksa tampilannya di panel pratinjau.`);
+            showCustomModal(`Media Pembelajaran Interaktif "${topik}" berhasil dibuat! Silakan coba langsung di panel pratinjau atau klik "Tab Baru" untuk membuka layar penuh.`);
         } catch (e) {
             if (emptyState) emptyState.classList.remove('hidden');
             if (loadingState) loadingState.classList.add('hidden');
@@ -4519,7 +4508,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = "🚀 Generate Web MPI (HTML + Tailwind)";
+                btn.innerText = "🚀 Generate Web MPI Interaktif";
             }
         }
     };
@@ -4547,7 +4536,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.innerText = "Memperbaiki Tampilan...";
         }
         if (loadingTitle) loadingTitle.textContent = 'Menerapkan Perbaikan AI...';
-        if (loadingDesc) loadingDesc.textContent = 'Menyesuaikan layout responsif, komponen Tailwind, dan logika script.';
+        if (loadingDesc) loadingDesc.textContent = 'Menyesuaikan tata letak Neo-Brutalism dan logika interaktif JavaScript.';
         if (frameWrapper) frameWrapper.classList.add('hidden');
         if (loadingState) loadingState.classList.remove('hidden');
 
@@ -4569,12 +4558,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.innerText = "✨ Terapkan Perbaikan AI";
             }
             if (loadingTitle) loadingTitle.textContent = 'Merancang Antarmuka MPI...';
-            if (loadingDesc) loadingDesc.textContent = 'Menyusun kode HTML5, utilitas Tailwind, dan logika JavaScript interaktif.';
+            if (loadingDesc) loadingDesc.textContent = 'Menyusun kode HTML5 mandiri bertema Neo-Brutalism dan JavaScript interaktif.';
         }
     };
 
     window.reloadAiMpiPreview = () => {
-        renderAiMpiPreview();
+        const iframe = document.getElementById('ai-mpi-preview-iframe');
+        if (iframe && currentAiMpiState.html) {
+            iframe.removeAttribute('src');
+            iframe.srcdoc = '';
+            setTimeout(() => {
+                iframe.srcdoc = currentAiMpiState.html;
+            }, 30);
+        } else {
+            renderAiMpiPreview();
+        }
     };
 
     window.openCurrentAiMpiInTab = () => {
