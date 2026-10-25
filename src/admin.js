@@ -4456,8 +4456,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 try { URL.revokeObjectURL(currentPreviewBlobUrl); } catch (_) {}
                 currentPreviewBlobUrl = null;
             }
-            // Gunakan srcdoc murni agar dokumen berada di same-origin, skrip langsung aktif,
-            // dan tidak terkena pemblokiran CSP / Blob URL sandbox di browser
+            try {
+                const doc = iframe.contentWindow?.document || iframe.contentDocument;
+                if (doc) {
+                    doc.open();
+                    doc.write(currentAiMpiState.html);
+                    doc.close();
+                    return;
+                }
+            } catch (_) {}
             iframe.removeAttribute('src');
             iframe.srcdoc = currentAiMpiState.html;
         }
@@ -4571,6 +4578,16 @@ document.addEventListener('DOMContentLoaded', () => {
     window.reloadAiMpiPreview = () => {
         const iframe = document.getElementById('ai-mpi-preview-iframe');
         if (iframe && currentAiMpiState.html) {
+            try {
+                const doc = iframe.contentWindow?.document || iframe.contentDocument;
+                if (doc) {
+                    doc.open();
+                    doc.write(currentAiMpiState.html);
+                    doc.close();
+                    return;
+                }
+            } catch (_) {}
+            iframe.removeAttribute('src');
             iframe.srcdoc = '';
             setTimeout(() => {
                 iframe.srcdoc = currentAiMpiState.html;

@@ -62,120 +62,89 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
     const tabAutoHealerScript = `
 <script id="mpi-tab-autohealer">
 (function() {
-  // Pengendali Universal Tab & Interaktivitas MPI (Rock-Solid Index & ID Auto-Pairing)
-  function initMpiTabController() {
-    // 1. Temukan semua tombol tab navigasi
-    var tabButtons = Array.prototype.slice.call(document.querySelectorAll(
-      '.tab-btn, [role="tab"], nav button, [role="tablist"] button, .tab-buttons button, [data-tab]'
-    )).filter(function(b) {
-      // Pastikan bukan tombol kuis atau tombol dalam panel simulasi
-      return !b.closest('.quiz-options, .quiz-card, .sim-controls');
-    });
+  // Safe Fallback Guardian untuk Navigasi Web MPI
+  // HANYA aktif jika skrip dokumen belum menyediakan pengendali navigasi,
+  // dan TIDAK PERNAH menimpa fungsi bawaan yang sudah berjalan normal.
+  
+  function findTargetElement(id) {
+    if (!id) return null;
+    var clean = String(id).trim().replace(/^[#]/, '');
+    return document.getElementById(clean) ||
+           document.getElementById('section-' + clean) ||
+           document.getElementById('tab-' + clean) ||
+           document.getElementById('page-' + clean) ||
+           document.querySelector('[data-section="' + clean + '"]') ||
+           document.querySelector('[data-tab-content="' + clean + '"]') ||
+           document.querySelector('[data-tab="' + clean + '"]');
+  }
 
-    // 2. Temukan semua panel konten tab
-    var tabPanels = Array.prototype.slice.call(document.querySelectorAll(
-      '.tab-content, .tab-pane, [role="tabpanel"], [id^="tab-"], [id^="tab_"], [id*="content-"]'
-    )).filter(function(p) {
-      return !p.matches('button, a, nav, [role="tab"], .tab-btn');
-    });
+  // Sediakan window.showSection jika dokumen belum mendefinisikannya
+  if (typeof window.showSection !== 'function') {
+    window.showSection = function(targetId) {
+      var targetEl = findTargetElement(targetId);
+      if (!targetEl) return;
 
-    if (tabPanels.length === 0) {
-      // Fallback deteksi panel utama
-      tabPanels = Array.prototype.slice.call(document.querySelectorAll('main > div, main > section, .container > div, .container > section')).filter(function(d) {
-        return d.id && !d.matches('nav, header, footer, [role="tablist"]');
-      });
-    }
-
-    function activateTab(index, targetId) {
-      var activePanel = null;
-
-      // Cari panel yang cocok dengan ID jika ada
-      if (targetId) {
-        var cleanId = String(targetId).trim().replace(/^[#]/, '');
-        activePanel = document.getElementById(cleanId) ||
-                      document.getElementById('tab-' + cleanId) ||
-                      document.querySelector('[data-tab-content="' + cleanId + '"]') ||
-                      document.querySelector('[data-content="' + cleanId + '"]');
+      var allSections = document.querySelectorAll('.mpi-section, .page-section, .tab-content, [role="tabpanel"]');
+      if (allSections.length === 0 && targetEl.parentElement) {
+        allSections = targetEl.parentElement.children;
       }
-
-      // Jika tidak ditemukan dengan ID, pasangkan berdasarkan indeks tombol
-      if (!activePanel && tabPanels[index]) {
-        activePanel = tabPanels[index];
-      }
-
-      if (activePanel) {
-        tabPanels.forEach(function(p) {
-          if (p === activePanel) {
-            p.classList.remove('hidden');
-            p.style.removeProperty('display');
-            p.style.display = 'block';
-          } else {
-            p.classList.add('hidden');
-            p.style.display = 'none';
-          }
-        });
-      }
-
-      // Perbarui tampilan aktif tombol tab
-      tabButtons.forEach(function(btn, i) {
-        var btnOnclick = btn.getAttribute('onclick') || '';
-        var btnDataTab = btn.getAttribute('data-tab') || '';
-        var isThis = (activePanel && (btn.id === 'btn-' + activePanel.id || btnDataTab === activePanel.id || btnOnclick.indexOf(activePanel.id) !== -1)) || (i === index);
-
-        if (isThis) {
-          btn.classList.add('active', 'border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
-          btn.classList.remove('border-transparent', 'text-slate-500');
-          btn.setAttribute('aria-selected', 'true');
-        } else {
-          btn.classList.remove('active', 'border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
-          btn.classList.add('border-transparent', 'text-slate-500');
-          btn.setAttribute('aria-selected', 'false');
+      for (var i = 0; i < allSections.length; i++) {
+        var sec = allSections[i];
+        if (sec.nodeType === 1 && !sec.matches('nav, header, footer, [role="tablist"]')) {
+          sec.style.display = 'none';
+          sec.classList.add('hidden');
         }
-      });
-    }
+      }
+      targetEl.style.display = 'block';
+      targetEl.classList.remove('hidden');
 
-    // Pasang direct click listener pada setiap tombol tab
-    tabButtons.forEach(function(btn, idx) {
-      btn.addEventListener('click', function(e) {
-        var onclickStr = btn.getAttribute('onclick') || '';
-        var dataTab = btn.getAttribute('data-tab') || '';
-        var m = onclickStr.match(/(?:switchTab|showTab|openTab|selectTab|pilihTab|changeTab|setTab)\s*\(\s*['"]?([^'")]+)['"]?\s*\)/i);
-        var targetId = dataTab || (m ? m[1] : null);
-        activateTab(idx, targetId);
-      });
-    });
+      // Update active nav button jika ada
+      var allNavBtns = document.querySelectorAll('.mpi-nav-btn, .tab-btn, [role="tab"]');
+      for (var j = 0; j < allNavBtns.length; j++) {
+        allNavBtns[j].classList.remove('active', 'bg-indigo-600', 'text-white');
+      }
+      var activeBtn = document.getElementById('nav-' + targetId) ||
+                      document.getElementById('btn-' + targetId) ||
+                      document.querySelector('[data-target="' + targetId + '"]') ||
+                      document.querySelector('[data-tab="' + targetId + '"]');
+      if (activeBtn) {
+        activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
+      }
 
-    // Daftarkan fungsi global switchTab, showTab, openTab dsb ke window
-    ['switchTab', 'showTab', 'openTab', 'selectTab', 'pilihTab', 'changeTab', 'setTab', 'activateTab'].forEach(function(fn) {
-      window[fn] = function(id) {
-        var clean = String(id || '').trim().replace(/^[#]/, '');
-        var foundIdx = -1;
-        tabPanels.forEach(function(p, idx) {
-          if (p.id === clean || p.getAttribute('data-tab-content') === clean || p.id === 'tab-' + clean) {
-            foundIdx = idx;
-          }
-        });
-        if (foundIdx === -1 && typeof id === 'number') foundIdx = id;
-        activateTab(foundIdx >= 0 ? foundIdx : 0, clean);
-      };
-    });
+      var sidebar = document.getElementById('mpi-sidebar');
+      if (sidebar && window.innerWidth < 1024) {
+        sidebar.classList.add('-translate-x-full');
+      }
+    };
+  }
 
-    // Pastikan tab pertama aktif saat pertama kali dimuat
-    if (tabButtons.length > 0 && tabPanels.length > 0) {
-      var hasVisible = tabPanels.some(function(p) {
-        return !p.classList.contains('hidden') && p.style.display !== 'none';
-      });
-      if (!hasVisible) {
-        activateTab(0, null);
+  // Kompatibilitas alias navigasi (hanya jika belum terdefinisi)
+  if (typeof window.switchTab !== 'function') {
+    window.switchTab = window.showSection;
+  }
+  if (typeof window.openTab !== 'function') {
+    window.openTab = window.showSection;
+  }
+  if (typeof window.showTab !== 'function') {
+    window.showTab = window.showSection;
+  }
+  if (typeof window.toggleSidebar !== 'function') {
+    window.toggleSidebar = function() {
+      var sb = document.getElementById('mpi-sidebar');
+      if (sb) sb.classList.toggle('-translate-x-full');
+    };
+  }
+
+  // Delegasi klik aman: HANYA menangani tombol yang belum memiliki onclick bawaan
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-section], [data-tab], [data-target]');
+    if (btn && !btn.getAttribute('onclick')) {
+      var targetId = btn.getAttribute('data-section') || btn.getAttribute('data-target') || btn.getAttribute('data-tab');
+      if (targetId && typeof window.showSection === 'function') {
+        window.showSection(targetId);
       }
     }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMpiTabController);
-  } else {
-    initMpiTabController();
-  }
+  });
 })();
 </script>`;
 
@@ -453,10 +422,19 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
  */
 export function openHtmlInNewTab(htmlContent, title = 'Media Pembelajaran') {
     const fullHtml = sanitizeAndEnhanceHtml(htmlContent);
+    const win = window.open('', '_blank');
+    if (win) {
+        try {
+            win.document.open();
+            win.document.write(fullHtml);
+            win.document.close();
+            return;
+        } catch (_) {}
+    }
     const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
-    if (!win) {
+    const fallbackWin = window.open(url, '_blank');
+    if (!fallbackWin) {
         alert('Popup diblokir oleh peramban. Harap izinkan pop-up untuk melihat materi di tab baru.');
     }
 }

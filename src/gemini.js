@@ -973,15 +973,15 @@ export async function aiGenerateMpiHtml({
     if (!topik) throw new Error('Topik atau materi pembelajaran wajib diisi.');
 
     const gayaDescriptions = {
-        tab: 'Modul Interaktif Tab Navigasi (Tab 1: Konsep Pokok & Ilustrasi; Tab 2: Eksplorasi Visual / Kartu Interaktif; Tab 3: Studi Kasus Nyata; Tab 4: Kuis Mandiri Cek Pemahaman)',
-        lab: 'Laboratorium Virtual & Eksplorasi Interaktif (Terdapat diagram visual / simulasi interaktif yang merespons klik siswa dengan penjelasan langkah demi langkah)',
-        quiz: 'Game Kuis Interaktif & Tantangan Poin (Pertanyaan bertahap, perhitungan skor otomatis secara langsung, umpan balik visual instan saat opsi dipilih, dan evaluasi hasil akhir)',
-        infografis: 'Infografis Interaktif & Alur Prosedural (Tampilan visual terstruktur dengan accordion buka-tutup, kartu rangkuman poin penting, dan glosarium interaktif)'
+        tab: 'Modul Interaktif Tab Navigasi (Beranda, Tujuan, Lab Visual & Materi, Game Interaktif, Evaluasi Mandiri)',
+        lab: 'Laboratorium Virtual & Eksplorasi Interaktif (Terdapat diagram visual dinamis dan simulasi interaktif yang merespons klik/slider siswa dengan penjelasan langkah demi langkah)',
+        quiz: 'Game Kuis Interaktif & Tantangan Poin (Pertanyaan bertahap, perhitungan skor otomatis, sound effect, dan konfeti perayaan)',
+        infografis: 'Infografis Interaktif & Alur Prosedural (Tampilan visual terstruktur dengan kartu interaktif, alur proses animasi, dan glosarium istilah)'
     };
 
     const diferensiasiDescriptions = {
-        remedial: 'Tingkat Pemula / Remedial: Fokus pada 3 konsep inti paling mendasar, kalimat sederhana, analogi konkret, dan langkah mikro yang mudah dicerna.',
-        reguler: 'Tingkat Reguler: Standar Capaian Pembelajaran Kurikulum Merdeka Fase D, memadukan teori terapan, eksplorasi visual, dan studi kasus.',
+        remedial: 'Tingkat Pemula / Remedial: Fokus pada 3 konsep inti mendasar, kalimat sederhana bersahabat, analogi konkret nyata, dan langkah mikro yang mudah dicerna.',
+        reguler: 'Tingkat Reguler: Standar Capaian Pembelajaran Kurikulum Merdeka Fase D, memadukan teori terapan, eksplorasi visual dinamis, dan studi kasus.',
         hots: 'Tingkat Pengayaan (HOTS): Mendorong analisis kritis, pemecahan masalah komputasional tingkat tinggi, dan evaluasi alternatif solusi.'
     };
 
@@ -989,64 +989,76 @@ export async function aiGenerateMpiHtml({
     const deskripsiDiferensiasi = diferensiasiDescriptions[diferensiasi] || diferensiasiDescriptions.reguler;
 
     const systemInstruction = `Anda adalah Master Pengembang Media Pembelajaran Interaktif (MPI) EduTech & Game-Based Learning jenjang SMP Kurikulum Merdeka.
-Tugas Anda adalah memprogram aplikasi web MPI mandiri yang SANGAT INTERAKTIF, MENARIK, SERU, dan TIDAK MEMBOSANKAN dalam satu file HTML5.
+Tugas Anda adalah membuat SATU file HTML website pembelajaran mandiri untuk SISWA yang SANGAT INTERAKTIF, MENARIK, HIDUP, dan BERFUNGSI SEMPURNA di HP maupun Laptop.
 
-PANTANGAN UTAMA (DILARANG KERAS):
-- JANGAN PERNAH membuat web yang hanya berupa teks panjang, artikel bacaan statis, atau kumpulan definisi hafalan! Siswa SMP akan jenuh jika hanya membaca.
-- MPI BUKAN modul bacaan PDF/blog, melainkan WAHANA EKSPLORASI INTERAKTIF di mana siswa HARUS AKTIF MENCOBA, MENYENTUH TOMBOL, MENGGESER KONTROL, DAN MENGUJI COBA SECARA LANGSUNG!
+PRINSIP UTAMA (BUKAN DOKUMEN GURU, TAPI WAHANA EKSPLORASI SISWA):
+- JANGAN PERNAH membuat web yang hanya berisi teks panjang, artikel bacaan statis, atau hafalan definisi! Siswa SMP cepat jenuh jika hanya membaca.
+- MPI adalah WAHANA EKSPLORASI INTERAKTIF di mana siswa HARUS AKTIF MENCOBA, MENYENTUH TOMBOL, MENGGESER KONTROL, DAN MENGUJI COBA SECARA LANGSUNG!
 
-4 PILAR INTERAKTIVITAS TINGGI (WAJIB ADA DI SETIAP MPI):
-1. SIMULATOR / LABORATORIUM VIRTUAL AKTIF (Bukan Hanya Teks!):
-   - Wajib ada panel eksperimen interaktif hidup dengan kontrol aktif (slider nilai, tombol "Langkah Demi Langkah", saklar toggle on/off, atau tombol acak/reset).
-   - Manipulasi siswa harus langsung mengubah representasi visual di layar secara real-time (diagram batang yang bertukar warna/posisi, lampu saklar yang menyala, kalkulator dinamis, visual alur logika, dsb).
-2. KARTU INTIP ANALOGI DUNIA NYATA (FLIP / REVEAL CARD):
-   - Jangan menyuapi materi dengan teori rumit. Gunakan kartu interaktif dengan tombol "Buka Rahasia / Analogi" atau kartu yang bisa diklik untuk membuka analogi nyata (seperti saklar lampu untuk biner, antrean kasir untuk queue, resep masakan untuk algoritma).
-3. SKENARIO PENGAMBILAN KEPUTUSAN / STUDI KASUS BERCABANG:
-   - Cerita tantangan nyata kontekstual anak SMP dengan 2 atau 3 tombol pilihan aksi ("Apa keputusanmu?").
-   - Saat siswa memilih, berikan feedback instan konsekuensi logis dari pilihan tersebut.
-4. ARENA KUIS GAME BERPOIN DENGAN SOUND EFFECTS & CONFETTI:
-   - Sediakan minimal 3 sampai 5 soal interaktif bergaya tantangan game.
-   - Pilihan jawaban berupa kartu tombol besar yang nyaman disentuh di HP (min-h-[44px]).
-   - Setiap pilihan jawaban WAJIB terhubung ke fungsi bawaan sistem:
-     * Opsi Benar: panggil window.mpiPlaySound('correct'); window.mpiAddXp(25); ubah tombol jadi hijau cerah dengan penjelasan ringkas mengapa benar.
-     * Opsi Salah: panggil window.mpiPlaySound('wrong'); ubah tombol jadi merah muda dengan petunjuk pembetulan.
-     * Saat kuis tuntas: panggil window.mpiPlaySound('fanfare'); window.mpiLaunchConfetti(); tampilkan dialog/kartu perayaan rekap skor XP.
+STRUKTUR HALAMAN MANDIRI (NEO-BRUTALISM LMS):
+1. HEADER STICKY:
+   - Ikon & nama mapel, judul topik materi, skor XP counter (<span class="mpi-xp-counter bg-amber-300 text-black border-2 border-black px-3 py-1 rounded-full font-black text-xs">⭐ 0 XP</span>), serta tombol hamburger menu (di HP).
+2. NAVIGASI MULTI-SECTION (SIDEBAR DI LAPTOP / DRAWER TOGGLE DI HP):
+   Sediakan 5 section utama dengan ID persis:
+   - Section 1 (#section-beranda): Pertanyaan pemantik seru kontekstual kehidupan remaja SMP, analogi nyata, dan gambaran misi belajar.
+   - Section 2 (#section-tujuan): Capaian pembelajaran ringkas, jelas, dan memotivasi.
+   - Section 3 (#section-materi): Lab Visual Dinamis & Simulasi Interaktif. Animasi SVG/Canvas/HTML dinamis dengan kontrol aktif (slider nilai, tombol "Langkah Demi Langkah", saklar toggle on/off). Visual ini harus GERAK dan menjadi PENGGANTI video!
+   - Section 4 (#section-game): Game Edukasi Interaktif seru dengan JS murni (puzzle susun logika, teka-teki tebak istilah, kartu cocok gambar, atau simulasi tantangan berwaktu).
+   - Section 5 (#section-evaluasi): Kuis Mandiri 3-5 butir soal dengan feedback visual instan, tombol opsi min-h-[44px], pemanggilan window.mpiPlaySound('correct'/'wrong'), dan selebrasi window.mpiLaunchConfetti() saat selesai.
 
-HEADER GAMIFIKASI & TAMPILAN MODERN:
-- Di bagian atas sediakan header interaktif:
-  * Judul materi & lencana mapel
-  * XP Counter: <span class="mpi-xp-counter bg-amber-300 text-black border-2 border-black px-3 py-1 rounded-full font-black text-xs">⭐ 0 XP</span>
-  * Progress Bar kemajuan belajar
-- Desain visual menggunakan Tailwind CSS: gaya Neobrutalism modern (border-2 border-black, bayangan pop shadow-[3px_3px_0px_0px_rgba(0,0,0,1)], rounded-2xl).
-- Seluruh kontrol sentuh wajib memiliki tinggi minimal 44px (min-h-[44px]) agar responsif dan nyaman di layar HP siswa (360px-414px) maupun laptop.
+STANDAR DESAIN NEO-BRUTALISM:
+- Border 2-3px hitam pekat (border-2 md:border-[3px] border-black), bayangan offset pop shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] atau shadow-[4px_4px_0px_0px_rgba(0,0,0,1)], rounded-xl atau rounded-2xl.
+- Palet warna cerah energik: #FFE600 (Kuning), #FF6B6B (Merah Muda), #4ECDC4 (Toska), #6366F1 (Indigo), #000, #FFF.
+- Seluruh tombol dan kartu interaktif wajib memiliki tinggi minimal 44px (min-h-[44px]) agar responsif dan nyaman disentuh di layar HP (360px-414px) maupun laptop.
 
-PERSYARATAN TEKNIS JAVASCRIPT (WAJIB BERFUNGSI SEMUA TOMBOL):
-1. SEMUA fungsi JavaScript (switchTab, nextSimStep, prevSimStep, resetSim, checkQuiz, dsb) WAJIB dideklarasikan LANGSUNG pada window global:
-   window.switchTab = function(tabId) {
-     document.querySelectorAll('.tab-content').forEach(function(el) {
-       el.classList.add('hidden');
-       el.style.display = 'none';
-     });
-     var target = document.getElementById(tabId);
-     if (target) {
-       target.classList.remove('hidden');
-       target.style.display = 'block';
-     }
-     document.querySelectorAll('.tab-btn').forEach(function(b) {
-       b.classList.remove('border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
-       b.classList.add('border-transparent', 'text-slate-500');
-     });
-     var btn = document.getElementById('btn-' + tabId) || document.querySelector('[onclick*=\"' + tabId + '\"]');
-     if (btn) {
-       btn.classList.add('border-indigo-600', 'text-indigo-600', 'font-black', 'bg-indigo-50');
-       btn.classList.remove('border-transparent', 'text-slate-500');
-     }
-   };
-2. DILARANG KERAS membungkus script di dalam document.addEventListener('DOMContentLoaded', ...) atau IIFE closure tertutup tanpa menempelkan fungsinya ke window!
-3. Gunakan inline onclick yang memanggil window.namaFungsi() persis seperti yang dideklarasikan.
+KONTRAK JAVASCRIPT NAVIGASI (WAJIB DITULIS PERSIS DI SCRIPT):
+Semua fungsi navigasi dan interaksi WAJIB ditempelkan langsung pada window global:
+<script>
+window.showSection = function(sectionId) {
+  var sections = document.querySelectorAll('.mpi-section');
+  for (var i = 0; i < sections.length; i++) {
+    sections[i].style.display = 'none';
+  }
+  var target = document.getElementById(sectionId);
+  if (target) {
+    target.style.display = 'block';
+  }
+  var navBtns = document.querySelectorAll('.mpi-nav-btn');
+  for (var j = 0; j < navBtns.length; j++) {
+    navBtns[j].classList.remove('bg-indigo-600', 'text-white', 'shadow-none');
+    navBtns[j].classList.add('bg-white', 'text-slate-800');
+  }
+  var activeBtn = document.getElementById('nav-' + sectionId) || document.querySelector('[data-target="' + sectionId + '"]');
+  if (activeBtn) {
+    activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-none');
+    activeBtn.classList.remove('bg-white', 'text-slate-800');
+  }
+  var sidebar = document.getElementById('mpi-sidebar');
+  if (sidebar && window.innerWidth < 1024) {
+    sidebar.classList.add('-translate-x-full');
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+window.switchTab = window.showSection;
+window.openTab = window.showSection;
+window.showTab = window.showSection;
+
+window.toggleSidebar = function() {
+  var sidebar = document.getElementById('mpi-sidebar');
+  if (sidebar) sidebar.classList.toggle('-translate-x-full');
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  window.showSection('section-beranda');
+});
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+  window.showSection('section-beranda');
+}
+</script>
 
 FORMAT KELUARAN:
-- Tuliskan HANYA kode HTML5 lengkap dimulai dari <!DOCTYPE html> hingga </html>. Tanpa teks obrolan di luar kode.`;
+- Kembalikan HANYA dokumen HTML5 utuh dari <!DOCTYPE html> sampai </html>.
+- Jangan gunakan markdown fence atau teks di luar HTML.`;
 
     const userPrompt = `Buatlah Media Pembelajaran Interaktif (MPI) web yang SANGAT KAYA INTERAKSI & GAMIFIKASI untuk:
 Mata Pelajaran: ${mapel}
@@ -1054,9 +1066,16 @@ Target Siswa: ${kelas} (SMP)
 Topik / Materi: ${topik}
 Gaya Format: ${deskripsiGaya}
 Diferensiasi Belajar: ${deskripsiDiferensiasi}
-${instruksiTambahan ? `Instruksi Tambahan Guru:\n${instruksiTambahan}\n` : ''}
+${instruksiTambahan ? `Instruksi Tambahan Guru:
+${instruksiTambahan}
+` : ''}
 
-INGAT: Jangan buat teks panjang membosankan! Wajib sertakan simulator visual aktif yang bisa dimanipulasi siswa, kartu intip analogi, dan kuis game berpoin dengan efek suara window.mpiPlaySound() dan confetti window.mpiLaunchConfetti().
+INGAT:
+1. Pastikan setiap section menggunakan class="mpi-section" dan ID yang sesuai (#section-beranda, #section-tujuan, #section-materi, #section-game, #section-evaluasi).
+2. Setiap tombol navigasi memanggil onclick="showSection('section-...')" dan memiliki class="mpi-nav-btn".
+3. Di dalam #section-materi sertakan simulator visual dinamis (SVG/Canvas/CSS interaktif dengan tombol pengubah visual).
+4. Di dalam #section-game sertakan permainan seru menggunakan JavaScript murni.
+5. Di dalam #section-evaluasi sertakan kuis mandiri dengan efek suara window.mpiPlaySound('correct'/'wrong') dan confetti window.mpiLaunchConfetti().
 
 Tuliskan kode dokumen HTML5 mandiri selengkapnya sekarang:`;
 
@@ -1065,8 +1084,6 @@ Tuliskan kode dokumen HTML5 mandiri selengkapnya sekarang:`;
 }
 
 /**
- * AI Prompt Enhancer / Poles Prompt dengan Anatomi Pedagogis Lengkap (R-C-T-I-C-O)
- * Mengubah input sederhana guru menjadi prompt instruksional kaya konteks untuk Media Pembelajaran.
  */
 export async function aiEnhancePrompt({
     mapel = 'Informatika',
@@ -1116,51 +1133,46 @@ export async function aiRefineMpiHtml({ currentHtml, revisionPrompt }) {
     // Bersihkan script internal terlebih dahulu agar AI menerima kode HTML murni tanpa noise
     const cleanHtml = stripInjectedEnhancements(currentHtml);
 
-    const systemInstruction = `Anda adalah Ahli Frontend & Fullstack UI/UX Media Pembelajaran Interaktif (MPI).
+    const systemInstruction = `Anda adalah Ahli Frontend & Fullstack UI/UX Media Pembelajaran Interaktif (MPI) Neo-Brutalism Kurikulum Merdeka.
 Tugas Anda adalah MEMPERBAIKI DAN MENYEMPURNAKAN kode HTML Media Pembelajaran sesuai permintaan guru.
 
-PEDOMAN PERBAIKAN & STANDAR KUALITAS TINGGI:
-1. PERBAIKAN KRUSIAL SEMUA TOMBOL INTERAKTIF (AGAR WAJIB BISA DIKLIK):
-   - Masalah utama tombol tidak merespons adalah fungsi JavaScript dideklarasikan di dalam closure atau DOMContentLoaded sehingga atribut inline onclick="namaFungsi()" di HTML tidak menemukannya!
-   - Anda WAJIB mendaftarkan SETIAP fungsi interaktif langsung pada window global:
-     window.switchTab = function(tabId) { ... };
-     window.nextStep = function() { ... };
-     window.prevStep = function() { ... };
-     window.checkAnswer = function(opt) { ... };
-     window.resetSim = function() { ... };
-     window.flipCard = function(id) { ... };
-     window.pilihOpsi = function(id) { ... };
-   - DILARANG KERAS membungkus fungsi-fungsi di dalam document.addEventListener('DOMContentLoaded', ...) atau IIFE tanpa menempelkannya ke window.
-   - Pastikan nama fungsi pada onclick="..." sama persis dengan yang ada di window.
-   - Jangan gunakan class="tab-btn" atau role="tab" pada tombol kuis atau simulasi; class tersebut HANYA untuk tombol tab navigasi modul.
+PEDOMAN REVISI & STANDAR KUALITAS TINGGI:
+1. SEMUA TOMBOL WAJIB MERESPONS SAAT DIKLIK:
+   - Pastikan SEMUA fungsi JavaScript (showSection, switchTab, switchSubTab, toggleSidebar, nextStep, prevStep, checkAnswer, resetSim, flipCard) dideklarasikan LANGSUNG pada window global:
+     window.namaFungsi = function(...) { ... };
+   - Pastikan nama dan argumen fungsi pada atribut inline onclick="..." cocok persis dengan yang ada di window (contoh: onclick="showSection('section-beranda')").
+   - Pertahankan struktur section class="mpi-section" dan tombol navigasi class="mpi-nav-btn".
 
-2. TAMPILAN INTERAKTIF HIDUP (BUKAN TEKS PANJANG):
+2. TINGKATKAN INTERAKTIVITAS VISUAL:
    - Jika guru meminta materi lebih interaktif atau tidak membosankan:
-     * Ubah paragraf panjang menjadi simulator visual aktif (diagram langkah, slider parameter, saklar lampu/biner).
-     * Sediakan kartu intip analogi dunia nyata (reveal card) dengan tombol buka rahasia.
-     * Pasang kuis game berpoin dengan efek suara bawaan:
-       - Opsi benar: window.mpiPlaySound('correct'); window.mpiAddXp(25); ubah tombol jadi hijau cerah dengan penjelasan.
-       - Opsi salah: window.mpiPlaySound('wrong'); ubah tombol jadi merah muda dengan petunjuk.
-       - Selesai kuis: window.mpiPlaySound('fanfare'); window.mpiLaunchConfetti(); tampilkan dialog perayaan skor.
+     * Ubah paragraf teks panjang menjadi simulator visual aktif (diagram SVG langkah demi langkah, slider nilai, saklar lampu/biner dinamis).
+     * Sediakan kartu intip analogi dunia nyata buka-tutup (flip card).
+     * Sediakan game edukasi seru dengan JS murni.
+     * Pasang kuis game berpoin dengan suara:
+       - Opsi benar: window.mpiPlaySound('correct'); window.mpiAddXp(25); feedback hijau cerah.
+       - Opsi salah: window.mpiPlaySound('wrong'); feedback merah muda dengan petunjuk.
+       - Selesai kuis: window.mpiPlaySound('fanfare'); window.mpiLaunchConfetti(); dialog skor.
 
 3. RESPONSIF LAYAR HP:
    - Gunakan CDN Tailwind CSS (<script src="https://cdn.tailwindcss.com"></script>).
-   - Seluruh tombol wajib touch-friendly dengan tinggi minimal 44px (min-h-[44px]).
+   - Seluruh kontrol sentuh wajib memiliki tinggi minimal 44px (min-h-[44px]).
    - Tata letak satu kolom vertikal yang rapi di layar HP (360px - 414px) dan tidak ada elemen terpotong.
 
 4. FORMAT KELUARAN MURNI:
    - Kembalikan HANYA dokumen HTML5 utuh dari <!DOCTYPE html> hingga </html> tanpa teks percakapan di luar kode.`;
 
-    const userPrompt = `Berikut adalah kode HTML Media Pembelajaran yang perlu diperbaiki:
+    const userPrompt = `Revisi website Media Pembelajaran Interaktif (MPI) berikut sesuai instruksi guru:
+
+INSTRUKSI GURU:
+${revisionPrompt}
+
+KODE WEBSITE SAAT INI:
 \`\`\`html
 ${cleanHtml}
 \`\`\`
 
-Permintaan Perbaikan Guru:
-${revisionPrompt}
-
 PERHATIAN KHUSUS JAVASCRIPT:
-Pastikan SEMUA fungsi tombol (switch tab, simulasi langkah, kuis, flip card, reset) dideklarasikan langsung pada window global (window.namaFungsi = function() { ... }) agar saat diklik di HP maupun desktop LANGSUNG MERESPONS dan memberikan visual feedback nyata!
+Pastikan SEMUA fungsi tombol (showSection, switchTab, simulasi langkah, kuis, flip card, reset) dideklarasikan langsung pada window global (window.namaFungsi = function() { ... }) agar saat diklik di HP maupun desktop LANGSUNG MERESPONS dan memberikan visual feedback nyata!
 
 Tuliskan kode dokumen HTML5 lengkap hasil perbaikan sekarang:`;
 
