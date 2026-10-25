@@ -859,13 +859,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const btn = document.getElementById(`nav-btn-${t}`);
             const content = document.getElementById(`view-${t}`);
             if (t === viewName) {
-                if (btn) btn.className = "portal-nav-item py-2 px-1.5 md:py-2.5 md:px-4 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 font-black text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] bg-black text-yellow-300 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+                if (btn) btn.className = "portal-nav-item py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 font-black text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] bg-black text-yellow-300 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
                 if (content) {
                     content.classList.remove('hidden', '!hidden');
                     content.style.display = 'block';
                 }
             } else {
-                if (btn) btn.className = "portal-nav-item py-2 px-1.5 md:py-2.5 md:px-4 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100";
+                if (btn) btn.className = "portal-nav-item py-2 px-1 md:py-2.5 md:px-3 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all min-h-[48px] text-slate-700 hover:text-black hover:bg-slate-100";
                 if (content) {
                     content.classList.add('hidden');
                     content.classList.remove('!hidden');
@@ -888,6 +888,294 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     };
+
+    // ==========================================
+    // 2b. Pencarian Cepat Siswa (Mobile & Global)
+    // ==========================================
+    let currentMobileSearchCategory = 'all';
+
+    window.openMobileSearchModal = () => {
+        const modal = document.getElementById('mobile-search-modal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+
+        // Pastikan koleksi data termuat jika masih kosong
+        if (allMaterials.length === 0 && typeof loadStudentMaterials === 'function') {
+            loadStudentMaterials();
+        }
+        if (allAssignments.length === 0 && typeof loadStudentAssignments === 'function') {
+            loadStudentAssignments();
+        }
+        if (allQuizzes.length === 0 && typeof loadStudentQuizzes === 'function') {
+            loadStudentQuizzes();
+        }
+
+        const input = document.getElementById('mobile-search-input');
+        if (input) {
+            setTimeout(() => {
+                input.focus();
+            }, 60);
+            window.runMobileGlobalSearch(input.value || '');
+        }
+    };
+
+    window.closeMobileSearchModal = () => {
+        const modal = document.getElementById('mobile-search-modal');
+        if (modal) modal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    window.clearMobileSearchInput = () => {
+        const input = document.getElementById('mobile-search-input');
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+        window.runMobileGlobalSearch('');
+    };
+
+    window.setMobileSearchKeyword = (keyword) => {
+        const input = document.getElementById('mobile-search-input');
+        if (input) {
+            input.value = keyword;
+            input.focus();
+        }
+        window.runMobileGlobalSearch(keyword);
+    };
+
+    window.setMobileSearchFilterCategory = (category) => {
+        currentMobileSearchCategory = category;
+        const cats = ['all', 'materi', 'tugas', 'ujian'];
+        cats.forEach(c => {
+            const pill = document.getElementById(`mobile-search-cat-${c}`);
+            if (!pill) return;
+            if (c === category) {
+                pill.className = "mobile-search-cat-pill h-8 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider border-2 border-black bg-black text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] whitespace-nowrap transition cursor-pointer shrink-0";
+            } else {
+                pill.className = "mobile-search-cat-pill h-8 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider border-2 border-black bg-white hover:bg-slate-100 text-slate-700 whitespace-nowrap transition cursor-pointer shrink-0";
+            }
+        });
+        const input = document.getElementById('mobile-search-input');
+        window.runMobileGlobalSearch(input ? input.value : '');
+    };
+
+    window.runMobileGlobalSearch = (query = '') => {
+        const cleanQuery = (query || '').trim();
+        const clearBtn = document.getElementById('mobile-search-clear-btn');
+        if (clearBtn) {
+            if (cleanQuery) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+        }
+
+        const studentKelas = getActiveStudentKelas();
+
+        // 1. Filter Materi
+        const filteredMaterials = (allMaterials || []).filter(m => {
+            const matchKelas = !studentKelas || isClassMatch(m.kelas, studentKelas);
+            if (!matchKelas) return false;
+            const meta = m.metadata || {};
+            return matchesSearchQuery([
+                m.judul,
+                meta.deskripsi || m.konten,
+                m.mapel,
+                m.kelas,
+                `Kelas ${m.kelas}`,
+                'Materi',
+                m.tipe
+            ], cleanQuery);
+        });
+
+        // 2. Filter Tugas
+        const filteredAssignments = (allAssignments || []).filter(a => {
+            const matchKelas = !studentKelas || isClassMatch(a.kelas, studentKelas);
+            if (!matchKelas) return false;
+            const parsed = parseAssignmentQuestions(a);
+            return matchesSearchQuery([
+                a.judul_tugas,
+                a.deskripsi,
+                parsed?.petunjuk,
+                a.mapel,
+                a.kelas,
+                `Kelas ${a.kelas}`,
+                'Tugas',
+                'PR'
+            ], cleanQuery);
+        });
+
+        // 3. Filter Ujian
+        const filteredQuizzes = (allQuizzes || []).filter(q => {
+            const matchKelas = !studentKelas || isClassMatch(q.kelas, studentKelas);
+            if (!matchKelas) return false;
+            return matchesSearchQuery([
+                q.judul_kuis,
+                q.petunjuk,
+                q.mapel,
+                q.kelas,
+                `Kelas ${q.kelas}`,
+                'Ujian',
+                'Kuis',
+                'CBT'
+            ], cleanQuery);
+        });
+
+        // Update badge counts
+        const totalCount = filteredMaterials.length + filteredAssignments.length + filteredQuizzes.length;
+        const badgeAll = document.getElementById('mobile-search-count-all');
+        const badgeMat = document.getElementById('mobile-search-count-materi');
+        const badgeTug = document.getElementById('mobile-search-count-tugas');
+        const badgeUji = document.getElementById('mobile-search-count-ujian');
+        if (badgeAll) badgeAll.textContent = totalCount;
+        if (badgeMat) badgeMat.textContent = filteredMaterials.length;
+        if (badgeTug) badgeTug.textContent = filteredAssignments.length;
+        if (badgeUji) badgeUji.textContent = filteredQuizzes.length;
+
+        // Kumpulkan item sesuai tab yang aktif
+        let displayItems = [];
+        if (currentMobileSearchCategory === 'all' || currentMobileSearchCategory === 'materi') {
+            filteredMaterials.forEach(m => displayItems.push({ item: m, type: 'materi' }));
+        }
+        if (currentMobileSearchCategory === 'all' || currentMobileSearchCategory === 'tugas') {
+            filteredAssignments.forEach(a => displayItems.push({ item: a, type: 'tugas' }));
+        }
+        if (currentMobileSearchCategory === 'all' || currentMobileSearchCategory === 'ujian') {
+            filteredQuizzes.forEach(q => displayItems.push({ item: q, type: 'ujian' }));
+        }
+
+        const container = document.getElementById('mobile-search-results');
+        const statusEl = document.getElementById('mobile-search-status-text');
+
+        if (statusEl) {
+            if (cleanQuery) {
+                statusEl.textContent = `Ditemukan ${displayItems.length} hasil untuk "${cleanQuery}"`;
+            } else {
+                statusEl.textContent = `Menampilkan ${displayItems.length} konten siswa aktif`;
+            }
+        }
+
+        if (!container) return;
+
+        if (displayItems.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 px-4 bg-white border-2 border-black rounded-2xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                    <div class="w-12 h-12 mx-auto bg-slate-100 border-2 border-black rounded-xl flex items-center justify-center text-slate-500 mb-2.5">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path></svg>
+                    </div>
+                    <h4 class="font-black text-sm uppercase text-black">Tidak Ada Hasil Ditemukan</h4>
+                    <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto font-medium">Tidak ada konten yang cocok dengan kata kunci "${escapeHtml(cleanQuery || 'pencarian')}".</p>
+                    <div class="mt-3">
+                        <button type="button" onclick="clearMobileSearchInput()" class="px-3.5 py-1.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                            Hapus Kata Kunci
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        displayItems.forEach(({ item, type }) => {
+            if (type === 'materi') {
+                const meta = item.metadata || {};
+                const desc = meta.deskripsi || item.konten || 'Materi pembelajaran siap dipelajari secara interaktif.';
+                html += `
+                    <div class="bg-white border-2 border-black rounded-2xl p-3 sm:p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-2 py-0.5 bg-sky-100 text-sky-950 border border-sky-300 rounded font-black text-[10px] uppercase">Materi</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">${escapeHtml(item.mapel || 'Informatika')}</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">Kelas ${escapeHtml(item.kelas || 'Semua')}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-black text-xs sm:text-sm text-black leading-snug">${escapeHtml(item.judul)}</h4>
+                            <p class="text-[11px] text-slate-600 line-clamp-2 mt-0.5 font-medium">${escapeHtml(desc)}</p>
+                        </div>
+                        <div class="pt-1.5 border-t border-slate-100 flex items-center justify-end">
+                            <button type="button" onclick="closeMobileSearchModal(); openStudentMaterialFocus('${item.id}')" class="px-3.5 py-1.5 bg-black hover:bg-slate-800 text-white rounded-xl font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 cursor-pointer">
+                                <span>Pelajari Materi</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'tugas') {
+                const parsed = parseAssignmentQuestions(item);
+                const desc = item.deskripsi || parsed.petunjuk || 'Kerjakan tugas sekolah dan kumpulkan jawaban tepat waktu.';
+                let deadlineText = '';
+                if (item.deadline) {
+                    const dlDate = new Date(item.deadline);
+                    const formatted = dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    deadlineText = `<span class="px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded font-bold text-[10px]">Batas: ${formatted} WIB</span>`;
+                }
+                html += `
+                    <div class="bg-white border-2 border-black rounded-2xl p-3 sm:p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-2 py-0.5 bg-amber-100 text-amber-950 border border-amber-300 rounded font-black text-[10px] uppercase">Tugas</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">${escapeHtml(item.mapel || 'Umum')}</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">Kelas ${escapeHtml(item.kelas || 'Semua')}</span>
+                            </div>
+                            ${deadlineText}
+                        </div>
+                        <div>
+                            <h4 class="font-black text-xs sm:text-sm text-black leading-snug">${escapeHtml(item.judul_tugas)}</h4>
+                            <p class="text-[11px] text-slate-600 line-clamp-2 mt-0.5 font-medium">${escapeHtml(desc)}</p>
+                        </div>
+                        <div class="pt-1.5 border-t border-slate-100 flex items-center justify-end">
+                            <button type="button" onclick="closeMobileSearchModal(); navigateToAssignment('${item.id}')" class="px-3.5 py-1.5 bg-yellow-300 hover:bg-yellow-400 text-black border border-black rounded-xl font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition active:scale-95 cursor-pointer">
+                                <span>Buka Tugas</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'ujian') {
+                const desc = item.petunjuk || 'Ujian berbasis komputer (CBT). Kerjakan dengan tertib dan teliti.';
+                html += `
+                    <div class="bg-white border-2 border-black rounded-2xl p-3 sm:p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-2 py-0.5 bg-purple-100 text-purple-950 border border-purple-300 rounded font-black text-[10px] uppercase">Ujian CBT</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">${escapeHtml(item.mapel || 'Informatika')}</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">Kelas ${escapeHtml(item.kelas || 'Semua')}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-black text-xs sm:text-sm text-black leading-snug">${escapeHtml(item.judul_kuis)}</h4>
+                            <p class="text-[11px] text-slate-600 line-clamp-2 mt-0.5 font-medium">${escapeHtml(desc)}</p>
+                        </div>
+                        <div class="pt-1.5 border-t border-slate-100 flex items-center justify-end">
+                            <button type="button" onclick="closeMobileSearchModal(); navigateToExam('${item.id}')" class="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 cursor-pointer">
+                                <span>Ikuti Ujian</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        container.innerHTML = html;
+    };
+
+    // Pasang listener klik backdrop dan tombol escape untuk modal pencarian
+    const mobileSearchModalEl = document.getElementById('mobile-search-modal');
+    if (mobileSearchModalEl) {
+        mobileSearchModalEl.addEventListener('click', (e) => {
+            if (e.target === mobileSearchModalEl) {
+                window.closeMobileSearchModal();
+            }
+        });
+    }
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('mobile-search-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                window.closeMobileSearchModal();
+            }
+        }
+    });
 
     // ==========================================
     // 3. Ringkasan Statistik Portal LMS
