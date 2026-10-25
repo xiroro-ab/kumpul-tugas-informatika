@@ -841,6 +841,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadStudentMaterials();
             renderStudentQuizzes();
             updatePortalOverviewStats();
+            if (typeof window.renderMobileSearchSuggestions === 'function') {
+                window.renderMobileSearchSuggestions();
+            }
         });
     }
 
@@ -894,6 +897,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     let currentMobileSearchCategory = 'all';
 
+    window.renderMobileSearchSuggestions = () => {
+        const container = document.getElementById('mobile-search-suggestions');
+        if (!container) return;
+
+        // Kumpulkan semua mata pelajaran guru yang terdaftar di database
+        const mapelSet = new Set();
+        (allMaterials || []).forEach(m => {
+            if (m.mapel && typeof m.mapel === 'string' && m.mapel.trim()) {
+                mapelSet.add(m.mapel.trim());
+            }
+        });
+        (allAssignments || []).forEach(a => {
+            if (a.mapel && typeof a.mapel === 'string' && a.mapel.trim()) {
+                mapelSet.add(a.mapel.trim());
+            }
+        });
+        (allQuizzes || []).forEach(q => {
+            if (q.mapel && typeof q.mapel === 'string' && q.mapel.trim()) {
+                mapelSet.add(q.mapel.trim());
+            }
+        });
+
+        // Jika data mapel belum termuat atau masih kosong, gunakan daftar mapel umum SMP
+        if (mapelSet.size === 0) {
+            ['Matematika', 'IPA', 'B. Indonesia', 'B. Inggris', 'IPS', 'Informatika', 'PAI', 'PJOK', 'PPKn', 'Seni Budaya'].forEach(m => mapelSet.add(m));
+        }
+
+        // Susun saran pencarian: jenjang kelas, seluruh mata pelajaran dari berbagai guru, serta istilah umum penugasan
+        const kelasList = ['Kelas 7', 'Kelas 8', 'Kelas 9'];
+        const mapelList = Array.from(mapelSet).sort();
+        const tipeList = ['PR', 'Latihan', 'Modul', 'Ujian CBT'];
+
+        const suggestions = [...kelasList, ...mapelList, ...tipeList];
+
+        container.innerHTML = suggestions.map(keyword => {
+            const safeKeyword = escapeHtml(keyword);
+            return `
+                <button type="button" onclick="setMobileSearchKeyword('${safeKeyword.replace(/'/g, "\\'")}')" class="px-2.5 py-1 bg-white hover:bg-yellow-100 border border-black rounded-lg text-[10px] font-black uppercase whitespace-nowrap transition cursor-pointer shrink-0 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:scale-95">
+                    ${safeKeyword}
+                </button>
+            `;
+        }).join('');
+    };
+
     window.openMobileSearchModal = () => {
         const modal = document.getElementById('mobile-search-modal');
         if (!modal) return;
@@ -910,6 +957,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (allQuizzes.length === 0 && typeof loadStudentQuizzes === 'function') {
             loadStudentQuizzes();
         }
+
+        window.renderMobileSearchSuggestions();
 
         const input = document.getElementById('mobile-search-input');
         if (input) {
@@ -1083,7 +1132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="flex items-center justify-between gap-2 flex-wrap">
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="px-2 py-0.5 bg-sky-100 text-sky-950 border border-sky-300 rounded font-black text-[10px] uppercase">Materi</span>
-                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">${escapeHtml(item.mapel || 'Informatika')}</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">${escapeHtml(item.mapel || 'Umum')}</span>
                                 <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">Kelas ${escapeHtml(item.kelas || 'Semua')}</span>
                             </div>
                         </div>
@@ -1137,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="flex items-center justify-between gap-2 flex-wrap">
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="px-2 py-0.5 bg-purple-100 text-purple-950 border border-purple-300 rounded font-black text-[10px] uppercase">Ujian CBT</span>
-                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">${escapeHtml(item.mapel || 'Informatika')}</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">${escapeHtml(item.mapel || 'Umum')}</span>
                                 <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">Kelas ${escapeHtml(item.kelas || 'Semua')}</span>
                             </div>
                         </div>
@@ -1259,6 +1308,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             renderStudentAssignments();
             updatePortalOverviewStats();
+            if (typeof window.renderMobileSearchSuggestions === 'function') {
+                window.renderMobileSearchSuggestions();
+            }
         } catch (e) {
             console.error(e);
             container.innerHTML = `
@@ -3119,6 +3171,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             renderStudentMaterials();
             updatePortalOverviewStats();
+            if (typeof window.renderMobileSearchSuggestions === 'function') {
+                window.renderMobileSearchSuggestions();
+            }
         } catch (e) {
             container.innerHTML = `<div class="col-span-2 text-center text-red-500 font-bold">Gagal memuat materi: ${e.message}</div>`;
         }
@@ -3373,6 +3428,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             renderStudentQuizzes();
             updatePortalOverviewStats();
+            if (typeof window.renderMobileSearchSuggestions === 'function') {
+                window.renderMobileSearchSuggestions();
+            }
         } catch (e) {
             container.innerHTML = `<div class="bg-white border-2 border-black rounded-2xl p-6 text-center text-red-600 font-bold">Gagal memuat ujian: ${e.message}</div>`;
         }
@@ -5493,5 +5551,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             renderStudentMaterials();
             updatePortalOverviewStats();
+            if (typeof window.renderMobileSearchSuggestions === 'function') {
+                window.renderMobileSearchSuggestions();
+            }
         } catch (_) {}
     });

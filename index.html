@@ -1069,7 +1069,7 @@
             <div class="p-3 sm:p-4 border-b-2 border-black bg-slate-50 space-y-2.5 shrink-0">
                 <div class="relative">
                     <svg class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path></svg>
-                    <input type="text" id="mobile-search-input" oninput="runMobileGlobalSearch(this.value)" placeholder="Ketik kata kunci (contoh: TIK, BK, Game, Bab 1)..." class="h-11 sm:h-12 pl-11 pr-10 w-full border-2 border-black rounded-xl font-bold text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 transition" autocomplete="off" />
+                    <input type="text" id="mobile-search-input" oninput="runMobileGlobalSearch(this.value)" placeholder="Ketik mapel, topik, atau tugas (contoh: Matematika, IPA, Bab 1, PR)..." class="h-11 sm:h-12 pl-11 pr-10 w-full border-2 border-black rounded-xl font-bold text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 transition" autocomplete="off" />
                     <button type="button" id="mobile-search-clear-btn" onclick="clearMobileSearchInput()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center font-black text-xs transition cursor-pointer" title="Bersihkan teks">&times;</button>
                 </div>
 
@@ -1089,20 +1089,12 @@
                     </button>
                 </div>
 
-                <!-- Suggestion Chips -->
-                <div class="flex items-center gap-1 overflow-x-auto pt-0.5 pb-0.5 no-scrollbar text-[10px] font-bold text-slate-600">
+                <!-- Suggestion Chips (Dibuat Dinamis Lintas Mata Pelajaran Guru) -->
+                <div class="flex items-center gap-1.5 overflow-x-auto pt-0.5 pb-0.5 no-scrollbar text-[10px] font-bold text-slate-600">
                     <span class="shrink-0 text-slate-400 font-black uppercase text-[9px]">Saran:</span>
-                    <button type="button" onclick="setMobileSearchKeyword('TIK')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">TIK</button>
-                    <button type="button" onclick="setMobileSearchKeyword('BK')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">BK</button>
-                    <button type="button" onclick="setMobileSearchKeyword('SK')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">SK</button>
-                    <button type="button" onclick="setMobileSearchKeyword('JKI')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">JKI</button>
-                    <button type="button" onclick="setMobileSearchKeyword('AD')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">AD</button>
-                    <button type="button" onclick="setMobileSearchKeyword('AP')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">AP</button>
-                    <button type="button" onclick="setMobileSearchKeyword('DSI')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">DSI</button>
-                    <button type="button" onclick="setMobileSearchKeyword('Game')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">Game</button>
-                    <button type="button" onclick="setMobileSearchKeyword('Kelas 7')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">Kelas 7</button>
-                    <button type="button" onclick="setMobileSearchKeyword('Kelas 8')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">Kelas 8</button>
-                    <button type="button" onclick="setMobileSearchKeyword('Kelas 9')" class="px-2 py-0.5 bg-white hover:bg-yellow-100 border border-black rounded text-[10px] font-black uppercase transition shrink-0">Kelas 9</button>
+                    <div id="mobile-search-suggestions" class="flex items-center gap-1">
+                        <!-- Diisi otomatis dari seluruh mata pelajaran guru & kelas di database -->
+                    </div>
                 </div>
             </div>
 
