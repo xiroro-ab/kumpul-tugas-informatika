@@ -317,9 +317,6 @@
                             <p class="text-black font-bold text-xs md:text-sm mt-0.5">Kelola ringkasan materi, modul modul belajar, dan video untuk siswa.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
-                            <button type="button" onclick="openAiMpiFromRpmModal()" class="flex-1 sm:flex-none h-11 bg-emerald-400 hover:bg-emerald-300 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer" title="Konversi dokumen RPM menjadi Web MPI interaktif">
-                                📄 Web MPI dari RPM
-                            </button>
                             <button type="button" onclick="openAiMpiModal()" class="flex-1 sm:flex-none h-11 bg-fuchsia-400 hover:bg-fuchsia-300 text-black border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap cursor-pointer">
                                 🎮 AI Buat Web MPI
                             </button>
@@ -1633,13 +1630,15 @@
                         </div>
 
                         <!-- Mode Switcher: Topik vs Dokumen RPM -->
-                        <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-200 border-2 border-black rounded-xl">
-                            <button type="button" id="tab-src-topic" onclick="switchAiMpiSourceMode('topic')" class="h-9 px-3 bg-white text-black border-2 border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer">
-                                <span>💡 Dari Topik</span>
-                            </button>
-                            <button type="button" id="tab-src-rpm" onclick="switchAiMpiSourceMode('rpm')" class="h-9 px-3 bg-transparent text-slate-700 hover:text-black border-2 border-transparent font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer">
-                                <span>📄 Baca Dokumen RPM</span>
-                            </button>
+                        <div class="p-1 bg-slate-200 border-2 border-black rounded-xl">
+                            <div class="grid grid-cols-2 gap-1.5">
+                                <button type="button" id="tab-src-topic" onclick="switchAiMpiSourceMode('topic')" class="h-9 px-2.5 bg-white text-black border-2 border-black rounded-lg font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition cursor-pointer">
+                                    <span>💡 Dari Topik (Instan)</span>
+                                </button>
+                                <button type="button" id="tab-src-rpm" onclick="switchAiMpiSourceMode('rpm')" class="h-9 px-2.5 bg-transparent text-slate-700 hover:text-black border-2 border-transparent font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer">
+                                    <span>📄 Unggah Dokumen RPM</span>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Panel 1A: Buat dari Topik Pembelajaran -->
