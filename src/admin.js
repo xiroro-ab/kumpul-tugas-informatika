@@ -4451,22 +4451,20 @@ document.addEventListener('DOMContentLoaded', () => {
             codeEditor.value = currentAiMpiState.html;
         }
 
-        if (iframe) {
+        const oldIframe = document.getElementById('ai-mpi-preview-iframe');
+        if (oldIframe && oldIframe.parentNode) {
             if (currentPreviewBlobUrl) {
                 try { URL.revokeObjectURL(currentPreviewBlobUrl); } catch (_) {}
                 currentPreviewBlobUrl = null;
             }
-            try {
-                const doc = iframe.contentWindow?.document || iframe.contentDocument;
-                if (doc) {
-                    doc.open();
-                    doc.write(currentAiMpiState.html);
-                    doc.close();
-                    return;
-                }
-            } catch (_) {}
-            iframe.removeAttribute('src');
-            iframe.srcdoc = currentAiMpiState.html;
+            const isMobile = currentAiMpiState.device === 'mobile';
+            const newIframe = document.createElement('iframe');
+            newIframe.id = 'ai-mpi-preview-iframe';
+            newIframe.className = isMobile ? 'w-full h-full border-0 block' : 'w-full h-full min-h-[500px] border-0 block';
+            newIframe.setAttribute('allow', 'fullscreen; autoplay; clipboard-write; encrypted-media');
+            newIframe.setAttribute('allowfullscreen', 'true');
+            newIframe.srcdoc = currentAiMpiState.html;
+            oldIframe.parentNode.replaceChild(newIframe, oldIframe);
         }
     }
 
@@ -4576,25 +4574,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.reloadAiMpiPreview = () => {
-        const iframe = document.getElementById('ai-mpi-preview-iframe');
-        if (iframe && currentAiMpiState.html) {
-            try {
-                const doc = iframe.contentWindow?.document || iframe.contentDocument;
-                if (doc) {
-                    doc.open();
-                    doc.write(currentAiMpiState.html);
-                    doc.close();
-                    return;
-                }
-            } catch (_) {}
-            iframe.removeAttribute('src');
-            iframe.srcdoc = '';
-            setTimeout(() => {
-                iframe.srcdoc = currentAiMpiState.html;
-            }, 30);
-        } else {
-            renderAiMpiPreview();
-        }
+        renderAiMpiPreview();
     };
 
     window.openCurrentAiMpiInTab = () => {

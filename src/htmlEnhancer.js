@@ -62,89 +62,158 @@ export function sanitizeAndEnhanceHtml(rawHtml) {
     const tabAutoHealerScript = `
 <script id="mpi-tab-autohealer">
 (function() {
-  // Safe Fallback Guardian untuk Navigasi Web MPI
-  // HANYA aktif jika skrip dokumen belum menyediakan pengendali navigasi,
-  // dan TIDAK PERNAH menimpa fungsi bawaan yang sudah berjalan normal.
-  
+  // Pengendali Navigasi Tab Universal & Safety Net (Ultra-Robust)
+  // Menjamin seluruh tombol navigasi tab, tombol hamburger, dan tombol kuis selalu merespons saat diklik.
+
+  function getCleanId(val) {
+    if (!val) return '';
+    var str = String(val).trim().toLowerCase();
+    var m = str.match(/(?:switchTab|showSection|openTab|showTab|selectTab)\s*\(\s*['"]?([^'")]+)['"]?\s*\)/i);
+    str = m ? m[1] : str;
+    return str.replace(/^(?:tab-content-|section-|tab-|btn-)/, '').replace(/^[#]/, '');
+  }
+
   function findTargetElement(id) {
     if (!id) return null;
-    var clean = String(id).trim().replace(/^[#]/, '');
-    return document.getElementById(clean) ||
+    var clean = getCleanId(id);
+    return document.getElementById('tab-content-' + clean) ||
            document.getElementById('section-' + clean) ||
            document.getElementById('tab-' + clean) ||
-           document.getElementById('page-' + clean) ||
-           document.querySelector('[data-section="' + clean + '"]') ||
+           document.getElementById(clean) ||
            document.querySelector('[data-tab-content="' + clean + '"]') ||
+           document.querySelector('[data-section="' + clean + '"]') ||
            document.querySelector('[data-tab="' + clean + '"]');
   }
 
-  // Sediakan window.showSection jika dokumen belum mendefinisikannya
-  if (typeof window.showSection !== 'function') {
-    window.showSection = function(targetId) {
-      var targetEl = findTargetElement(targetId);
-      if (!targetEl) return;
+  window.switchTab = function(targetId) {
+    var clean = getCleanId(targetId);
+    if (!clean) return;
 
-      var allSections = document.querySelectorAll('.mpi-section, .page-section, .tab-content, [role="tabpanel"]');
-      if (allSections.length === 0 && targetEl.parentElement) {
-        allSections = targetEl.parentElement.children;
-      }
-      for (var i = 0; i < allSections.length; i++) {
-        var sec = allSections[i];
-        if (sec.nodeType === 1 && !sec.matches('nav, header, footer, [role="tablist"]')) {
-          sec.style.display = 'none';
-          sec.classList.add('hidden');
+    // 1. Temukan semua panel konten section/tab
+    var allPanels = Array.prototype.slice.call(document.querySelectorAll(
+      '.mpi-tab-panel, .mpi-section, .tab-content, .page-section, [id^="tab-content-"], [id^="section-"], [id^="tab-"]'
+    )).filter(function(p) {
+      return !p.matches('button, a, nav, [role="tab"], .mpi-tab-btn, .mpi-nav-btn, .tab-btn');
+    });
+
+    var targetEl = findTargetElement(clean);
+    if (!targetEl && allPanels.length > 0) {
+      for (var i = 0; i < allPanels.length; i++) {
+        if (allPanels[i].id && allPanels[i].id.toLowerCase().indexOf(clean) !== -1) {
+          targetEl = allPanels[i];
+          break;
         }
       }
-      targetEl.style.display = 'block';
-      targetEl.classList.remove('hidden');
+    }
 
-      // Update active nav button jika ada
-      var allNavBtns = document.querySelectorAll('.mpi-nav-btn, .tab-btn, [role="tab"]');
-      for (var j = 0; j < allNavBtns.length; j++) {
-        allNavBtns[j].classList.remove('active', 'bg-indigo-600', 'text-white');
+    if (targetEl) {
+      allPanels.forEach(function(panel) {
+        if (panel === targetEl) {
+          panel.style.display = 'block';
+          panel.classList.remove('hidden');
+        } else {
+          panel.style.display = 'none';
+          panel.classList.add('hidden');
+        }
+      });
+    }
+
+    // 2. Perbarui gaya tombol tab aktif
+    var allBtns = document.querySelectorAll('.mpi-tab-btn, .mpi-nav-btn, .tab-btn, [role="tab"]');
+    allBtns.forEach(function(b) {
+      b.classList.remove('active', 'bg-indigo-600', 'text-white');
+      b.classList.add('bg-white', 'text-slate-800');
+    });
+
+    var activeBtn = document.getElementById('tab-btn-' + clean) ||
+                    document.getElementById('btn-' + clean) ||
+                    document.getElementById('nav-' + clean) ||
+                    document.querySelector('[data-tab="' + clean + '"]') ||
+                    document.querySelector('[onclick*="' + clean + '"]');
+    if (activeBtn) {
+      activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
+      activeBtn.classList.remove('bg-white', 'text-slate-800');
+    }
+
+    // 3. Jika sidebar/drawer terbuka di HP, tutup
+    var sidebar = document.getElementById('mpi-sidebar') || document.getElementById('sidebar');
+    if (sidebar && window.innerWidth < 1024) {
+      sidebar.classList.add('hidden', '-translate-x-full');
+      sidebar.style.display = 'none';
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Alias kompatibilitas universal
+  window.showSection = window.switchTab;
+  window.openTab = window.switchTab;
+  window.showTab = window.switchTab;
+  window.selectTab = window.switchTab;
+
+  // Handler toggle sidebar/hamburger serbaguna
+  window.toggleSidebar = function() {
+    var sidebars = document.querySelectorAll('#mpi-sidebar, #sidebar, aside.sidebar, nav.sidebar, [data-sidebar]');
+    sidebars.forEach(function(sb) {
+      var isHidden = sb.classList.contains('hidden') || sb.classList.contains('-translate-x-full') || sb.style.display === 'none';
+      if (isHidden) {
+        sb.classList.remove('hidden', '-translate-x-full');
+        sb.classList.add('translate-x-0');
+        sb.style.display = 'block';
+        sb.style.visibility = 'visible';
+      } else {
+        sb.classList.add('hidden', '-translate-x-full');
+        sb.classList.remove('translate-x-0');
+        sb.style.display = 'none';
       }
-      var activeBtn = document.getElementById('nav-' + targetId) ||
-                      document.getElementById('btn-' + targetId) ||
-                      document.querySelector('[data-target="' + targetId + '"]') ||
-                      document.querySelector('[data-tab="' + targetId + '"]');
-      if (activeBtn) {
-        activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
-      }
+    });
+  };
+  window.toggleMenu = window.toggleSidebar;
+  window.toggleNav = window.toggleSidebar;
+  window.openSidebar = window.toggleSidebar;
 
-      var sidebar = document.getElementById('mpi-sidebar');
-      if (sidebar && window.innerWidth < 1024) {
-        sidebar.classList.add('-translate-x-full');
-      }
-    };
-  }
-
-  // Kompatibilitas alias navigasi (hanya jika belum terdefinisi)
-  if (typeof window.switchTab !== 'function') {
-    window.switchTab = window.showSection;
-  }
-  if (typeof window.openTab !== 'function') {
-    window.openTab = window.showSection;
-  }
-  if (typeof window.showTab !== 'function') {
-    window.showTab = window.showSection;
-  }
-  if (typeof window.toggleSidebar !== 'function') {
-    window.toggleSidebar = function() {
-      var sb = document.getElementById('mpi-sidebar');
-      if (sb) sb.classList.toggle('-translate-x-full');
-    };
-  }
-
-  // Delegasi klik aman: HANYA menangani tombol yang belum memiliki onclick bawaan
+  // Safety net capture-phase click listener
+  // Menjamin klik pada tombol tab atau hamburger LANGSUNG bekerja di tingkat peramban
   document.addEventListener('click', function(e) {
-    var btn = e.target.closest('[data-section], [data-tab], [data-target]');
-    if (btn && !btn.getAttribute('onclick')) {
-      var targetId = btn.getAttribute('data-section') || btn.getAttribute('data-target') || btn.getAttribute('data-tab');
-      if (targetId && typeof window.showSection === 'function') {
-        window.showSection(targetId);
+    // 1. Cek tombol menu / hamburger
+    var menuBtn = e.target.closest('#hamburger-btn, #menu-btn, .hamburger, [data-toggle="sidebar"], button[onclick*="toggle"]');
+    if (menuBtn) {
+      window.toggleSidebar();
+      return;
+    }
+
+    // 2. Cek tombol tab navigasi
+    var tabBtn = e.target.closest('.mpi-tab-btn, .mpi-nav-btn, .tab-btn, [data-tab], [data-section], [role="tab"]');
+    if (tabBtn) {
+      var dataVal = tabBtn.getAttribute('data-tab') || tabBtn.getAttribute('data-section') || '';
+      var onclickStr = tabBtn.getAttribute('onclick') || '';
+      var targetId = dataVal;
+      if (!targetId && onclickStr) {
+        var m = onclickStr.match(/(?:switchTab|showSection|openTab|showTab|selectTab)\s*\(\s*['"]?([^'")]+)['"]?\s*\)/i);
+        if (m) targetId = m[1];
+      }
+      if (!targetId && tabBtn.id) {
+        targetId = tabBtn.id.replace(/^(?:tab-btn-|btn-|nav-)/, '');
+      }
+      if (targetId) {
+        window.switchTab(targetId);
       }
     }
-  });
+  }, true);
+
+  // Inisialisasi tab pertama saat halaman siap
+  function initFirstTab() {
+    var hasActive = document.querySelector('.mpi-tab-panel:not(.hidden), .mpi-section:not(.hidden)');
+    if (!hasActive) {
+      window.switchTab('beranda');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFirstTab);
+  } else {
+    initFirstTab();
+  }
 })();
 </script>`;
 
