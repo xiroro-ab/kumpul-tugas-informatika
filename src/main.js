@@ -1219,36 +1219,80 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
             }
 
+            let actionsHtml = '';
+            if (meta.tipe === 'mpi_native') {
+                actionsHtml = `
+                    <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="w-full min-h-[44px] px-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <span>🎮 Mainkan Game &amp; Modul Interaktif</span>
+                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="if (window.openMpiViewer) window.openMpiViewer({ mode: 'explorer' })" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka seluruh wahana interaktif">
+                            <span class="truncate">Katalog Wahana</span> 🚀
+                        </button>
+                        <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="h-10 px-2.5 border-2 border-black rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
+                            ${completed ? '✓ Selesai' : 'Tandai Selesai'}
+                        </button>
+                    </div>
+                `;
+            } else if (meta.html_content || meta.url_materi) {
+                actionsHtml = `
+                    <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="w-full min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                        <span>Pelajari Materi (Mode Fokus)</span>
+                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${meta.html_content ? `
+                            <button type="button" onclick="openStudentHtmlDirectInTab('${m.id}')" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka materi di tab baru">
+                                <span class="truncate">Buka di Tab Baru</span> ↗
+                            </button>
+                        ` : `
+                            <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka tautan sumber di tab baru">
+                                <span class="truncate">Buka di Tab Baru</span> ↗
+                            </a>
+                        `}
+                        <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="h-10 px-2.5 border-2 border-black rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
+                            ${completed ? '✓ Sudah Selesai' : 'Tandai Selesai'}
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionsHtml = `
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="flex-1 min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                            <span>Baca Modul Lengkap</span>
+                        </button>
+                        <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="min-h-[44px] px-3.5 border-2 border-black rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
+                            ${completed ? '✓ Sudah Selesai' : 'Tandai Selesai'}
+                        </button>
+                    </div>
+                `;
+            }
+
             const card = document.createElement('div');
-            card.className = "bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] p-4 sm:p-5 md:p-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
+            card.className = "bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] p-4 sm:p-5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
             card.innerHTML = `
                 <div>
-                    <div class="flex items-center gap-1.5 flex-wrap mb-2.5">
-                        <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            ${a.mapel}
-                        </span>
-                        <span class="bg-yellow-200 text-black border border-black text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            Kelas ${a.kelas}
-                        </span>
-                        ${tipeBadgeHtml}
-                        ${parsed.token_required && parsed.token ? `<span class="bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Wajib Token</span>` : ''}
-                        ${deadlineBadge}
+                    <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                ${m.mapel} &bull; Kelas ${m.kelas}
+                            </span>
+                            <span class="${badgeClass} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                ${badgeText}
+                            </span>
+                        </div>
+                        ${completed ? `
+                            <span class="bg-emerald-500 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase border border-black flex items-center gap-1">
+                                <span>✓</span> Sudah Dipelajari
+                            </span>
+                        ` : ''}
                     </div>
-
-                    <h4 class="font-black text-lg md:text-xl text-black mb-1.5">${escapeHtml(a.judul_tugas)}</h4>
-                    <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line">${escapeHtml(parsed.petunjuk || a.deskripsi || '')}</p>
-
-                    ${feedbackSectionHtml}
+                    <h4 class="font-black text-base sm:text-lg text-black mb-1.5 leading-snug">${m.judul}</h4>
+                    <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 line-clamp-3 whitespace-pre-line">${meta.deskripsi || m.konten}</p>
                 </div>
-
-                <div class="pt-3 border-t-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mt-auto">
-                    <div class="w-full sm:w-auto shrink-0">${submissionBadge}</div>
-                    <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')})" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0 ${actionBtnClass}">
-                        ${actionBtnText}
-                    </button>
+                <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                    ${actionsHtml}
                 </div>
             `;
-
             container.appendChild(card);
         });
     }
@@ -2422,7 +2466,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tugas_id: parsed.tugas_id || '',
                 kategori: parsed.kategori || 'modul',
                 level: parsed.level || 'menengah',
-                html_content: parsed.html_content || ''
+                html_content: parsed.html_content || '',
+                mpi_grade: parsed.mpi_grade,
+                mpi_chapter_id: parsed.mpi_chapter_id,
+                mpi_chapter_code: parsed.mpi_chapter_code,
+                mpi_chapter_title: parsed.mpi_chapter_title,
+                mpi_meeting_id: parsed.mpi_meeting_id,
+                mpi_meeting_num: parsed.mpi_meeting_num,
+                mpi_duration: parsed.mpi_duration
             };
         }
 
@@ -2538,6 +2589,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const mat = allMaterials.find(m => String(m.id) === String(materialId));
         if (!mat) return;
         const meta = parseMaterialData(mat);
+
+        if (meta.tipe === 'mpi_native' || meta.mpi_meeting_id) {
+            if (window.openMpiViewer) {
+                window.openMpiViewer({
+                    mode: 'lesson',
+                    meetingId: meta.mpi_meeting_id,
+                    grade: meta.mpi_grade ? Number(meta.mpi_grade) : undefined,
+                    chapterId: meta.mpi_chapter_id,
+                    lmsMaterialId: mat.id
+                });
+                return;
+            }
+        }
         currentActiveFocusMaterial = { ...meta, id: mat.id, judul: mat.judul };
 
         const modal = document.getElementById('student-material-focus-modal');
@@ -2803,7 +2867,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const matchKelas = !studentKelas || isClassMatch(m.kelas, studentKelas);
 
             // Match Tipe
-            const matchTipe = !filterTipe || matTipe === filterTipe || (filterTipe === 'mpi' && (matTipe === 'mpi_html' || matTipe === 'mpi'));
+            const matchTipe = !filterTipe || matTipe === filterTipe || (filterTipe === 'mpi' && (matTipe === 'mpi_html' || matTipe === 'mpi' || matTipe === 'mpi_native')) || (filterTipe === 'mpi_native' && matTipe === 'mpi_native');
 
             return matchMapel && matchKelas && matchTipe;
         });
@@ -2820,7 +2884,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             let badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
             let badgeText = 'Modul Bacaan';
 
-            if (meta.tipe === 'mpi_html') {
+            if (meta.tipe === 'mpi_native') {
+                badgeClass = 'bg-cyan-100 text-cyan-950 border-cyan-400 font-black';
+                badgeText = '🎮 Wahana Game & Modul';
+            } else if (meta.tipe === 'mpi_html') {
                 badgeClass = 'bg-fuchsia-100 text-fuchsia-950 border-fuchsia-300';
                 badgeText = 'MPI Interaktif (HTML)';
             } else if (meta.tipe === 'mpi') {
@@ -2832,6 +2899,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (meta.tipe === 'video') {
                 badgeClass = 'bg-rose-100 text-rose-900 border-rose-300';
                 badgeText = 'Video Pembelajaran';
+            }
+
+            let actionsHtml = '';
+            if (meta.tipe === 'mpi_native') {
+                actionsHtml = `
+                    <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="w-full min-h-[44px] px-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <span>🎮 Mainkan Game &amp; Modul Interaktif</span>
+                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="if (window.openMpiViewer) window.openMpiViewer({ mode: 'explorer' })" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka seluruh wahana interaktif">
+                            <span class="truncate">Katalog Wahana</span> 🚀
+                        </button>
+                        <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="h-10 px-2.5 border-2 border-black rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
+                            ${completed ? '✓ Selesai' : 'Tandai Selesai'}
+                        </button>
+                    </div>
+                `;
+            } else if (meta.html_content || meta.url_materi) {
+                actionsHtml = `
+                    <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="w-full min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                        <span>Pelajari Materi (Mode Fokus)</span>
+                    </button>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${meta.html_content ? `
+                            <button type="button" onclick="openStudentHtmlDirectInTab('${m.id}')" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka materi di tab baru">
+                                <span class="truncate">Buka di Tab Baru</span> ↗
+                            </button>
+                        ` : `
+                            <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka tautan sumber di tab baru">
+                                <span class="truncate">Buka di Tab Baru</span> ↗
+                            </a>
+                        `}
+                        <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="h-10 px-2.5 border-2 border-black rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
+                            ${completed ? '✓ Sudah Selesai' : 'Tandai Selesai'}
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionsHtml = `
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="flex-1 min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                            <span>Baca Modul Lengkap</span>
+                        </button>
+                        <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="min-h-[44px] px-3.5 border-2 border-black rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
+                            ${completed ? '✓ Sudah Selesai' : 'Tandai Selesai'}
+                        </button>
+                    </div>
+                `;
             }
 
             const card = document.createElement('div');
@@ -2857,38 +2972,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 line-clamp-3 whitespace-pre-line">${meta.deskripsi || m.konten}</p>
                 </div>
                 <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
-                    ${meta.html_content || meta.url_materi ? `
-                        <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="w-full min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
-                            <span>Pelajari Materi (Mode Fokus)</span>
-                        </button>
-                        <div class="grid grid-cols-2 gap-2">
-                            ${meta.html_content ? `
-                                <button type="button" onclick="openStudentHtmlDirectInTab('${m.id}')" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka materi di tab baru">
-                                    <span class="truncate">Buka di Tab Baru</span> ↗
-                                </button>
-                            ` : `
-                                <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka tautan sumber di tab baru">
-                                    <span class="truncate">Buka di Tab Baru</span> ↗
-                                </a>
-                            `}
-                            <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="h-10 px-2.5 border-2 border-black rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
-                                ${completed ? '✓ Sudah Selesai' : 'Tandai Selesai'}
-                            </button>
-                        </div>
-                    ` : `
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="flex-1 min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
-                                <span>Baca Modul Lengkap</span>
-                            </button>
-                            <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="min-h-[44px] px-3.5 border-2 border-black rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
-                                ${completed ? '✓ Sudah Selesai' : 'Tandai Selesai'}
-                            </button>
-                        </div>
-                    `}
+                    ${actionsHtml}
                 </div>
             `;
-            container.appendChild(card);
-        });
+            container.appendChild(card);        });
     }
 
     window.filterStudentMaterials = () => {
@@ -5075,3 +5162,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (_) {}
 
 });
+
+
+    // Sinkronisasi otomatis saat siswa menyelesaikan modul di viewer MPI React
+    window.addEventListener('mpi_progress_updated', () => {
+        try {
+            renderStudentMaterials();
+            updatePortalOverviewStats();
+        } catch (_) {}
+    });

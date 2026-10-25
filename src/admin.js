@@ -3432,7 +3432,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 tugas_id: parsed.tugas_id || '',
                 kategori: parsed.kategori || 'modul',
                 level: parsed.level || 'menengah',
-                html_content: parsed.html_content || ''
+                html_content: parsed.html_content || '',
+                mpi_grade: parsed.mpi_grade,
+                mpi_chapter_id: parsed.mpi_chapter_id,
+                mpi_chapter_code: parsed.mpi_chapter_code,
+                mpi_chapter_title: parsed.mpi_chapter_title,
+                mpi_meeting_id: parsed.mpi_meeting_id,
+                mpi_meeting_num: parsed.mpi_meeting_num,
+                mpi_duration: parsed.mpi_duration
             };
         }
 
@@ -3520,6 +3527,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const mat = materialsList.find(m => String(m.id) === String(id));
         if (!mat) return;
         const meta = parseMaterialData(mat);
+
+        if (meta.tipe === 'mpi_native' || meta.mpi_meeting_id) {
+            if (window.openMpiViewer) {
+                window.openMpiViewer({
+                    mode: 'lesson',
+                    meetingId: meta.mpi_meeting_id,
+                    grade: meta.mpi_grade ? Number(meta.mpi_grade) : undefined,
+                    chapterId: meta.mpi_chapter_id,
+                    lmsMaterialId: mat.id
+                });
+                return;
+            }
+        }
         const modal = document.getElementById('admin-material-preview-modal');
         const iframe = document.getElementById('admin-preview-iframe');
         const textContainer = document.getElementById('admin-preview-text');
@@ -3728,7 +3748,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
                 let badgeText = 'Modul Bacaan';
 
-                if (meta.tipe === 'mpi_html') {
+                if (meta.tipe === 'mpi_native') {
+                    badgeClass = 'bg-cyan-100 text-cyan-950 border-cyan-400 font-black';
+                    badgeText = '🎮 Wahana Game & Modul';
+                } else if (meta.tipe === 'mpi_html') {
                     badgeClass = 'bg-fuchsia-100 text-fuchsia-950 border-fuchsia-300';
                     badgeText = 'MPI Interaktif (HTML)';
                 } else if (meta.tipe === 'mpi') {
@@ -8780,3 +8803,162 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 });
+
+    // =======================================================
+    // SINKRONISASI KURIKULUM MPI INTERAKTIF KE MATERI LMS
+    // =======================================================
+    window.openSyncMpiModal = () => {
+        const modal = document.getElementById('modal-sync-mpi');
+        if (modal) modal.classList.remove('hidden');
+    };
+
+    window.closeSyncMpiModal = () => {
+        const modal = document.getElementById('modal-sync-mpi');
+        if (modal) modal.classList.add('hidden');
+    };
+
+    window.executeSyncMpiCurriculum = async () => {
+        const grade7Checked = document.getElementById('sync-mpi-grade-7')?.checked;
+        const grade8Checked = document.getElementById('sync-mpi-grade-8')?.checked;
+        const grade9Checked = document.getElementById('sync-mpi-grade-9')?.checked;
+
+        if (!grade7Checked && !grade8Checked && !grade9Checked) {
+            showCustomModal("Silakan pilih minimal satu jenjang kelas yang ingin diimpor!");
+            return;
+        }
+
+        const getCurr = window.getMpiCurriculum;
+        if (typeof getCurr !== 'function') {
+            showCustomModal("Data kurikulum MPI belum siap. Pastikan script react sudah termuat.");
+            return;
+        }
+
+        const allCurriculum = getCurr();
+        const statusBox = document.getElementById('sync-mpi-status-box');
+        const statusText = document.getElementById('sync-mpi-status-text');
+        const progressBar = document.getElementById('sync-mpi-progress-bar');
+        const btnRun = document.getElementById('btn-run-sync-mpi');
+
+        if (statusBox) statusBox.classList.remove('hidden');
+        if (btnRun) {
+            btnRun.disabled = true;
+            btnRun.innerText = "Mengimpor Data...";
+        }
+
+        try {
+            // 1. Ambil daftar materi yang sudah ada di database untuk mencegah duplikasi
+            const { data: existingMaterials, error: fetchErr } = await supabase
+                .from('materials')
+                .select('id, konten');
+            
+            if (fetchErr) throw fetchErr;
+
+            const existingMeetingIds = new Set();
+            (existingMaterials || []).forEach(m => {
+                const meta = parseMaterialData(m);
+                if (meta.mpi_meeting_id) {
+                    existingMeetingIds.add(meta.mpi_meeting_id);
+                }
+            });
+
+            // 2. Kumpulkan modul yang akan diinsert
+            const toInsert = [];
+            const selectedGrades = [];
+            if (grade7Checked) selectedGrades.push(7);
+            if (grade8Checked) selectedGrades.push(8);
+            if (grade9Checked) selectedGrades.push(9);
+
+            allCurriculum.forEach(gradeData => {
+                if (!selectedGrades.includes(gradeData.grade)) return;
+
+                gradeData.chapters.forEach(chapter => {
+                    chapter.meetings.forEach(meeting => {
+                        if (existingMeetingIds.has(meeting.id)) {
+                            // Sudah pernah diimpor, lewati agar tidak duplikat
+                            return;
+                        }
+
+                        const structuredKonten = JSON.stringify({
+                            tipe: 'mpi_native',
+                            kategori: 'modul',
+                            level: 'menengah',
+                            deskripsi: `${meeting.description}${meeting.objective ? '\n\nTujuan: ' + meeting.objective : ''}`,
+                            mpi_grade: gradeData.grade,
+                            mpi_chapter_id: chapter.id,
+                            mpi_chapter_code: chapter.code,
+                            mpi_chapter_title: chapter.title,
+                            mpi_meeting_id: meeting.id,
+                            mpi_meeting_num: meeting.number,
+                            mpi_duration: meeting.duration || '2 JP'
+                        });
+
+                        const meetingTitleLabel = meeting.number === 0 
+                            ? 'Materi Pokok Teori' 
+                            : (meeting.id.includes('evaluasi') 
+                                ? 'Evaluasi Game Berwaktu' 
+                                : (meeting.id.includes('ujian') 
+                                    ? 'Ujian Akhir Bab' 
+                                    : `Pertemuan 0${meeting.number}: ${meeting.title}`));
+
+                        toInsert.push({
+                            teacher_id: currentSession?.user?.id || null,
+                            guru_id: currentTeacher?.id || currentSession?.user?.id || null,
+                            mapel: 'Informatika',
+                            kelas: String(gradeData.grade),
+                            judul: `[${chapter.code}] ${meetingTitleLabel}`,
+                            konten: structuredKonten,
+                            link_video: ''
+                        });
+                    });
+                });
+            });
+
+            if (toInsert.length === 0) {
+                if (statusText) statusText.innerText = "Semua modul untuk kelas yang dipilih sudah ada di database!";
+                if (progressBar) progressBar.style.width = '100%';
+                setTimeout(() => {
+                    closeSyncMpiModal();
+                    showCustomModal("Seluruh modul MPI untuk kelas yang dipilih sudah terdaftar sebelumnya di database.");
+                    if (btnRun) {
+                        btnRun.disabled = false;
+                        btnRun.innerText = "⚡ Mulai Impor ke LMS";
+                    }
+                }, 1000);
+                return;
+            }
+
+            // 3. Batch insert ke Supabase (20 item per batch)
+            const batchSize = 20;
+            const totalBatches = Math.ceil(toInsert.length / batchSize);
+
+            for (let i = 0; i < totalBatches; i++) {
+                const chunk = toInsert.slice(i * batchSize, (i + 1) * batchSize);
+                if (statusText) statusText.innerText = `Menyimpan batch ${i + 1} dari ${totalBatches} (${chunk.length} modul)...`;
+                const pct = Math.round(((i + 1) / totalBatches) * 100);
+                if (progressBar) progressBar.style.width = `${pct}%`;
+
+                const { error: insertErr } = await supabase.from('materials').insert(chunk);
+                if (insertErr) throw insertErr;
+            }
+
+            if (statusText) statusText.innerText = `Selesai! Berhasil mengimpor ${toInsert.length} modul interaktif.`;
+            setTimeout(async () => {
+                closeSyncMpiModal();
+                if (btnRun) {
+                    btnRun.disabled = false;
+                    btnRun.innerText = "⚡ Mulai Impor ke LMS";
+                }
+                showCustomModal(`Selamat! Berhasil mendaftarkan ${toInsert.length} modul dan game interaktif MPI ke dalam materi pembelajaran LMS.`);
+                await loadMaterials();
+            }, 800);
+
+        } catch (err) {
+            console.error("Gagal sinkronisasi materi MPI:", err);
+            if (statusText) statusText.innerText = `Terjadi kesalahan: ${err.message}`;
+            if (btnRun) {
+                btnRun.disabled = false;
+                btnRun.innerText = "⚡ Mulai Impor ke LMS";
+            }
+            showCustomModal("Gagal mengimpor modul MPI: " + err.message);
+        }
+    };
