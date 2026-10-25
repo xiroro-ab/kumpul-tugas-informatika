@@ -28,6 +28,28 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
+export function matchesSearchQuery(textSources, query) {
+    if (!query || !query.trim()) return true;
+    const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return true;
+
+    const combinedText = textSources
+        .filter(Boolean)
+        .map(t => String(t))
+        .join(' ');
+
+    return tokens.every(token => {
+        // Jika token pendek (<= 3 huruf seperti 'tik', 'bk', 'ad', 'sk', '7', 'ipa'),
+        // cari berdasarkan batas awal kata agar tidak mencocokkan huruf di tengah kata (seperti 'tik' di 'informa-TIK-a')
+        if (token.length <= 3) {
+            const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const prefixRegex = new RegExp('(?:^|[^a-zA-Z0-9])' + escaped, 'i');
+            return prefixRegex.test(combinedText);
+        }
+        return combinedText.toLowerCase().includes(token);
+    });
+}
+
 export function splitQuestionImage(text) {
     if (!text || typeof text !== 'string') {
         return { text: text || '', gambar_url: '' };
@@ -1053,11 +1075,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (parsed.is_archived) return false;
             const matchMapel = !filterMapel || a.mapel === filterMapel;
             const matchKelas = !studentKelas || isClassMatch(a.kelas, studentKelas);
-            const matchSearch = !searchQuery || 
-                (a.judul_tugas && a.judul_tugas.toLowerCase().includes(searchQuery)) ||
-                (a.deskripsi && a.deskripsi.toLowerCase().includes(searchQuery)) ||
-                (parsed.petunjuk && parsed.petunjuk.toLowerCase().includes(searchQuery)) ||
-                (a.mapel && a.mapel.toLowerCase().includes(searchQuery));
+            const matchSearch = matchesSearchQuery([
+                a.judul_tugas,
+                a.deskripsi,
+                parsed.petunjuk,
+                a.mapel,
+                a.kelas,
+                `Kelas ${a.kelas}`
+            ], searchQuery);
             return matchMapel && matchKelas && matchSearch;
         });
 
@@ -2863,11 +2888,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const matchTipe = !filterTipe || matTipe === filterTipe || (filterTipe === 'mpi' && (matTipe === 'mpi_html' || matTipe === 'mpi' || matTipe === 'mpi_native')) || (filterTipe === 'mpi_native' && matTipe === 'mpi_native');
 
             // Match Search
-            const matchSearch = !searchQuery || 
-                (m.judul && m.judul.toLowerCase().includes(searchQuery)) ||
-                (meta.deskripsi && meta.deskripsi.toLowerCase().includes(searchQuery)) ||
-                (m.konten && typeof m.konten === 'string' && m.konten.toLowerCase().includes(searchQuery)) ||
-                (m.mapel && m.mapel.toLowerCase().includes(searchQuery));
+            const matchSearch = matchesSearchQuery([
+                m.judul,
+                meta.deskripsi || m.konten,
+                m.mapel,
+                m.kelas,
+                `Kelas ${m.kelas}`
+            ], searchQuery);
 
             return matchMapel && matchKelas && matchTipe && matchSearch;
         });
@@ -3100,10 +3127,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const filtered = allQuizzes.filter(q => {
             const matchMapel = !filterMapel || q.mapel === filterMapel;
             const matchKelas = !studentKelas || isClassMatch(q.kelas, studentKelas);
-            const matchSearch = !searchQuery || 
-                (q.judul_kuis && q.judul_kuis.toLowerCase().includes(searchQuery)) ||
-                (q.petunjuk && q.petunjuk.toLowerCase().includes(searchQuery)) ||
-                (q.mapel && q.mapel.toLowerCase().includes(searchQuery));
+            const matchSearch = matchesSearchQuery([
+                q.judul_kuis,
+                q.petunjuk,
+                q.mapel,
+                q.kelas,
+                `Kelas ${q.kelas}`
+            ], searchQuery);
             return matchMapel && matchKelas && matchSearch;
         });
 

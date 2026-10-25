@@ -48,6 +48,28 @@ let activeAssignmentForSubmissions = null;
 let formBuilderQuestions = [];
 let editingAssignmentId = null;
 
+export function matchesSearchQuery(textSources, query) {
+    if (!query || !query.trim()) return true;
+    const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return true;
+
+    const combinedText = textSources
+        .filter(Boolean)
+        .map(t => String(t))
+        .join(' ');
+
+    return tokens.every(token => {
+        // Jika token pendek (<= 3 huruf seperti 'tik', 'bk', 'ad', 'sk', '7', 'ipa'),
+        // cari berdasarkan batas awal kata agar tidak mencocokkan huruf di tengah kata (seperti 'tik' di 'informa-TIK-a')
+        if (token.length <= 3) {
+            const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const prefixRegex = new RegExp('(?:^|[^a-zA-Z0-9])' + escaped, 'i');
+            return prefixRegex.test(combinedText);
+        }
+        return combinedText.toLowerCase().includes(token);
+    });
+}
+
 export function getDynamicClassOptions(classes = stateKelas) {
     const list = Array.isArray(classes) ? classes.filter(Boolean) : [];
     const options = [
@@ -2133,12 +2155,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let displayList = filterArchiveOnly ? archivedList : activeList;
         const searchQuery = (document.getElementById('search-admin-tugas')?.value || '').trim().toLowerCase();
         if (searchQuery) {
-            displayList = displayList.filter(a => 
-                (a.judul_tugas && a.judul_tugas.toLowerCase().includes(searchQuery)) ||
-                (a.kelas && a.kelas.toLowerCase().includes(searchQuery)) ||
-                (a.mapel && a.mapel.toLowerCase().includes(searchQuery)) ||
-                (a.deskripsi && a.deskripsi.toLowerCase().includes(searchQuery))
-            );
+            displayList = displayList.filter(a => matchesSearchQuery([
+                a.judul_tugas,
+                a.kelas,
+                `Kelas ${a.kelas}`,
+                a.mapel,
+                a.deskripsi
+            ], searchQuery));
         }
 
         container.innerHTML = '';
@@ -3794,11 +3817,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (searchQuery) {
             displayList = displayList.filter(m => {
                 const meta = parseMaterialData(m);
-                return (m.judul && m.judul.toLowerCase().includes(searchQuery)) ||
-                    (m.kelas && m.kelas.toLowerCase().includes(searchQuery)) ||
-                    (m.mapel && m.mapel.toLowerCase().includes(searchQuery)) ||
-                    (meta.deskripsi && meta.deskripsi.toLowerCase().includes(searchQuery)) ||
-                    (m.konten && typeof m.konten === 'string' && m.konten.toLowerCase().includes(searchQuery));
+                return matchesSearchQuery([
+                    m.judul,
+                    m.kelas,
+                    `Kelas ${m.kelas}`,
+                    m.mapel,
+                    meta.deskripsi || m.konten
+                ], searchQuery);
             });
         }
 
@@ -5188,12 +5213,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let displayList = quizzesList;
         const searchQuery = (document.getElementById('search-admin-kuis')?.value || '').trim().toLowerCase();
         if (searchQuery) {
-            displayList = displayList.filter(q => 
-                (q.judul_kuis && q.judul_kuis.toLowerCase().includes(searchQuery)) ||
-                (q.kelas && q.kelas.toLowerCase().includes(searchQuery)) ||
-                (q.mapel && q.mapel.toLowerCase().includes(searchQuery)) ||
-                (q.petunjuk && q.petunjuk.toLowerCase().includes(searchQuery))
-            );
+            displayList = displayList.filter(q => matchesSearchQuery([
+                q.judul_kuis,
+                q.kelas,
+                `Kelas ${q.kelas}`,
+                q.mapel,
+                q.petunjuk
+            ], searchQuery));
         }
 
         container.innerHTML = '';
