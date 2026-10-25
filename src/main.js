@@ -2856,22 +2856,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h4 class="font-black text-base sm:text-lg text-black mb-1.5 leading-snug">${m.judul}</h4>
                     <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 line-clamp-3 whitespace-pre-line">${meta.deskripsi || m.konten}</p>
                 </div>
-                <div class="pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap">
-                    <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="flex-1 min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
-                        <span>${meta.url_materi || meta.html_content ? 'Pelajari Materi (Mode Fokus)' : 'Baca Modul Lengkap'}</span>
-                    </button>
-                    ${meta.html_content ? `
-                        <button type="button" onclick="openStudentHtmlDirectInTab('${m.id}')" class="min-h-[44px] px-3.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka materi di tab baru">
-                            <span>Buka di Tab Baru</span> ↗
+                <div class="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                    ${meta.html_content || meta.url_materi ? `
+                        <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="w-full min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                            <span>Pelajari Materi (Mode Fokus)</span>
                         </button>
-                    ` : (meta.url_materi ? `
-                        <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="min-h-[44px] px-3.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka tautan sumber di tab baru">
-                            <span>Buka di Tab Baru</span> ↗
-                        </a>
-                    ` : '')}
-                    <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="min-h-[44px] px-3 border-2 border-black rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
-                        ${completed ? 'Batal Selesai' : 'Tandai Selesai'}
-                    </button>
+                        <div class="grid grid-cols-2 gap-2">
+                            ${meta.html_content ? `
+                                <button type="button" onclick="openStudentHtmlDirectInTab('${m.id}')" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka materi di tab baru">
+                                    <span class="truncate">Buka di Tab Baru</span> ↗
+                                </button>
+                            ` : `
+                                <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="h-10 px-2.5 bg-white hover:bg-slate-100 text-black border-2 border-black rounded-xl font-black text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka tautan sumber di tab baru">
+                                    <span class="truncate">Buka di Tab Baru</span> ↗
+                                </a>
+                            `}
+                            <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="h-10 px-2.5 border-2 border-black rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
+                                ${completed ? '✓ Sudah Selesai' : 'Tandai Selesai'}
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="openStudentMaterialFocus('${m.id}')" class="flex-1 min-h-[44px] px-4 bg-black hover:bg-slate-800 text-white border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition active:translate-y-0.5 cursor-pointer">
+                                <span>Baca Modul Lengkap</span>
+                            </button>
+                            <button type="button" onclick="toggleMaterialProgress('${m.id}')" class="min-h-[44px] px-3.5 border-2 border-black rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer ${completed ? 'bg-emerald-100 text-emerald-950 border-emerald-500' : 'bg-slate-50 hover:bg-slate-100 text-black'}" title="Tandai progres belajar mandiri">
+                                ${completed ? '✓ Sudah Selesai' : 'Tandai Selesai'}
+                            </button>
+                        </div>
+                    `}
                 </div>
             `;
             container.appendChild(card);
