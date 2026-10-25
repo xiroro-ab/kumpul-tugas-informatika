@@ -38,10 +38,10 @@ interface MpiModalContainerProps {
 
 export function findMeetingInCurriculum(meetingId: string): { grade: number; chapter: Chapter; meeting: Meeting } | null {
   if (!meetingId) return null;
-  const cleanId = meetingId.trim();
+  const cleanId = meetingId.trim().replace(/^mpi_native_/, '');
   for (const g of curriculumData) {
     for (const c of g.chapters) {
-      const m = c.meetings.find(x => x.id === cleanId);
+      const m = c.meetings.find(x => x.id === cleanId || x.id.toLowerCase() === cleanId.toLowerCase());
       if (m) return { grade: g.grade, chapter: c, meeting: m };
     }
   }

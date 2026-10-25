@@ -237,7 +237,7 @@
                     <div id="penugasan-cards-view" class="space-y-4">
                         <!-- Filter Arsip & Status Tugas -->
                         <div class="flex items-center justify-between gap-3 flex-wrap bg-white border-2 border-black rounded-2xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <span class="text-xs font-black uppercase text-black">Filter Tugas:</span>
                                 <button type="button" id="filter-assign-active-btn" onclick="setAssignmentArchiveFilter(false)" class="h-8 px-3 rounded-xl text-xs font-black uppercase border-2 border-black bg-black text-white shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] cursor-pointer">
                                     Tugas Aktif (<span id="count-active-assign">0</span>)
@@ -246,8 +246,11 @@
                                     Arsip (<span id="count-archived-assign">0</span>)
                                 </button>
                             </div>
-                            <div class="text-[11px] font-bold text-slate-600">
-                                Tugas diarsipkan otomatis disembunyikan dari siswa tanpa menghapus nilai.
+                            <div class="flex items-center gap-2 w-full sm:w-auto">
+                                <div class="relative w-full sm:w-64">
+                                    <input type="text" id="search-admin-tugas" oninput="renderAssignmentsWithSearch()" placeholder="Cari tugas atau kelas..." class="h-8 pl-8 pr-3 w-full border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white focus:outline-none transition" />
+                                    <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path></svg>
+                                </div>
                             </div>
                         </div>
 
@@ -380,6 +383,16 @@
                         </div>
                     </div>
 
+                    <div class="flex items-center justify-between gap-3 flex-wrap bg-white/95 border-2 border-black rounded-2xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] mb-4">
+                        <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+                            <span class="text-xs font-black uppercase text-black shrink-0">Cari Materi:</span>
+                            <div class="relative w-full max-w-sm">
+                                <input type="text" id="search-admin-materi" oninput="renderAdminMaterialsWithSearch()" placeholder="Cari judul materi, topik, atau kelas..." class="h-8 pl-8 pr-3 w-full border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white focus:outline-none transition" />
+                                <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="materials-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Kartu Materi akan dirender via JS -->
                     </div>
@@ -403,6 +416,16 @@
                             <button type="button" onclick="openQuizModal()" class="flex-1 sm:flex-none h-11 bg-black hover:bg-slate-800 text-white border-[3px] border-black font-black px-4 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:translate-y-0.5 transition whitespace-nowrap">
                                 Buat Kuis Baru
                             </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-3 flex-wrap bg-white/95 border-2 border-black rounded-2xl p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] mb-4">
+                        <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+                            <span class="text-xs font-black uppercase text-black shrink-0">Cari Ujian / Kuis:</span>
+                            <div class="relative w-full max-w-sm">
+                                <input type="text" id="search-admin-kuis" oninput="renderAdminQuizzesWithSearch()" placeholder="Cari judul kuis, topik, atau kelas..." class="h-8 pl-8 pr-3 w-full border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white focus:outline-none transition" />
+                                <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path></svg>
+                            </div>
                         </div>
                     </div>
 

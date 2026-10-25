@@ -28,6 +28,8 @@ import {
     initialStudents 
 } from './rosterData.js';
 import { calculateExamScore, getMaxScore, toPercent, getSubmissionAnswers, balanceExamWeights } from './examScoring.js';
+import { openMpiViewer } from './mountReact.tsx';
+import { generateAllMpiMaterials } from './mpi/data/mpiMaterialsGenerator.ts';
 
 let currentSession = null;
 let currentTeacher = null;
@@ -2111,124 +2113,142 @@ document.addEventListener('DOMContentLoaded', () => {
                 a.lock_deadline = Boolean(p.lock_deadline);
             });
 
-            const activeList = assignmentsList.filter(a => !a.is_archived);
-            const archivedList = assignmentsList.filter(a => a.is_archived);
-            const countActiveEl = document.getElementById('count-active-assign');
-            if (countActiveEl) countActiveEl.textContent = activeList.length;
-            const countArchivedEl = document.getElementById('count-archived-assign');
-            if (countArchivedEl) countArchivedEl.textContent = archivedList.length;
-
-            const displayList = filterArchiveOnly ? archivedList : activeList;
-
-            container.innerHTML = '';
-            if (displayList.length === 0) {
-                container.innerHTML = `<div class="col-span-2 bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">${filterArchiveOnly ? 'Belum ada tugas yang diarsipkan.' : 'Belum ada tugas/PR aktif yang dibuat guru.'}</div>`;
-                return;
-            }
-
-            displayList.forEach(a => {
-                const card = document.createElement('div');
-                card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
-                const deadlineText = a.deadline ? new Date(a.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tidak ada batas waktu';
-
-                const matchingSubs = pendingFiles.filter(f => 
-                    (f.assignment_id && String(f.assignment_id) === String(a.id)) ||
-                    (f.materi && f.materi.toLowerCase().trim() === a.judul_tugas.toLowerCase().trim())
-                );
-                const gradedCount = matchingSubs.filter(f => f.nilai !== null && f.nilai !== undefined && f.nilai !== '').length;
-
-                const parsed = parseAssignmentQuestions(a);
-                const descText = parsed.petunjuk || 'Petunjuk penugasan siswa';
-                const qCount = parsed.questions ? parsed.questions.length : 0;
-                const tipePengumpulan = parsed.tipe_pengumpulan || 'bebas';
-
-                let tipeBadgeHtml = '';
-                if (tipePengumpulan === 'form') {
-                    tipeBadgeHtml = `<span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Form Soal (${qCount} Butir)</span>`;
-                } else if (tipePengumpulan === 'link') {
-                    tipeBadgeHtml = `<span class="bg-pink-100 text-pink-900 border border-pink-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Tautan Link</span>`;
-                } else if (tipePengumpulan === 'file') {
-                    tipeBadgeHtml = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Berkas</span>`;
-                } else if (tipePengumpulan === 'text') {
-                    tipeBadgeHtml = `<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Form Web</span>`;
-                } else {
-                    tipeBadgeHtml = `<span class="bg-teal-100 text-teal-900 border border-teal-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Pengumpulan Bebas</span>`;
-                }
-
-                const assignToken = parsed.token || '';
-                const isTokenRequired = parsed.token_required !== false && !!assignToken;
-                let tokenBadgeHtml = '';
-                if (isTokenRequired) {
-                    tokenBadgeHtml = `
-                        <div class="inline-flex items-center gap-1.5 bg-yellow-200 border-2 border-black px-2 py-0.5 rounded-lg text-[10px] font-black text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                            <span>Token:</span>
-                            <span class="font-mono tracking-wider">${escapeHtml(assignToken)}</span>
-                            <button type="button" onclick="copyAssignToken('${escapeHtml(assignToken)}')" title="Salin Token" class="ml-0.5 hover:underline text-indigo-700 font-bold text-[10px]">
-                                Salin
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    tokenBadgeHtml = `
-                        <span class="bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            Tanpa Token
-                        </span>
-                    `;
-                }
-
-                card.innerHTML = `
-                    <div>
-                        <div class="flex items-center gap-1.5 flex-wrap mb-2.5">
-                            <span class="bg-emerald-100 text-emerald-950 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                Kelas ${escapeHtml(a.kelas)} &bull; ${escapeHtml(a.mapel)}
-                            </span>
-                            ${tipeBadgeHtml}
-                            ${tokenBadgeHtml}
-                            <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                Batas: ${deadlineText}
-                            </span>
-                            ${a.lock_deadline ? `<span class="bg-rose-100 text-rose-900 border border-rose-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Kunci Deadline</span>` : ''}
-                            ${a.is_archived ? `<span class="bg-slate-200 text-slate-800 border border-slate-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">Diarsipkan</span>` : ''}
-                        </div>
-                        <h4 class="font-black text-lg text-black mb-1">${escapeHtml(a.judul_tugas)}</h4>
-                        <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line line-clamp-3">${escapeHtml(descText)}</p>
-                        ${(a.rubrik_ai && !a.rubrik_ai.includes('Soal #') && !a.rubrik_ai.includes('(')) ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3"><strong>Rubrik Penilaian:</strong> ${escapeHtml(a.rubrik_ai)}</div>` : ''}
-                    </div>
-
-                    <!-- Footer Kartu: Terstruktur 2 Baris, Rapi, Bebas Overflow -->
-                    <div class="pt-3 border-t-2 border-slate-100 mt-auto space-y-2.5">
-                        <div class="flex items-center justify-between gap-2 flex-wrap">
-                            <span class="text-xs font-black text-slate-800 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-xl">
-                                ${matchingSubs.length} Siswa (${gradedCount} Dinilai)
-                            </span>
-                            <button type="button" onclick="openAssignmentSubmissionsModal('${a.id}')" class="h-9 px-3.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-1 cursor-pointer">
-                                <span>Periksa (${matchingSubs.length})</span> ↗
-                            </button>
-                        </div>
-                        <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
-                            <button type="button" onclick="editAssignment('${a.id}')" class="h-8 px-2.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
-                                ${tipePengumpulan === 'form' ? 'Edit Soal' : 'Edit Tugas'}
-                            </button>
-                            ${tipePengumpulan === 'form' ? `
-                                <button type="button" onclick="addQuestionToExistingAssignment('${a.id}')" class="h-8 px-2.5 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
-                                    + Soal
-                                </button>
-                            ` : ''}
-                            <button type="button" onclick="toggleArchiveAssignment('${a.id}')" title="${a.is_archived ? 'Kembalikan tugas ke daftar aktif' : 'Sembunyikan tugas dari siswa (arsip)'}" class="h-8 px-2.5 ${a.is_archived ? 'bg-indigo-100 hover:bg-indigo-200 text-indigo-950' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'} border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
-                                ${a.is_archived ? 'Buka Arsip' : 'Arsipkan'}
-                            </button>
-                            <button type="button" onclick="deleteAssignment('${a.id}')" class="h-8 px-2.5 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition ml-auto cursor-pointer">
-                                Hapus
-                            </button>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
+            renderAssignmentsList();
         } catch (e) {
             container.innerHTML = `<div class="col-span-2 text-center text-red-600 font-bold">Gagal memuat tugas: ${e.message}</div>`;
         }
     }
+
+    function renderAssignmentsList() {
+        const container = document.getElementById('assignments-container');
+        if (!container) return;
+
+        const activeList = assignmentsList.filter(a => !a.is_archived);
+        const archivedList = assignmentsList.filter(a => a.is_archived);
+        const countActiveEl = document.getElementById('count-active-assign');
+        if (countActiveEl) countActiveEl.textContent = activeList.length;
+        const countArchivedEl = document.getElementById('count-archived-assign');
+        if (countArchivedEl) countArchivedEl.textContent = archivedList.length;
+
+        let displayList = filterArchiveOnly ? archivedList : activeList;
+        const searchQuery = (document.getElementById('search-admin-tugas')?.value || '').trim().toLowerCase();
+        if (searchQuery) {
+            displayList = displayList.filter(a => 
+                (a.judul_tugas && a.judul_tugas.toLowerCase().includes(searchQuery)) ||
+                (a.kelas && a.kelas.toLowerCase().includes(searchQuery)) ||
+                (a.mapel && a.mapel.toLowerCase().includes(searchQuery)) ||
+                (a.deskripsi && a.deskripsi.toLowerCase().includes(searchQuery))
+            );
+        }
+
+        container.innerHTML = '';
+        if (displayList.length === 0) {
+            container.innerHTML = `<div class="col-span-2 bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">${searchQuery ? 'Tidak ada tugas yang sesuai dengan pencarian.' : (filterArchiveOnly ? 'Belum ada tugas yang diarsipkan.' : 'Belum ada tugas/PR aktif yang dibuat guru.')}</div>`;
+            return;
+        }
+
+        displayList.forEach(a => {
+            const card = document.createElement('div');
+            card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
+            const deadlineText = a.deadline ? new Date(a.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tidak ada batas waktu';
+
+            const matchingSubs = pendingFiles.filter(f => 
+                (f.assignment_id && String(f.assignment_id) === String(a.id)) ||
+                (f.materi && f.materi.toLowerCase().trim() === a.judul_tugas.toLowerCase().trim())
+            );
+            const gradedCount = matchingSubs.filter(f => f.nilai !== null && f.nilai !== undefined && f.nilai !== '').length;
+
+            const parsed = parseAssignmentQuestions(a);
+            const descText = parsed.petunjuk || 'Petunjuk penugasan siswa';
+            const qCount = parsed.questions ? parsed.questions.length : 0;
+            const tipePengumpulan = parsed.tipe_pengumpulan || 'bebas';
+
+            let tipeBadgeHtml = '';
+            if (tipePengumpulan === 'form') {
+                tipeBadgeHtml = `<span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Form Soal (${qCount} Butir)</span>`;
+            } else if (tipePengumpulan === 'link') {
+                tipeBadgeHtml = `<span class="bg-pink-100 text-pink-900 border border-pink-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Tautan Link</span>`;
+            } else if (tipePengumpulan === 'file') {
+                tipeBadgeHtml = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Berkas</span>`;
+            } else if (tipePengumpulan === 'text') {
+                tipeBadgeHtml = `<span class="bg-blue-100 text-blue-900 border border-blue-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Khusus Form Web</span>`;
+            } else {
+                tipeBadgeHtml = `<span class="bg-teal-100 text-teal-900 border border-teal-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Pengumpulan Bebas</span>`;
+            }
+
+            const assignToken = parsed.token || '';
+            const isTokenRequired = parsed.token_required !== false && !!assignToken;
+            let tokenBadgeHtml = '';
+            if (isTokenRequired) {
+                tokenBadgeHtml = `
+                    <div class="inline-flex items-center gap-1.5 bg-yellow-200 border-2 border-black px-2 py-0.5 rounded-lg text-[10px] font-black text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                        <span>Token:</span>
+                        <span class="font-mono tracking-wider">${escapeHtml(assignToken)}</span>
+                        <button type="button" onclick="copyAssignToken('${escapeHtml(assignToken)}')" title="Salin Token" class="ml-0.5 hover:underline text-indigo-700 font-bold text-[10px]">
+                            Salin
+                        </button>
+                    </div>
+                `;
+            } else {
+                tokenBadgeHtml = `
+                    <span class="bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                        Tanpa Token
+                    </span>
+                `;
+            }
+
+            card.innerHTML = `
+                <div>
+                    <div class="flex items-center gap-1.5 flex-wrap mb-2.5">
+                        <span class="bg-emerald-100 text-emerald-950 border border-emerald-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            Kelas ${escapeHtml(a.kelas)} &bull; ${escapeHtml(a.mapel)}
+                        </span>
+                        ${tipeBadgeHtml}
+                        ${tokenBadgeHtml}
+                        <span class="bg-red-100 text-red-800 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            Batas: ${deadlineText}
+                        </span>
+                        ${a.lock_deadline ? `<span class="bg-rose-100 text-rose-900 border border-rose-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Kunci Deadline</span>` : ''}
+                        ${a.is_archived ? `<span class="bg-slate-200 text-slate-800 border border-slate-400 text-[10px] font-black px-2 py-0.5 rounded uppercase">Diarsipkan</span>` : ''}
+                    </div>
+                    <h4 class="font-black text-lg text-black mb-1">${escapeHtml(a.judul_tugas)}</h4>
+                    <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line line-clamp-3">${escapeHtml(descText)}</p>
+                    ${(a.rubrik_ai && !a.rubrik_ai.includes('Soal #') && !a.rubrik_ai.includes('(')) ? `<div class="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[11px] font-bold text-purple-900 mb-3"><strong>Rubrik Penilaian:</strong> ${escapeHtml(a.rubrik_ai)}</div>` : ''}
+                </div>
+
+                <!-- Footer Kartu: Terstruktur 2 Baris, Rapi, Bebas Overflow -->
+                <div class="pt-3 border-t-2 border-slate-100 mt-auto space-y-2.5">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <span class="text-xs font-black text-slate-800 bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-xl">
+                            ${matchingSubs.length} Siswa (${gradedCount} Dinilai)
+                        </span>
+                        <button type="button" onclick="openAssignmentSubmissionsModal('${a.id}')" class="h-9 px-3.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center gap-1 cursor-pointer">
+                            <span>Periksa (${matchingSubs.length})</span> ↗
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        <button type="button" onclick="editAssignment('${a.id}')" class="h-8 px-2.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                            ${tipePengumpulan === 'form' ? 'Edit Soal' : 'Edit Tugas'}
+                        </button>
+                        ${tipePengumpulan === 'form' ? `
+                            <button type="button" onclick="addQuestionToExistingAssignment('${a.id}')" class="h-8 px-2.5 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                                + Soal
+                            </button>
+                        ` : ''}
+                        <button type="button" onclick="toggleArchiveAssignment('${a.id}')" title="${a.is_archived ? 'Kembalikan tugas ke daftar aktif' : 'Sembunyikan tugas dari siswa (arsip)'}" class="h-8 px-2.5 ${a.is_archived ? 'bg-indigo-100 hover:bg-indigo-200 text-indigo-950' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'} border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                            ${a.is_archived ? 'Buka Arsip' : 'Arsipkan'}
+                        </button>
+                        <button type="button" onclick="deleteAssignment('${a.id}')" class="h-8 px-2.5 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition ml-auto cursor-pointer">
+                            Hapus
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    window.renderAssignmentsWithSearch = renderAssignmentsList;
 
     // Modal Hasil Pengumpulan Per Tugas (LMS)
     window.openAssignmentSubmissionsModal = (assignId) => {
@@ -3749,7 +3769,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const teacherMapel = (currentTeacher?.mapel || '').trim().toLowerCase();
             const teachesInformatika = isSuperadmin || !teacherMapel || teacherMapel.includes('informatika') || teacherMapel.includes('tik');
 
-            const getMpiMats = window.getMpiCurriculumMaterials;
+            const getMpiMats = typeof generateAllMpiMaterials === 'function' ? generateAllMpiMaterials : window.getMpiCurriculumMaterials;
             const mpiMaterials = (teachesInformatika && typeof getMpiMats === 'function') ? getMpiMats() : [];
             const dbMeetingIds = new Set();
             dbMaterials.forEach(m => {
@@ -3759,94 +3779,116 @@ document.addEventListener('DOMContentLoaded', () => {
             const freshMpi = mpiMaterials.filter(m => !dbMeetingIds.has(m.mpi_meeting_id));
             materialsList = [...dbMaterials, ...freshMpi];
 
-            container.innerHTML = '';
-            if (materialsList.length === 0) {
-                container.innerHTML = '<div class="col-span-2 bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">Belum ada materi pembelajaran yang dibuat.</div>';
-                return;
-            }
-
-            materialsList.forEach(m => {
-                const meta = parseMaterialData(m);
-                let badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
-                let badgeText = 'Modul Bacaan';
-
-                if (meta.tipe === 'mpi_native') {
-                    badgeClass = 'bg-cyan-100 text-cyan-950 border-cyan-400 font-black';
-                    badgeText = '🎮 Wahana Game & Modul';
-                } else if (meta.tipe === 'mpi_html') {
-                    badgeClass = 'bg-fuchsia-100 text-fuchsia-950 border-fuchsia-300';
-                    badgeText = 'MPI Interaktif (HTML)';
-                } else if (meta.tipe === 'mpi') {
-                    badgeClass = 'bg-indigo-100 text-indigo-900 border-indigo-300';
-                    badgeText = 'MPI Interaktif';
-                } else if (meta.tipe === 'presentasi') {
-                    badgeClass = 'bg-amber-100 text-amber-900 border-amber-300';
-                    badgeText = 'Slide Presentasi';
-                } else if (meta.tipe === 'video') {
-                    badgeClass = 'bg-rose-100 text-rose-900 border-rose-300';
-                    badgeText = 'Video Pembelajaran';
-                }
-
-                const card = document.createElement('div');
-                card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
-                card.innerHTML = `
-                    <div>
-                        <div class="flex justify-between items-start gap-2 mb-2">
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                    Kelas ${m.kelas} &bull; ${m.mapel}
-                                </span>
-                                <span class="${badgeClass} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                    ${badgeText}
-                                </span>
-                            </div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                ${!m.is_mpi_curriculum ? `
-                                    <button type="button" onclick="editMaterial('${m.id}')" class="text-indigo-600 hover:text-indigo-800 font-black text-xs uppercase tracking-wider flex items-center gap-0.5 cursor-pointer" title="Edit materi ini">
-                                        <span>✏️</span> Edit
-                                    </button>
-                                    <button type="button" onclick="deleteMaterial('${m.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-wider cursor-pointer" title="Hapus materi ini">Hapus</button>
-                                ` : `
-                                    <span class="text-[10px] font-black text-cyan-700 bg-cyan-100 border border-cyan-300 px-2 py-0.5 rounded uppercase">Kurikulum Bawaan</span>
-                                `}
-                            </div>
-                        </div>
-                        <h4 class="font-black text-lg text-black mb-2">${m.judul}</h4>
-                        <p class="text-xs text-slate-700 font-medium line-clamp-3 leading-relaxed mb-3 whitespace-pre-line">${meta.deskripsi || m.konten}</p>
-                    </div>
-                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <button type="button" onclick="openAdminMaterialPreview('${m.id}')" class="px-3 h-8 ${meta.tipe === 'mpi_native' ? 'bg-cyan-600 hover:bg-cyan-500 text-white' : 'bg-black hover:bg-slate-800 text-white'} rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer">
-                                ${meta.tipe === 'mpi_native' ? '🎮 Buka Simulasi/Game' : 'Pratinjau Materi'}
-                            </button>
-                            ${!m.is_mpi_curriculum ? `
-                                <button type="button" onclick="editMaterial('${m.id}')" class="px-3 h-8 bg-amber-300 hover:bg-amber-400 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer" title="Edit materi ini">
-                                    Edit
-                                </button>
-                            ` : ''}
-                            ${meta.tipe === 'mpi_html' ? `
-                                <button type="button" onclick="editMaterialInAiStudio('${m.id}')" class="px-2.5 h-8 bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-950 border border-fuchsia-300 rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer" title="Buka di AI Studio untuk perbaikan atau revisi AI">
-                                    AI Studio
-                                </button>
-                            ` : ''}
-                            ${meta.html_content ? `
-                                <button type="button" onclick="openAdminHtmlDirectInTab('${m.id}')" class="px-2.5 h-8 bg-white hover:bg-slate-100 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka materi di tab baru">
-                                    <span>Buka di Tab Baru</span> ↗
-                                </button>
-                            ` : (meta.url_materi ? `
-                                <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="px-2.5 h-8 bg-white hover:bg-slate-100 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka tautan sumber di tab baru">
-                                    <span>Buka Tautan Sumber</span> ↗
-                                </a>
-                            ` : '')}
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
+            renderAdminMaterials();
         } catch (e) {
             container.innerHTML = `<div class="col-span-2 text-center text-red-600 font-bold">Gagal memuat materi: ${e.message}</div>`;
         }
     }
+
+    function renderAdminMaterials() {
+        const container = document.getElementById('materials-container');
+        if (!container) return;
+
+        let displayList = materialsList;
+        const searchQuery = (document.getElementById('search-admin-materi')?.value || '').trim().toLowerCase();
+        if (searchQuery) {
+            displayList = displayList.filter(m => {
+                const meta = parseMaterialData(m);
+                return (m.judul && m.judul.toLowerCase().includes(searchQuery)) ||
+                    (m.kelas && m.kelas.toLowerCase().includes(searchQuery)) ||
+                    (m.mapel && m.mapel.toLowerCase().includes(searchQuery)) ||
+                    (meta.deskripsi && meta.deskripsi.toLowerCase().includes(searchQuery)) ||
+                    (m.konten && typeof m.konten === 'string' && m.konten.toLowerCase().includes(searchQuery));
+            });
+        }
+
+        container.innerHTML = '';
+        if (displayList.length === 0) {
+            container.innerHTML = `<div class="col-span-2 bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">${searchQuery ? 'Tidak ada materi pembelajaran yang cocok dengan pencarian.' : 'Belum ada materi pembelajaran yang dibuat.'}</div>`;
+            return;
+        }
+
+        displayList.forEach(m => {
+            const meta = parseMaterialData(m);
+            let badgeClass = 'bg-emerald-100 text-emerald-900 border-emerald-300';
+            let badgeText = 'Modul Bacaan';
+
+            if (meta.tipe === 'mpi_native') {
+                badgeClass = 'bg-cyan-100 text-cyan-950 border-cyan-400 font-black';
+                badgeText = '🎮 Wahana Game & Modul';
+            } else if (meta.tipe === 'mpi_html') {
+                badgeClass = 'bg-fuchsia-100 text-fuchsia-950 border-fuchsia-300';
+                badgeText = 'MPI Interaktif (HTML)';
+            } else if (meta.tipe === 'mpi') {
+                badgeClass = 'bg-indigo-100 text-indigo-900 border-indigo-300';
+                badgeText = 'MPI Interaktif';
+            } else if (meta.tipe === 'presentasi') {
+                badgeClass = 'bg-amber-100 text-amber-900 border-amber-300';
+                badgeText = 'Slide Presentasi';
+            } else if (meta.tipe === 'video') {
+                badgeClass = 'bg-rose-100 text-rose-900 border-rose-300';
+                badgeText = 'Video Pembelajaran';
+            }
+
+            const card = document.createElement('div');
+            card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
+            card.innerHTML = `
+                <div>
+                    <div class="flex justify-between items-start gap-2 mb-2">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                Kelas ${m.kelas} &bull; ${m.mapel}
+                            </span>
+                            <span class="${badgeClass} border text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                                ${badgeText}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            ${!m.is_mpi_curriculum ? `
+                                <button type="button" onclick="editMaterial('${m.id}')" class="text-indigo-600 hover:text-indigo-800 font-black text-xs uppercase tracking-wider flex items-center gap-0.5 cursor-pointer" title="Edit materi ini">
+                                    <span>✏️</span> Edit
+                                </button>
+                                <button type="button" onclick="deleteMaterial('${m.id}')" class="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-wider cursor-pointer" title="Hapus materi ini">Hapus</button>
+                            ` : `
+                                <span class="text-[10px] font-black text-cyan-700 bg-cyan-100 border border-cyan-300 px-2 py-0.5 rounded uppercase">Kurikulum Bawaan</span>
+                            `}
+                        </div>
+                    </div>
+                    <h4 class="font-black text-lg text-black mb-2">${m.judul}</h4>
+                    <p class="text-xs text-slate-700 font-medium line-clamp-3 leading-relaxed mb-3 whitespace-pre-line">${meta.deskripsi || m.konten}</p>
+                </div>
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" onclick="openAdminMaterialPreview('${m.id}')" class="px-3 h-8 ${meta.tipe === 'mpi_native' ? 'bg-cyan-600 hover:bg-cyan-500 text-white' : 'bg-black hover:bg-slate-800 text-white'} rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer">
+                            ${meta.tipe === 'mpi_native' ? '🎮 Buka Simulasi/Game' : 'Pratinjau Materi'}
+                        </button>
+                        ${!m.is_mpi_curriculum ? `
+                            <button type="button" onclick="editMaterial('${m.id}')" class="px-3 h-8 bg-amber-300 hover:bg-amber-400 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer" title="Edit materi ini">
+                                Edit
+                            </button>
+                        ` : ''}
+                        ${meta.tipe === 'mpi_html' ? `
+                            <button type="button" onclick="editMaterialInAiStudio('${m.id}')" class="px-2.5 h-8 bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-950 border border-fuchsia-300 rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer" title="Buka di AI Studio untuk perbaikan atau revisi AI">
+                                AI Studio
+                            </button>
+                        ` : ''}
+                        ${meta.html_content ? `
+                            <button type="button" onclick="openAdminHtmlDirectInTab('${m.id}')" class="px-2.5 h-8 bg-white hover:bg-slate-100 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka materi di tab baru">
+                                <span>Buka di Tab Baru</span> ↗
+                            </button>
+                        ` : (meta.url_materi ? `
+                            <a href="${meta.url_materi}" target="_blank" rel="noopener noreferrer" class="px-2.5 h-8 bg-white hover:bg-slate-100 text-black border border-black rounded-lg font-black text-xs uppercase tracking-wider flex items-center gap-1 transition cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5" title="Buka tautan sumber di tab baru">
+                                <span>Buka Tautan Sumber</span> ↗
+                            </a>
+                        ` : '')}
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    window.renderAdminMaterialsWithSearch = renderAdminMaterials;
 
     let editingMaterialId = null;
 
@@ -5121,7 +5163,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadQuizzes() {
         const container = document.getElementById('quizzes-container');
-        container.innerHTML = '<div class="text-center py-6 font-bold text-black uppercase">Memuat bank soal ujian...</div>';
+        container.innerHTML = '<div class="text-center py-6 font-bold text-black uppercase animate-pulse">Memuat bank soal ujian...</div>';
 
         try {
             const isSuperadmin = currentTeacher?.role === 'superadmin';
@@ -5133,91 +5175,111 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             quizzesList = data || [];
 
-            container.innerHTML = '';
-            if (quizzesList.length === 0) {
-                container.innerHTML = '<div class="bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">Belum ada ujian atau kuis online yang dibuat.</div>';
-                return;
-            }
-
-            quizzesList.forEach(q => {
-                const questions = q.quiz_questions || [];
-                const typeBreakdown = [];
-                const typeDefs = [
-                    { key: 'pg', label: 'PG' },
-                    { key: 'pg_kompleks', label: 'PG Kompleks' },
-                    { key: 'benar_salah', label: 'Benar/Salah' },
-                    { key: 'singkat', label: 'Isian' },
-                    { key: 'menjodohkan', label: 'Menjodohkan' },
-                    { key: 'upload_foto', label: 'Upload' },
-                    { key: 'esai', label: 'Esai' }
-                ];
-                typeDefs.forEach(t => {
-                    const cnt = questions.filter(item => item.tipe === t.key).length;
-                    if (cnt > 0) typeBreakdown.push(`${cnt} ${t.label}`);
-                });
-                const summaryText = typeBreakdown.length > 0 ? `(${typeBreakdown.join(' • ')})` : '';
-
-                const { config: qCfg } = parseQuizConfig(q.petunjuk || '', q);
-                const quizToken = qCfg.token || (q.token || '').trim().toUpperCase();
-
-                let tokenBadgeHtml = '';
-                if (quizToken && qCfg.token_required !== false) {
-                    tokenBadgeHtml = `
-                        <div class="inline-flex items-center gap-1.5 bg-yellow-200 border-2 border-black px-2.5 py-0.5 rounded-lg text-xs font-black text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                            <span>Token:</span>
-                            <span class="font-mono tracking-wider">${escapeHtml(quizToken)}</span>
-                            <button type="button" onclick="copyQuizToken('${escapeHtml(quizToken)}')" title="Salin Token" class="ml-1 hover:underline text-indigo-700 font-bold text-[11px]">
-                                Salin
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    tokenBadgeHtml = `
-                        <span class="bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                            Tanpa Token
-                        </span>
-                    `;
-                }
-
-                const card = document.createElement('div');
-                card.className = "bg-white border-[3px] border-black rounded-2xl p-4 sm:p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4";
-                card.innerHTML = `
-                    <div class="w-full md:w-auto">
-                        <div class="flex items-center gap-2 mb-1 flex-wrap">
-                            <span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                ${q.mapel} &bull; Kelas ${q.kelas}
-                            </span>
-                            <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
-                                Durasi: ${q.durasi_menit} Menit
-                            </span>
-                            ${tokenBadgeHtml}
-                        </div>
-                        <h4 class="font-black text-lg sm:text-xl text-black">${q.judul_kuis}</h4>
-                        <p class="text-xs text-slate-600 font-bold mt-1">
-                            ${questions.length} Soal ${summaryText}
-                        </p>
-                    </div>
-                    <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto shrink-0 mt-2 md:mt-0">
-                        <button type="button" onclick="openQuizResultsModal('${q.id}')" class="h-9 px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
-                            Hasil & Koreksi
-                        </button>
-                        <button type="button" onclick="openEditQuizModal('${q.id}')" class="h-9 px-3.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
-                            Edit Kuis
-                        </button>
-                        <button type="button" onclick="addQuestionToExistingQuiz('${q.id}')" class="h-9 px-3.5 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
-                            Tambah Soal
-                        </button>
-                        <button type="button" onclick="deleteQuiz('${q.id}')" class="h-9 px-3.5 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
-                            Hapus
-                        </button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
+            renderAdminQuizzes();
         } catch (e) {
             container.innerHTML = `<div class="text-center text-red-600 font-bold">Gagal memuat ujian: ${e.message}</div>`;
         }
     }
+
+    function renderAdminQuizzes() {
+        const container = document.getElementById('quizzes-container');
+        if (!container) return;
+
+        let displayList = quizzesList;
+        const searchQuery = (document.getElementById('search-admin-kuis')?.value || '').trim().toLowerCase();
+        if (searchQuery) {
+            displayList = displayList.filter(q => 
+                (q.judul_kuis && q.judul_kuis.toLowerCase().includes(searchQuery)) ||
+                (q.kelas && q.kelas.toLowerCase().includes(searchQuery)) ||
+                (q.mapel && q.mapel.toLowerCase().includes(searchQuery)) ||
+                (q.petunjuk && q.petunjuk.toLowerCase().includes(searchQuery))
+            );
+        }
+
+        container.innerHTML = '';
+        if (displayList.length === 0) {
+            container.innerHTML = `<div class="bg-white border-2 border-black rounded-2xl p-8 text-center text-slate-500 font-bold uppercase">${searchQuery ? 'Tidak ada kuis/ujian yang cocok dengan pencarian.' : 'Belum ada ujian atau kuis online yang dibuat.'}</div>`;
+            return;
+        }
+
+        displayList.forEach(q => {
+            const questions = q.quiz_questions || [];
+            const typeBreakdown = [];
+            const typeDefs = [
+                { key: 'pg', label: 'PG' },
+                { key: 'pg_kompleks', label: 'PG Kompleks' },
+                { key: 'benar_salah', label: 'Benar/Salah' },
+                { key: 'singkat', label: 'Isian' },
+                { key: 'menjodohkan', label: 'Menjodohkan' },
+                { key: 'upload_foto', label: 'Upload' },
+                { key: 'esai', label: 'Esai' }
+            ];
+            typeDefs.forEach(t => {
+                const cnt = questions.filter(item => item.tipe === t.key).length;
+                if (cnt > 0) typeBreakdown.push(`${cnt} ${t.label}`);
+            });
+            const summaryText = typeBreakdown.length > 0 ? `(${typeBreakdown.join(' • ')})` : '';
+
+            const { config: qCfg } = parseQuizConfig(q.petunjuk || '', q);
+            const quizToken = qCfg.token || (q.token || '').trim().toUpperCase();
+
+            let tokenBadgeHtml = '';
+            if (quizToken && qCfg.token_required !== false) {
+                tokenBadgeHtml = `
+                    <div class="inline-flex items-center gap-1.5 bg-yellow-200 border-2 border-black px-2.5 py-0.5 rounded-lg text-xs font-black text-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                        <span>Token:</span>
+                        <span class="font-mono tracking-wider">${escapeHtml(quizToken)}</span>
+                        <button type="button" onclick="copyQuizToken('${escapeHtml(quizToken)}')" title="Salin Token" class="ml-1 hover:underline text-indigo-700 font-bold text-[11px]">
+                            Salin
+                        </button>
+                    </div>
+                `;
+            } else {
+                tokenBadgeHtml = `
+                    <span class="bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                        Tanpa Token
+                    </span>
+                `;
+            }
+
+            const card = document.createElement('div');
+            card.className = "bg-white border-[3px] border-black rounded-2xl p-4 sm:p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4";
+            card.innerHTML = `
+                <div class="w-full md:w-auto">
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            ${q.mapel} &bull; Kelas ${q.kelas}
+                        </span>
+                        <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                            Durasi: ${q.durasi_menit} Menit
+                        </span>
+                        ${tokenBadgeHtml}
+                    </div>
+                    <h4 class="font-black text-lg sm:text-xl text-black">${q.judul_kuis}</h4>
+                    <p class="text-xs text-slate-600 font-bold mt-1">
+                        ${questions.length} Soal ${summaryText}
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto shrink-0 mt-2 md:mt-0">
+                    <button type="button" onclick="openQuizResultsModal('${q.id}')" class="h-9 px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
+                        Hasil & Koreksi
+                    </button>
+                    <button type="button" onclick="openEditQuizModal('${q.id}')" class="h-9 px-3.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
+                        Edit Kuis
+                    </button>
+                    <button type="button" onclick="addQuestionToExistingQuiz('${q.id}')" class="h-9 px-3.5 bg-cyan-300 hover:bg-cyan-400 text-black border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
+                        Tambah Soal
+                    </button>
+                    <button type="button" onclick="deleteQuiz('${q.id}')" class="h-9 px-3.5 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl text-xs font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center justify-center text-center">
+                        Hapus
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    window.renderAdminQuizzesWithSearch = renderAdminQuizzes;
 
     window.toggleAiQuizCustomTotal = () => {
         const presetBox = document.getElementById('ai-quiz-total-preset-box');
