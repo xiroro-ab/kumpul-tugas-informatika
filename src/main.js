@@ -2855,8 +2855,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // - filterTipe harus kosong atau 'presentasi'
         const showPres = (!filterTipe || filterTipe === 'presentasi');
 
-        if (mpiCard) mpiCard.classList.toggle('hidden', !showMpi);
-        if (presCard) presCard.classList.toggle('hidden', !showPres);
+        if (mpiCard) {
+            mpiCard.classList.toggle('hidden', !showMpi);
+            mpiCard.classList.toggle('sm:col-span-2', showMpi && !showPres);
+        }
+        if (presCard) {
+            presCard.classList.toggle('hidden', !showPres);
+            presCard.classList.toggle('sm:col-span-2', !showMpi && showPres);
+        }
         if (hubBanner) {
             hubBanner.classList.toggle('hidden', !showMpi && !showPres);
         }

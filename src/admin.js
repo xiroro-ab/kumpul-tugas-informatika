@@ -3694,6 +3694,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isInformatika = isSuperadmin || teacherMapel.includes('informatika');
 
         const mpiCard = document.getElementById('hub-mpi-card');
+        const presCard = document.getElementById('hub-presentasi-card');
         const mpiPresetBtn = document.getElementById('btn-preset-mpi');
         const videoInput = document.getElementById('mat-video');
 
@@ -3702,6 +3703,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 mpiCard.classList.remove('hidden');
             } else {
                 mpiCard.classList.add('hidden');
+            }
+        }
+
+        if (presCard) {
+            if (!isInformatika) {
+                presCard.classList.add('md:col-span-2');
+            } else {
+                presCard.classList.remove('md:col-span-2');
             }
         }
 
