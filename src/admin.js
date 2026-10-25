@@ -4517,6 +4517,53 @@ document.addEventListener('DOMContentLoaded', () => {
         switchAiMpiSourceMode('rpm');
     };
 
+    let currentRpmFileState = null;
+
+    function extractMetadataFromFileName(fileName) {
+        if (!fileName) return { topik: '', mapel: '', kelas: '' };
+        const clean = fileName.replace(/\.[^.]+$/, '');
+        let topik = '';
+        let mapel = '';
+        let kelas = '';
+
+        // 1. Ekstrak teks dalam kurung (misal: "(Kelas 8)", "(Sistem Komputer)")
+        const parenMatches = [...clean.matchAll(/\(([^)]+)\)/g)].map(m => m[1].trim());
+        if (parenMatches.length > 0) {
+            for (let item of parenMatches) {
+                if (/kelas\s*\d+|fase\s*[a-f]/i.test(item)) {
+                    kelas = item;
+                } else if (!topik) {
+                    topik = item;
+                }
+            }
+        }
+
+        // 2. Ekstrak Mata Pelajaran dari daftar mata pelajaran umum
+        const knownSubjects = ['Informatika', 'Matematika', 'IPA', 'IPS', 'Bahasa Indonesia', 'Bahasa Inggris', 'PAI', 'PPKn', 'PJOK', 'Seni Budaya', 'Prakarya'];
+        for (let s of knownSubjects) {
+            if (new RegExp(s, 'i').test(clean)) {
+                mapel = s;
+                break;
+            }
+        }
+
+        // 3. Ekstrak Kelas jika belum ketemu
+        if (!kelas) {
+            const kMatch = clean.match(/Kelas\s*(\d+)/i) || clean.match(/Fase\s*([A-F])/i);
+            if (kMatch) kelas = kMatch[0];
+        }
+
+        // 4. Ekstrak topik jika belum ada dari bagian terakhir
+        if (!topik) {
+            const parts = clean.split(/[-_]/).map(p => p.trim()).filter(Boolean);
+            if (parts.length > 1) {
+                topik = parts[parts.length - 1];
+            }
+        }
+
+        return { topik, mapel, kelas };
+    }
+
     window.handleRpmFileUpload = (file) => {
         if (!file) return;
         const infoEl = document.getElementById('ai-mpi-rpm-file-info');
@@ -4525,56 +4572,110 @@ document.addEventListener('DOMContentLoaded', () => {
         const mapelSelect = document.getElementById('ai-mpi-rpm-mapel');
         const kelasSelect = document.getElementById('ai-mpi-rpm-kelas');
 
-        if (infoEl) {
-            const sizeKb = (file.size / 1024).toFixed(1);
-            infoEl.innerHTML = `<span class="text-emerald-700 font-black">✓ ${file.name}</span> (${sizeKb} KB)`;
+        const sizeKb = (file.size / 1024).toFixed(1);
+        const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+
+        // Ekstrak metadata cerdas dari nama file
+        const meta = extractMetadataFromFileName(file.name);
+        if (meta.topik && topikInput && !topikInput.value.trim()) {
+            topikInput.value = meta.topik;
+        }
+        if (meta.mapel && mapelSelect) {
+            for (let opt of mapelSelect.options) {
+                if (opt.value.toLowerCase().includes(meta.mapel.toLowerCase()) || meta.mapel.toLowerCase().includes(opt.value.toLowerCase())) {
+                    mapelSelect.value = opt.value;
+                    break;
+                }
+            }
+        }
+        if (meta.kelas && kelasSelect) {
+            for (let opt of kelasSelect.options) {
+                if (opt.value.toLowerCase().includes(meta.kelas.toLowerCase()) || meta.kelas.toLowerCase().includes(opt.value.toLowerCase())) {
+                    kelasSelect.value = opt.value;
+                    break;
+                }
+            }
         }
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const text = e.target.result;
-            if (textarea) textarea.value = text;
-
-            // Auto-ekstraksi Topik / Materi Pokok jika ada
-            const topikMatch = text.match(/(?:Topik|Materi Pokok|Judul Materi|Materi)\s*[:=]\s*([^\r\n<]+)/i) ||
-                               text.match(/<h[12][^>]*>([^<]+)<\/h[12]>/i);
-            if (topikMatch && topikInput && !topikInput.value.trim()) {
-                topikInput.value = topikMatch[1].trim();
+        if (isPdf) {
+            if (infoEl) {
+                infoEl.innerHTML = `<span class="text-emerald-700 font-black">✓ Dokumen PDF Siap: ${file.name}</span> (${sizeKb} KB)`;
             }
 
-            // Auto-ekstraksi Mapel jika ada
-            const mapelMatch = text.match(/(?:Mata Pelajaran|Mapel)\s*[:=]\s*([^\r\n<]+)/i);
-            if (mapelMatch && mapelSelect) {
-                const detectedMapel = mapelMatch[1].trim().toLowerCase();
-                for (let opt of mapelSelect.options) {
-                    if (detectedMapel.includes(opt.value.toLowerCase())) {
-                        mapelSelect.value = opt.value;
-                        break;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target.result;
+                const base64Data = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+
+                currentRpmFileState = {
+                    isPdf: true,
+                    name: file.name,
+                    size: file.size,
+                    base64: base64Data
+                };
+
+                if (textarea) {
+                    textarea.value = `[Dokumen PDF Terlampir]: ${file.name} (${sizeKb} KB)\nFile PDF berhasil dimuat dan siap dibaca langsung oleh AI untuk menyusun Web MPI Interaktif.`;
+                }
+            };
+            reader.onerror = () => {
+                showCustomModal("Gagal membaca file PDF: " + (reader.error?.message || "File rusak"));
+            };
+            reader.readAsDataURL(file);
+        } else {
+            currentRpmFileState = null;
+            if (infoEl) {
+                infoEl.innerHTML = `<span class="text-emerald-700 font-black">✓ ${file.name}</span> (${sizeKb} KB)`;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                if (textarea) textarea.value = text;
+
+                // Auto-ekstraksi Topik / Materi Pokok dari teks dokumen
+                const topikMatch = text.match(/(?:Topik|Materi Pokok|Judul Materi|Materi)\s*[:=]\s*([^\r\n<]+)/i) ||
+                                   text.match(/<h[12][^>]*>([^<]+)<\/h[12]>/i);
+                if (topikMatch && topikInput && !topikInput.value.trim()) {
+                    topikInput.value = topikMatch[1].trim();
+                }
+
+                // Auto-ekstraksi Mapel jika ada
+                const mapelMatch = text.match(/(?:Mata Pelajaran|Mapel)\s*[:=]\s*([^\r\n<]+)/i);
+                if (mapelMatch && mapelSelect) {
+                    const detectedMapel = mapelMatch[1].trim().toLowerCase();
+                    for (let opt of mapelSelect.options) {
+                        if (detectedMapel.includes(opt.value.toLowerCase())) {
+                            mapelSelect.value = opt.value;
+                            break;
+                        }
                     }
                 }
-            }
 
-            // Auto-ekstraksi Kelas jika ada
-            const kelasMatch = text.match(/(?:Kelas|Fase)\s*[:=]\s*([^\r\n<]+)/i);
-            if (kelasMatch && kelasSelect) {
-                const detectedKelas = kelasMatch[1].trim().toLowerCase();
-                for (let opt of kelasSelect.options) {
-                    if (detectedKelas.includes(opt.value.toLowerCase())) {
-                        kelasSelect.value = opt.value;
-                        break;
+                // Auto-ekstraksi Kelas jika ada
+                const kelasMatch = text.match(/(?:Kelas|Fase)\s*[:=]\s*([^\r\n<]+)/i);
+                if (kelasMatch && kelasSelect) {
+                    const detectedKelas = kelasMatch[1].trim().toLowerCase();
+                    for (let opt of kelasSelect.options) {
+                        if (detectedKelas.includes(opt.value.toLowerCase())) {
+                            kelasSelect.value = opt.value;
+                            break;
+                        }
                     }
                 }
-            }
-        };
-        reader.onerror = () => {
-            showCustomModal("Gagal membaca file: " + (reader.error?.message || "Format tidak didukung"));
-        };
-        reader.readAsText(file);
+            };
+            reader.onerror = () => {
+                showCustomModal("Gagal membaca file: " + (reader.error?.message || "Format tidak didukung"));
+            };
+            reader.readAsText(file);
+        }
     };
 
     window.runAiGenerateMpiFromRpm = async () => {
-        const rpmContent = document.getElementById('ai-mpi-rpm-content')?.value.trim();
-        if (!rpmContent) {
+        const hasPdf = currentRpmFileState && currentRpmFileState.isPdf && currentRpmFileState.base64;
+        const rpmContent = document.getElementById('ai-mpi-rpm-content')?.value.trim() || '';
+
+        if (!hasPdf && (!rpmContent || rpmContent.startsWith('[Dokumen PDF Terlampir]'))) {
             showCustomModal("Harap unggah file RPM atau tempelkan teks/HTML dokumen RPM terlebih dahulu!");
             return;
         }
@@ -4586,7 +4687,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!topik) {
             const m = rpmContent.match(/(?:Topik|Materi Pokok|Judul|Bab)\s*[:=]\s*([^\r\n<]+)/i) || rpmContent.match(/<h[12][^>]*>([^<]+)<\/h[12]>/i);
-            topik = m ? m[1].trim() : 'Materi Pembelajaran';
+            topik = m ? m[1].trim() : (hasPdf && currentRpmFileState.name ? currentRpmFileState.name.replace(/\.[^.]+$/, '') : 'Materi Pembelajaran');
             if (document.getElementById('ai-mpi-rpm-topik')) {
                 document.getElementById('ai-mpi-rpm-topik').value = topik;
             }
@@ -4601,18 +4702,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (btn) {
             btn.disabled = true;
-            btn.innerText = "Membaca & Membangun MPI dari RPM...";
+            btn.innerText = hasPdf ? "Menganalisis Dokumen PDF RPM..." : "Membaca & Membangun MPI dari RPM...";
         }
 
         if (emptyState) emptyState.classList.add('hidden');
         if (frameWrapper) frameWrapper.classList.add('hidden');
         if (loadingState) loadingState.classList.remove('hidden');
-        if (loadingTitle) loadingTitle.textContent = 'Membaca Dokumen RPM...';
+        if (loadingTitle) loadingTitle.textContent = hasPdf ? 'Membaca Dokumen PDF RPM...' : 'Membaca Dokumen RPM...';
         if (loadingDesc) loadingDesc.textContent = 'Menyusun Web MPI interaktif berdasarkan skenario Kegiatan Awal, Inti, Penutup, dan Asesmen RPM.';
 
         try {
             const html = await aiGenerateMpiFromRpmHtml({
-                rpmContent,
+                rpmContent: hasPdf ? '' : rpmContent,
+                pdfBase64: hasPdf ? currentRpmFileState.base64 : null,
                 topik,
                 mapel,
                 kelas,

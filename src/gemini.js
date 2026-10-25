@@ -38,7 +38,7 @@ export function setGeminiModel(modelName) {
     }
 }
 
-async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
+async function callGemini(prompt, systemInstruction = '', jsonMode = false, inlineData = null) {
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
         throw new Error('API Key Google Gemini belum diatur. Silakan atur di menu Pengaturan AI.');
@@ -47,11 +47,21 @@ async function callGemini(prompt, systemInstruction = '', jsonMode = false) {
     const model = getGeminiModel();
     let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
+    const userParts = [{ text: prompt }];
+    if (inlineData && inlineData.data) {
+        userParts.push({
+            inlineData: {
+                mimeType: inlineData.mimeType || 'application/pdf',
+                data: inlineData.data
+            }
+        });
+    }
+
     const payload = {
         contents: [
             {
                 role: 'user',
-                parts: [{ text: prompt }]
+                parts: userParts
             }
         ],
         generationConfig: {
@@ -1081,14 +1091,15 @@ export async function aiRefineMpiHtml({ currentHtml, revisionPrompt }) {
  * Membaca dokumen RPM (Rencana Pembelajaran Mendalam / Modul Ajar) dan menyusun Web MPI interaktif.
  */
 export async function aiGenerateMpiFromRpmHtml({
-    rpmContent,
+    rpmContent = '',
+    pdfBase64 = null,
     topik = '',
     mapel = 'Informatika',
     kelas = 'Kelas 7',
     instruksiTambahan = ''
 }) {
-    if (!rpmContent || !rpmContent.trim()) {
-        throw new Error('Dokumen atau isi teks RPM wajib diisi atau diunggah.');
+    if (!rpmContent && !pdfBase64) {
+        throw new Error('Dokumen atau file RPM wajib diisi atau diunggah.');
     }
 
     const promptText = [
@@ -1128,10 +1139,12 @@ export async function aiGenerateMpiFromRpmHtml({
         'TOPIK: ' + (topik || 'Sesuai Dokumen RPM'),
         instruksiTambahan ? ('INSTRUKSI TAMBAHAN GURU: ' + instruksiTambahan) : '',
         '',
-        '=== DOKUMEN RPM GURU ===',
-        rpmContent
+        pdfBase64 
+            ? 'CATATAN DOKUMEN: Dokumen RPM Kurikulum Merdeka terlampir dalam format PDF. Silakan baca dan telaah seluruh teks, tabel kegiatan ajar, tujuan pembelajaran, dan asesmen di dalam file PDF tersebut.'
+            : ('=== DOKUMEN RPM GURU ===\n' + rpmContent)
     ].filter(Boolean).join('\n');
 
-    const raw = await callGemini(promptText, '', false);
+    const inlineData = pdfBase64 ? { mimeType: 'application/pdf', data: pdfBase64 } : null;
+    const raw = await callGemini(promptText, '', false, inlineData);
     return sanitizeAndEnhanceHtml(raw);
 }
