@@ -1550,7 +1550,16 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             document.getElementById('grade-input-score').value = '';
         }
-        document.getElementById('grade-input-feedback').value = item.catatan_guru || item.ai_feedback || '';
+        let existingFeedback = item.catatan_guru || item.ai_feedback || '';
+        if (existingFeedback.includes('[TAG:GRP_') || existingFeedback.startsWith('Kelompok:') || existingFeedback.startsWith('Tugas Kelompok')) {
+            const splitEval = existingFeedback.split(/(?:\|?\s*Evaluasi Guru:\s*|Catatan Guru:\s*)/i);
+            if (splitEval.length > 1) {
+                existingFeedback = splitEval.slice(1).join(' ').trim();
+            } else {
+                existingFeedback = '';
+            }
+        }
+        document.getElementById('grade-input-feedback').value = existingFeedback;
         document.getElementById('grade-modal').classList.remove('hidden');
     };
 
@@ -1895,9 +1904,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 updatedStoragePath = 'FORM:' + JSON.stringify(formItems);
             }
 
+            const existingCatatan = activeGradeItem.catatan_guru || '';
+            const matchTag = existingCatatan.match(/\[TAG:(GRP_[^\]]+)\]/);
+            const isGroup = Boolean(matchTag);
+
+            let leaderCatatan = feedbackVal;
+            if (isGroup) {
+                const baseInfo = existingCatatan.split(/(?:\|?\s*Evaluasi Guru:)/i)[0].trim();
+                leaderCatatan = feedbackVal ? `${baseInfo} | Evaluasi Guru: ${feedbackVal}` : baseInfo;
+            }
+
             const updatePayload = {
                 nilai: scoreNum,
-                catatan_guru: feedbackVal,
+                catatan_guru: leaderCatatan,
                 status_koreksi: 'sudah_dikoreksi'
             };
             if (isForm) {
@@ -1909,24 +1928,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
 
             activeGradeItem.nilai = scoreNum;
-            activeGradeItem.catatan_guru = feedbackVal;
+            activeGradeItem.catatan_guru = leaderCatatan;
             activeGradeItem.status_koreksi = 'sudah_dikoreksi';
             if (isForm) activeGradeItem.storage_path = updatedStoragePath;
 
             // Sinkronisasi ke seluruh anggota kelompok jika tugas kelompok
-            const matchTag = (activeGradeItem.catatan_guru || '').match(/\[TAG:(GRP_[^\]]+)\]/);
             const applyToGroup = Boolean(matchTag && document.getElementById('grade-apply-group')?.checked);
             let syncedMemberCount = 1;
 
-            if (applyToGroup) {
+            if (applyToGroup && matchTag) {
                 const groupTag = matchTag[1];
                 const companions = pendingFiles.filter(f => f.id !== activeGradeItem.id && (f.catatan_guru || '').includes(groupTag));
                 for (const cf of companions) {
-                    const originalTagInfo = cf.catatan_guru || '';
+                    const originalBase = (cf.catatan_guru || '').split(/(?:\|?\s*Evaluasi Guru:)/i)[0].trim();
                     const compPayload = {
                         nilai: scoreNum,
                         status_koreksi: 'sudah_dikoreksi',
-                        catatan_guru: feedbackVal ? `${originalTagInfo} | Evaluasi Guru: ${feedbackVal}` : originalTagInfo
+                        catatan_guru: feedbackVal ? `${originalBase} | Evaluasi Guru: ${feedbackVal}` : originalBase
                     };
                     if (isForm) compPayload.storage_path = updatedStoragePath;
                     await supabase.from('files').update(compPayload).eq('id', cf.id);

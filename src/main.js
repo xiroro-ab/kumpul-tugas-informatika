@@ -1560,10 +1560,74 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const rawNote = mySubmission && mySubmission.catatan_guru ? String(mySubmission.catatan_guru).trim() : '';
-            const isDefaultPlaceholder = !rawNote || 
-                rawNote.includes('Menunggu pemeriksaan') || 
-                rawNote.includes('Tuntas otomatis') ||
-                rawNote.includes('Menunggu evaluasi');
+
+            // Pisahkan metadata kelompok dari catatan/evaluasi guru sesungguhnya
+            let groupBadgeHtml = '';
+            let cleanTeacherNote = rawNote;
+
+            const isGroupSub = (mySubmission && mySubmission.filename && mySubmission.filename.includes('[Kelompok]')) ||
+                               cleanTeacherNote.includes('[TAG:GRP_') ||
+                               cleanTeacherNote.startsWith('Kelompok:') ||
+                               cleanTeacherNote.startsWith('Tugas Kelompok');
+
+            if (isGroupSub) {
+                let rawMembers = '';
+                const mKelompok = cleanTeacherNote.match(/Kelompok:\s*([^(\[]+)/i);
+                const mAnggota = cleanTeacherNote.match(/Anggota:\s*([^\[]+)/i);
+                if (mKelompok) {
+                    rawMembers = mKelompok[1];
+                } else if (mAnggota) {
+                    rawMembers = mAnggota[1];
+                }
+
+                let leaderName = '';
+                const mLeader = cleanTeacherNote.match(/(?:Ketua:\s*([^)]+)|bersama\s+([^(]+)\s*\(Ketua\))/i);
+                if (mLeader) {
+                    leaderName = (mLeader[1] || mLeader[2] || '').trim();
+                }
+
+                let memberList = rawMembers ? rawMembers.split(',').map(s => s.trim()).filter(Boolean) : [];
+                memberList = Array.from(new Set(memberList));
+
+                let groupDesc = '';
+                if (memberList.length > 0) {
+                    groupDesc = `Anggota: ${memberList.join(', ')}`;
+                    if (leaderName) {
+                        groupDesc += ` (Ketua: ${leaderName})`;
+                    }
+                } else {
+                    groupDesc = 'Dikerjakan bersama rekan kelompok';
+                }
+
+                groupBadgeHtml = `
+                    <div class="bg-amber-50/80 border border-amber-300 rounded-xl p-2.5 text-xs mb-3 shadow-sm">
+                        <div class="flex items-center gap-1.5 font-black text-amber-950 text-[11px] mb-1">
+                            <span>👥</span> <span>Tugas Kelompok</span>
+                        </div>
+                        <p class="text-xs text-amber-900 font-semibold leading-relaxed">${escapeHtml(groupDesc)}</p>
+                    </div>
+                `;
+
+                if (cleanTeacherNote.includes('Evaluasi Guru:')) {
+                    cleanTeacherNote = cleanTeacherNote.split(/Evaluasi Guru:/i).slice(1).join(' ').trim();
+                } else if (cleanTeacherNote.includes('Catatan Guru:')) {
+                    cleanTeacherNote = cleanTeacherNote.split(/Catatan Guru:/i).slice(1).join(' ').trim();
+                } else {
+                    cleanTeacherNote = cleanTeacherNote
+                        .replace(/\[TAG:GRP_[^\]]+\]/gi, '')
+                        .replace(/Kelompok:[^.\n;]+(?:\(Ketua:[^)]+\))?/gi, '')
+                        .replace(/Tugas Kelompok bersama[^.\n;]+(?:\(Ketua\)\.?\s*Anggota:[^.\n;]+)?/gi, '')
+                        .trim();
+                }
+                cleanTeacherNote = cleanTeacherNote.replace(/^[\s|:\-,.;]+|[\s|:\-,.;]+$/g, '').trim();
+            } else {
+                cleanTeacherNote = cleanTeacherNote.replace(/\[TAG:[^\]]+\]/gi, '').trim();
+            }
+
+            const isDefaultPlaceholder = !cleanTeacherNote || 
+                cleanTeacherNote.includes('Menunggu pemeriksaan') || 
+                cleanTeacherNote.includes('Tuntas otomatis') ||
+                cleanTeacherNote.includes('Menunggu evaluasi');
 
             const hasScore = mySubmission && mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '';
 
@@ -1571,23 +1635,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (hasScore) {
                 feedbackSectionHtml = `
                     <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 text-xs mb-3 shadow-sm">
-                        <div class="flex justify-between items-center ${rawNote && !isDefaultPlaceholder ? 'mb-2' : ''}">
+                        <div class="flex justify-between items-center ${cleanTeacherNote && !isDefaultPlaceholder ? 'mb-2' : ''}">
                             <span class="font-black text-emerald-950 text-xs">Hasil Koreksi Guru:</span>
                             <span class="font-black text-sm bg-emerald-300 text-emerald-950 px-2.5 py-0.5 rounded-lg border border-emerald-500">${mySubmission.nilai} / 100</span>
                         </div>
-                        ${rawNote && !isDefaultPlaceholder ? `
+                        ${cleanTeacherNote && !isDefaultPlaceholder ? `
                             <div class="mt-2 bg-amber-50 border border-amber-300 rounded-lg p-2.5 text-slate-800">
                                 <span class="font-black text-[11px] text-amber-950 block mb-0.5">💬 Catatan & Masukan Guru:</span>
-                                <p class="text-xs font-bold italic leading-relaxed">"${escapeHtml(rawNote)}"</p>
+                                <p class="text-xs font-bold italic leading-relaxed">"${escapeHtml(cleanTeacherNote)}"</p>
                             </div>
                         ` : ''}
                     </div>
                 `;
-            } else if (rawNote && !isDefaultPlaceholder) {
+            } else if (cleanTeacherNote && !isDefaultPlaceholder) {
                 feedbackSectionHtml = `
                     <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 text-xs mb-3 shadow-sm">
                         <span class="font-black text-[11px] text-amber-950 block mb-0.5">💬 Catatan & Masukan Guru:</span>
-                        <p class="text-xs font-bold text-slate-800 italic leading-relaxed">"${escapeHtml(rawNote)}"</p>
+                        <p class="text-xs font-bold text-slate-800 italic leading-relaxed">"${escapeHtml(cleanTeacherNote)}"</p>
                     </div>
                 `;
             }
@@ -1611,12 +1675,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h4 class="font-black text-lg md:text-xl text-black mb-1.5">${escapeHtml(a.judul_tugas)}</h4>
                     <p class="text-xs text-slate-700 font-medium leading-relaxed mb-3 whitespace-pre-line">${escapeHtml(parsed.petunjuk || a.deskripsi || '')}</p>
 
+                    ${groupBadgeHtml}
                     ${feedbackSectionHtml}
                 </div>
 
                 <div class="pt-3 border-t-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mt-auto">
                     <div class="w-full sm:w-auto shrink-0">${submissionBadge}</div>
-                    <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')})" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0 ${actionBtnClass}">
+                    <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')}, ${mySubmission ? JSON.stringify(mySubmission).replace(/"/g, '&quot;') : 'null'})" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0 ${actionBtnClass}">
                         ${actionBtnText}
                     </button>
                 </div>
@@ -1806,7 +1871,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const memberSelect = document.getElementById('sub-group-member-select');
         if (!memberSelect) return;
         const currentKelas = subKelasSelect ? subKelasSelect.value : '';
-        const currentSender = (subNamaInput ? subNamaInput.value : (subStudentSelect ? subStudentSelect.value : '')).trim();
+        const currentSender = (subNamaInput?.value || subStudentSelect?.value || (typeof getActiveStudentName === 'function' ? getActiveStudentName() : '') || '').trim();
 
         if (!currentKelas) {
             memberSelect.innerHTML = '<option value="">-- Pilih Kelas Terlebih Dahulu --</option>';
@@ -1815,7 +1880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const filtered = (rosterStudents || []).filter(s => 
             isClassMatch(s.kelas, currentKelas) &&
-            s.nama.trim().toLowerCase() !== currentSender.toLowerCase() &&
+            (!currentSender || s.nama.trim().toLowerCase() !== currentSender.toLowerCase()) &&
             !selectedGroupMembers.some(m => m.toLowerCase() === s.nama.trim().toLowerCase())
         );
 
@@ -1837,7 +1902,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const memberName = memberSelect.value.trim();
         if (!memberName) return;
 
-        if (selectedGroupMembers.includes(memberName)) return;
+        const currentSender = (subNamaInput?.value || subStudentSelect?.value || (typeof getActiveStudentName === 'function' ? getActiveStudentName() : '') || '').trim();
+        if (currentSender && memberName.toLowerCase() === currentSender.toLowerCase()) {
+            showCustomModal("Nama Anda sendiri otomatis menjadi ketua kelompok, tidak perlu ditambahkan sebagai anggota.", 'alert', 'Perhatian', 'ℹ️');
+            return;
+        }
+
+        if (selectedGroupMembers.some(m => m.toLowerCase() === memberName.toLowerCase())) return;
         if (selectedGroupMembers.length >= 8) {
             showCustomModal("Maksimal 8 anggota kelompok per tugas.", 'alert', 'Batas Anggota', '⚠️');
             return;
@@ -1854,7 +1925,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.populateGroupMemberOptions();
     };
 
-    window.renderGroupMemberChips = () => {
+    window.renderGroupMemberChips = (isLocked = false) => {
         const container = document.getElementById('sub-group-members-chips');
         if (!container) return;
         if (selectedGroupMembers.length === 0) {
@@ -1864,7 +1935,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.innerHTML = selectedGroupMembers.map(name => `
             <span class="inline-flex items-center gap-1.5 bg-yellow-200 text-black border border-black rounded-lg px-2.5 py-1 text-xs font-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
                 <span>👤 ${escapeHtml(name)}</span>
-                <button type="button" onclick="window.removeGroupMember('${escapeHtml(name).replace(/'/g, "\\'")}')" class="w-4 h-4 rounded-full bg-black text-white hover:bg-red-600 flex items-center justify-center text-[10px] font-black transition cursor-pointer" title="Hapus Anggota">&times;</button>
+                ${!isLocked ? `<button type="button" onclick="window.removeGroupMember('${escapeHtml(name).replace(/'/g, "\\'")}')" class="w-4 h-4 rounded-full bg-black text-white hover:bg-red-600 flex items-center justify-center text-[10px] font-black transition cursor-pointer" title="Hapus Anggota">&times;</button>` : ''}
             </span>
         `).join('');
     };
@@ -1890,7 +1961,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Buka Modal Terkait Tugas Tertentu
-    window.openAssignmentSubmissionModal = async (assignment) => {
+    window.openAssignmentSubmissionModal = async (assignmentInput, passedSubmission = null) => {
+        let assignment = assignmentInput;
+        if (typeof assignmentInput === 'string' || typeof assignmentInput === 'number') {
+            assignment = (allAssignments || []).find(a => String(a.id) === String(assignmentInput)) || null;
+        }
+        if (!assignment) return;
+
         currentActiveAssignment = assignment || null;
         const parsed = parseAssignmentQuestions(assignment);
 
@@ -1898,11 +1975,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isLockDeadline = Boolean(parsed.lock_deadline);
 
         const studentName = getActiveStudentName();
-        let myExistingSub = null;
-        if (studentName) {
+        let myExistingSub = passedSubmission || null;
+        if (!myExistingSub && studentName) {
             myExistingSub = studentFiles.find(f => 
                 (f.assignment_id && String(f.assignment_id) === String(assignment.id)) ||
-                (f.materi && f.materi.toLowerCase().trim() === assignment.judul_tugas.toLowerCase().trim())
+                (f.materi && f.materi.toLowerCase().trim() === (assignment.judul_tugas || '').toLowerCase().trim())
             );
         }
 
@@ -1937,7 +2014,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isTokenRequired = parsed.token_required && !!parsed.token;
         if (tokenContainer && tokenInput) {
             tokenInput.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
-            if (isTokenRequired) {
+            if (isTokenRequired && !myExistingSub) {
                 tokenContainer.classList.remove('hidden');
                 const cachedToken = sessionStorage.getItem(`tgs_token_${assignment.id}`) || '';
                 tokenInput.value = cachedToken;
@@ -1978,30 +2055,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             applicableClasses = allClassesList;
         }
 
+        const mySubmission = myExistingSub || null;
+        const isLocked = Boolean(mySubmission);
+
         if (subKelasSelect) {
             subKelasSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
-            subKelasSelect.innerHTML = '<option value="">-- Pilih Kelas Anda --</option>' +
-                applicableClasses.map(k => `<option value="${escapeHtml(k)}">Kelas ${escapeHtml(k)}</option>`).join('');
-
-            if (isSingleExactClass) {
-                subKelasSelect.value = applicableClasses[0];
+            if (isLocked && mySubmission) {
+                subKelasSelect.innerHTML = `<option value="${escapeHtml(mySubmission.kelas)}">Kelas ${escapeHtml(mySubmission.kelas)}</option>`;
+                subKelasSelect.value = mySubmission.kelas;
                 subKelasSelect.disabled = true;
                 subKelasSelect.classList.add('cursor-not-allowed', 'bg-slate-100');
+                await populateSubStudentSelect(mySubmission.kelas, mySubmission.nama);
             } else {
-                subKelasSelect.disabled = false;
-                subKelasSelect.classList.remove('cursor-not-allowed', 'bg-slate-100');
-                // Kosongkan kelas saat pertama modal dibuka agar siswa memilih secara sadar
-                subKelasSelect.value = '';
-            }
+                subKelasSelect.innerHTML = '<option value="">-- Pilih Kelas Anda --</option>' +
+                    applicableClasses.map(k => `<option value="${escapeHtml(k)}">Kelas ${escapeHtml(k)}</option>`).join('');
 
-            // Kosongkan nama siswa agar tidak terisi otomatis dari perangkat/cache
-            populateSubStudentSelect(subKelasSelect.value, '');
+                if (isSingleExactClass) {
+                    subKelasSelect.value = applicableClasses[0];
+                    subKelasSelect.disabled = true;
+                    subKelasSelect.classList.add('cursor-not-allowed', 'bg-slate-100');
+                } else {
+                    subKelasSelect.disabled = false;
+                    subKelasSelect.classList.remove('cursor-not-allowed', 'bg-slate-100');
+                    subKelasSelect.value = '';
+                }
+                populateSubStudentSelect(subKelasSelect.value, '');
+            }
         }
 
-        if (subNamaInput) subNamaInput.value = '';
-        if (subStudentIdInput) subStudentIdInput.value = '';
-        if (subStudentSelect) {
-            subStudentSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+        if (isLocked && mySubmission) {
+            if (subNamaInput) {
+                subNamaInput.value = mySubmission.nama || '';
+                subNamaInput.readOnly = true;
+            }
+            if (subStudentSelect) {
+                subStudentSelect.value = mySubmission.nama || '';
+                subStudentSelect.disabled = true;
+                subStudentSelect.classList.add('cursor-not-allowed', 'bg-slate-100');
+            }
+        } else {
+            if (subNamaInput) {
+                subNamaInput.value = '';
+                subNamaInput.readOnly = false;
+            }
+            if (subStudentIdInput) subStudentIdInput.value = '';
+            if (subStudentSelect) {
+                subStudentSelect.disabled = false;
+                subStudentSelect.classList.remove('cursor-not-allowed', 'bg-slate-100', 'border-red-500', 'ring-2', 'ring-red-300');
+            }
         }
 
         if (subMapelSelect) {
@@ -2011,29 +2112,105 @@ document.addEventListener('DOMContentLoaded', async () => {
         subMateriInput.value = assignment.judul_tugas || '';
         subMateriInput.readOnly = true;
 
-        if (subTextAnswerInput) subTextAnswerInput.value = '';
+        if (subTextAnswerInput) {
+            subTextAnswerInput.value = '';
+            subTextAnswerInput.readOnly = isLocked;
+        }
         if (subTextCount) subTextCount.textContent = '0 kata | 0 karakter';
         resetFileInput();
-        if (linkUrlInput) linkUrlInput.value = '';
-        if (linkNoteInput) linkNoteInput.value = '';
+        if (linkUrlInput) {
+            linkUrlInput.value = '';
+            linkUrlInput.readOnly = isLocked;
+        }
+        if (linkNoteInput) {
+            linkNoteInput.value = '';
+            linkNoteInput.readOnly = isLocked;
+        }
+        if (fileInput) fileInput.disabled = isLocked;
+        if (dropzone) {
+            if (isLocked) dropzone.classList.add('pointer-events-none', 'opacity-60');
+            else dropzone.classList.remove('pointer-events-none', 'opacity-60');
+        }
 
         const subIsGroupCheck = document.getElementById('sub-is-group');
-        if (subIsGroupCheck) subIsGroupCheck.checked = false;
-        window.toggleGroupSubmissionMode(false);
+        const groupContainer = document.getElementById('sub-group-members-container');
+        const groupAddControls = document.getElementById('sub-group-add-controls');
+
+        if (isLocked && mySubmission) {
+            const isGroupSub = (mySubmission.filename && mySubmission.filename.includes('[Kelompok]')) ||
+                               (mySubmission.catatan_guru && (
+                                   mySubmission.catatan_guru.includes('[TAG:GRP_') ||
+                                   mySubmission.catatan_guru.startsWith('Kelompok:') ||
+                                   mySubmission.catatan_guru.startsWith('Tugas Kelompok')
+                               ));
+
+            if (isGroupSub) {
+                if (subIsGroupCheck) {
+                    subIsGroupCheck.checked = true;
+                    subIsGroupCheck.disabled = true;
+                }
+                if (groupContainer) groupContainer.classList.remove('hidden');
+                if (groupAddControls) groupAddControls.classList.add('hidden');
+
+                let membersList = [];
+                const mKel = (mySubmission.catatan_guru || '').match(/Kelompok:\s*([^(\[]+)/i);
+                const mAng = (mySubmission.catatan_guru || '').match(/Anggota:\s*([^\[]+)/i);
+                if (mKel) membersList = mKel[1].split(',').map(s => s.trim()).filter(Boolean);
+                else if (mAng) membersList = mAng[1].split(',').map(s => s.trim()).filter(Boolean);
+
+                const currentSubName = (mySubmission.nama || '').trim().toLowerCase();
+                selectedGroupMembers = Array.from(new Set(membersList.filter(m => m.trim().toLowerCase() !== currentSubName)));
+                window.renderGroupMemberChips(true);
+            } else {
+                if (subIsGroupCheck) {
+                    subIsGroupCheck.checked = false;
+                    subIsGroupCheck.disabled = true;
+                }
+                if (groupContainer) groupContainer.classList.add('hidden');
+                if (groupAddControls) groupAddControls.classList.add('hidden');
+                selectedGroupMembers = [];
+                window.renderGroupMemberChips(true);
+            }
+        } else {
+            if (subIsGroupCheck) {
+                subIsGroupCheck.checked = false;
+                subIsGroupCheck.disabled = false;
+            }
+            if (groupAddControls) groupAddControls.classList.remove('hidden');
+            window.toggleGroupSubmissionMode(false);
+        }
 
         const statusEl = document.getElementById('modal-banner-status');
-        if (statusEl) {
-            statusEl.classList.add('hidden');
+        if (isLocked && mySubmission) {
+            if (statusEl) {
+                statusEl.classList.remove('hidden');
+                const subDateStr = mySubmission.created_at ? new Date(mySubmission.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                statusEl.innerHTML = `
+                    <div class="p-3 bg-emerald-50 border-2 border-emerald-400 rounded-xl text-emerald-950 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base text-emerald-600">✓</span>
+                            <div>
+                                <div class="font-black text-xs text-emerald-900">TUGAS SUDAH DIKUMPULKAN (MODE BACA)</div>
+                                <div class="text-[11px] text-emerald-800">Tercatat pada: ${subDateStr} WIB</div>
+                            </div>
+                        </div>
+                        ${mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '' ? `<span class="bg-emerald-300 border border-emerald-600 text-emerald-950 px-2.5 py-1 rounded-lg font-black text-xs self-start sm:self-auto">Nilai: ${mySubmission.nilai}/100</span>` : '<span class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-lg text-[10px] font-bold self-start sm:self-auto">Menunggu Penilaian Guru</span>'}
+                    </div>
+                `;
+            }
+            if (subSubmitBtn) {
+                subSubmitBtn.disabled = true;
+                subSubmitBtn.className = 'w-full py-3.5 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider bg-slate-200 text-slate-500 border-2 border-slate-300 cursor-not-allowed shadow-none';
+                subSubmitBtn.innerText = 'TUGAS SUDAH DIKUMPULKAN (TERKUNCI)';
+            }
+        } else {
+            if (statusEl) statusEl.classList.add('hidden');
+            if (subSubmitBtn) {
+                subSubmitBtn.disabled = false;
+                subSubmitBtn.className = 'w-full py-3.5 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition bg-indigo-600 hover:bg-black text-white border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer';
+                subSubmitBtn.innerText = (parsed.tipe_pengumpulan === 'form') ? 'KIRIM JAWABAN SOAL SEKARANG 🚀' : 'KUMPULKAN TUGAS SEKARANG 🚀';
+            }
         }
-
-        if (subSubmitBtn) {
-            subSubmitBtn.disabled = false;
-            subSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            subSubmitBtn.innerText = 'KIRIM JAWABAN TUGAS';
-        }
-
-        let mySubmission = null;
-        let isLocked = false;
 
         const formSheet = document.getElementById('task-google-form-sheet');
         const legacySheet = document.getElementById('task-legacy-text-sheet');
@@ -2091,48 +2268,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (formSheet) formSheet.classList.add('hidden');
             if (legacySheet) legacySheet.classList.remove('hidden');
 
-            if (subTextAnswerInput) subTextAnswerInput.readOnly = isLocked;
-            if (linkUrlInput) linkUrlInput.readOnly = isLocked;
-            if (linkNoteInput) linkNoteInput.readOnly = isLocked;
-            if (fileInput) fileInput.disabled = isLocked;
-            if (dropzone) {
-                if (isLocked) {
-                    dropzone.classList.add('pointer-events-none', 'opacity-60');
-                } else {
-                    dropzone.classList.remove('pointer-events-none', 'opacity-60');
-                }
-            }
-
-            if (assignmentTipe === 'link') {
+            if (isLocked && mySubmission) {
                 if (modeSwitcher) modeSwitcher.classList.add('hidden');
-                setSubmissionMode('link');
-            } else if (assignmentTipe === 'file') {
-                if (modeSwitcher) modeSwitcher.classList.add('hidden');
-                setSubmissionMode('file');
-            } else if (assignmentTipe === 'text') {
-                if (modeSwitcher) modeSwitcher.classList.add('hidden');
-                setSubmissionMode('text');
-            } else {
-                if (modeSwitcher) modeSwitcher.classList.remove('hidden');
-                if (mySubmission) {
-                    if (mySubmission.storage_path && mySubmission.storage_path.startsWith('TEXT:')) {
-                        const prevText = mySubmission.storage_path.replace('TEXT:', '');
-                        if (subTextAnswerInput) {
-                            subTextAnswerInput.value = prevText;
-                            const words = prevText.split(/\s+/).filter(Boolean).length;
-                            if (subTextCount) subTextCount.textContent = `${words} kata | ${prevText.length} karakter`;
-                        }
-                        setSubmissionMode('text');
-                    } else if (mySubmission.link_url || (mySubmission.storage_path && mySubmission.storage_path.startsWith('LINK:'))) {
-                        const prevUrl = mySubmission.link_url || mySubmission.storage_path.replace('LINK:', '');
-                        if (linkUrlInput) linkUrlInput.value = prevUrl;
-                        setSubmissionMode('link');
-                    } else if (mySubmission.tipe === 'file') {
-                        setSubmissionMode('file');
-                    } else {
-                        setSubmissionMode('text');
+                if (mySubmission.storage_path && mySubmission.storage_path.startsWith('TEXT:')) {
+                    const prevText = mySubmission.storage_path.replace('TEXT:', '');
+                    if (subTextAnswerInput) {
+                        subTextAnswerInput.value = prevText;
+                        const words = prevText.split(/\s+/).filter(Boolean).length;
+                        if (subTextCount) subTextCount.textContent = `${words} kata | ${prevText.length} karakter`;
                     }
+                    setSubmissionMode('text');
+                } else if (mySubmission.link_url || (mySubmission.storage_path && mySubmission.storage_path.startsWith('LINK:'))) {
+                    const prevUrl = mySubmission.link_url || mySubmission.storage_path.replace('LINK:', '');
+                    if (linkUrlInput) linkUrlInput.value = prevUrl;
+                    setSubmissionMode('link');
                 } else {
+                    setSubmissionMode('file');
+                    if (filenameDisplay) filenameDisplay.textContent = mySubmission.filename || 'Berkas Terunggah';
+                    if (fileSelected) fileSelected.classList.remove('hidden');
+                    if (fileInfo) fileInfo.classList.add('hidden');
+                    if (clearFileBtn) clearFileBtn.classList.add('hidden');
+                }
+            } else {
+                if (assignmentTipe === 'link') {
+                    if (modeSwitcher) modeSwitcher.classList.add('hidden');
+                    setSubmissionMode('link');
+                } else if (assignmentTipe === 'file') {
+                    if (modeSwitcher) modeSwitcher.classList.add('hidden');
+                    setSubmissionMode('file');
+                } else if (assignmentTipe === 'text') {
+                    if (modeSwitcher) modeSwitcher.classList.add('hidden');
+                    setSubmissionMode('text');
+                } else {
+                    if (modeSwitcher) modeSwitcher.classList.remove('hidden');
                     setSubmissionMode('text');
                 }
             }
@@ -2502,7 +2670,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const assignGuruId = relatedAssign?.guru_id || relatedAssign?.teacher_id || null;
 
             const isGroupSubmission = Boolean(document.getElementById('sub-is-group')?.checked && selectedGroupMembers.length > 0);
-            const allGroupMembers = isGroupSubmission ? [nama, ...selectedGroupMembers] : [nama];
+            const filteredGroupMembers = selectedGroupMembers.filter(m => m.trim().toLowerCase() !== nama.trim().toLowerCase());
+            const allGroupMembers = isGroupSubmission ? Array.from(new Set([nama, ...filteredGroupMembers])) : [nama];
             const groupTag = isGroupSubmission ? `GRP_${Date.now()}` : '';
 
             async function insertSubmissionWithGroup(payload) {
@@ -2513,8 +2682,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const { error: dbError } = await supabase.from('files').insert([payload]);
                 if (dbError) throw dbError;
 
-                if (isGroupSubmission && selectedGroupMembers.length > 0) {
-                    const companionPayloads = selectedGroupMembers.map(member => ({
+                if (isGroupSubmission && filteredGroupMembers.length > 0) {
+                    const companionPayloads = Array.from(new Set(filteredGroupMembers)).map(member => ({
                         ...payload,
                         nama: member,
                         catatan_guru: `Tugas Kelompok bersama ${nama} (Ketua). Anggota: ${allGroupMembers.join(', ')} [TAG:${groupTag}]`
@@ -2791,17 +2960,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             showReceiptModal({
                 receiptId: (isGroupSubmission ? 'TGS-KEL-' : 'TGS-') + Math.floor(100000 + Math.random() * 900000),
                 time: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB',
-                student: isGroupSubmission ? `${nama} (Ketua) & ${selectedGroupMembers.length} Anggota Kelompok` : nama,
+                student: isGroupSubmission ? `${nama} (Ketua) & ${filteredGroupMembers.length} Anggota Kelompok` : nama,
                 meta: `${kelas} • ${mapel}`,
                 title: materi,
-                detail: isGroupSubmission ? `${submittedDetail} (Anggota: ${selectedGroupMembers.join(', ')})` : submittedDetail
+                detail: isGroupSubmission ? `${submittedDetail} (Anggota: ${filteredGroupMembers.join(', ')})` : submittedDetail
             });
 
             if (isGroupSubmission) {
                 await showCustomModal(
                     `Tugas kelompok "${materi}" berhasil dikumpulkan untuk ${allGroupMembers.length} siswa:\n\n` +
                     `Ketua: ${nama}\n` +
-                    `Anggota: ${selectedGroupMembers.join(', ')}\n\n` +
+                    `Anggota: ${filteredGroupMembers.join(', ')}\n\n` +
                     `Status tugas seluruh anggota kelompok otomatis tercatat sudah mengumpulkan.`,
                     'alert',
                     'Tugas Kelompok Berhasil Dikumpulkan',
