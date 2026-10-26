@@ -261,9 +261,19 @@
 
                     <!-- SUB-VIEW 2: MEJA KOREKSI / TABEL PENGUMPULAN TUGAS SISWA -->
                     <div id="penugasan-table-view" class="hidden space-y-4 bg-white border-[3px] border-black rounded-2xl md:rounded-3xl p-4 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                        <div>
-                            <h4 class="text-xl font-black text-black uppercase tracking-tight">Meja Koreksi Tugas Siswa</h4>
-                            <p class="text-slate-500 font-bold text-xs mt-0.5">Periksa formulir dan berkas tugas siswa, beri skor per butir esai atau gunakan koreksi AI.</p>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h4 class="text-xl font-black text-black uppercase tracking-tight">Meja Koreksi Tugas Siswa</h4>
+                                <p class="text-slate-500 font-bold text-xs mt-0.5">Periksa formulir dan berkas tugas siswa, beri skor per butir esai atau gunakan koreksi AI.</p>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                                <button type="button" onclick="exportCSV()" class="h-10 px-3.5 bg-emerald-400 hover:bg-emerald-500 text-black border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5 cursor-pointer">
+                                    Unduh Rekap CSV
+                                </button>
+                                <button type="button" onclick="deleteAllSubmissions()" class="h-10 px-3.5 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5 cursor-pointer" title="Hapus semua pengumpulan tugas yang ditampilkan">
+                                    Hapus Semua
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Filter Bar -->
@@ -827,11 +837,16 @@
             </div>
 
             <!-- Footer -->
-            <div class="px-6 py-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between gap-3 shrink-0">
-                <button onclick="printCurrentAssignmentReport()" class="px-4 py-2 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                    Cetak Rekap Nilai Tugas Ini
-                </button>
-                <button onclick="closeAssignmentSubmissionsModal()" class="px-5 py-2 bg-white border-2 border-black rounded-xl font-black text-xs uppercase hover:bg-slate-100">
+            <div class="px-6 py-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between gap-3 shrink-0 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="printCurrentAssignmentReport()" class="px-4 py-2 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                        Cetak Rekap Nilai Tugas Ini
+                    </button>
+                    <button onclick="deleteAllSubmissionsForCurrentAssignment()" class="px-4 py-2 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                        Hapus Semua Pengumpulan Ini
+                    </button>
+                </div>
+                <button onclick="closeAssignmentSubmissionsModal()" class="px-5 py-2 bg-white border-2 border-black rounded-xl font-black text-xs uppercase hover:bg-slate-100 cursor-pointer">
                     Tutup
                 </button>
             </div>
@@ -1288,12 +1303,15 @@
 
             <!-- Modal Footer Buttons (Pinned at Bottom) -->
             <div class="flex flex-wrap justify-between items-center gap-2 p-3 sm:p-4 border-t-2 border-black shrink-0 bg-slate-50">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                     <button type="button" onclick="exportQuizCSV()" class="h-10 px-4 bg-emerald-400 hover:bg-emerald-500 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
                         Unduh Rekap CSV
                     </button>
                     <button type="button" onclick="printQuizResults()" class="h-10 px-4 bg-yellow-300 hover:bg-yellow-400 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
                         Cetak Lembar Skor
+                    </button>
+                    <button type="button" onclick="deleteAllQuizSubmissions()" class="h-10 px-4 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer" title="Hapus semua hasil dan sesi ujian pada kuis ini">
+                        Hapus Semua Hasil Ujian
                     </button>
                 </div>
                 <button type="button" onclick="closeQuizResultsModal()" class="h-10 px-5 bg-white hover:bg-slate-100 border-2 border-black rounded-xl font-black text-xs uppercase transition cursor-pointer">

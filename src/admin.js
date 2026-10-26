@@ -921,6 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-tugas');
     const filterKelasSelect = document.getElementById('filter-kelas-tugas');
     const filterAssignmentSelect = document.getElementById('filter-assignment-tugas');
+    let currentFilteredSubmissions = [];
 
     function applyFilters() {
         const term = searchInput ? searchInput.value.toLowerCase() : '';
@@ -937,6 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
             );
             return matchTerm && matchKelas && matchAssignment;
         });
+        currentFilteredSubmissions = filtered;
         renderFilesTable(filtered);
     }
 
@@ -2013,7 +2015,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.exportCSV = async () => {
-        if (pendingFiles.length === 0) {
+        const listToExport = (currentFilteredSubmissions && currentFilteredSubmissions.length > 0)
+            ? currentFilteredSubmissions
+            : pendingFiles;
+
+        if (listToExport.length === 0) {
             await showCustomModal('Tidak ada data tugas untuk diekspor.');
             return;
         }
@@ -2021,7 +2027,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let csvContent = "\uFEFF";
         csvContent += "No,Kelas,Mata Pelajaran,Judul Tugas/Materi,Nama Siswa,Metode Pengerjaan,Rincian/Tautan/Jawaban,Nilai Angka,Catatan Guru / Evaluasi AI,Waktu Pengumpulan\n";
         
-        pendingFiles.forEach((f, idx) => {
+        listToExport.forEach((f, idx) => {
             const isText = isTextSubmission(f);
             const isLink = isLinkSubmission(f);
             let tipeStr = "Berkas File";
@@ -2061,6 +2067,132 @@ document.addEventListener('DOMContentLoaded', () => {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+    };
+
+    window.deleteAllSubmissions = async () => {
+        const targetFiles = (currentFilteredSubmissions && currentFilteredSubmissions.length > 0) 
+            ? currentFilteredSubmissions 
+            : pendingFiles;
+
+        if (!targetFiles || targetFiles.length === 0) {
+            await showCustomModal("Tidak ada data pengumpulan tugas untuk dihapus.", 'alert', 'Data Kosong', 'ℹ️');
+            return;
+        }
+
+        const count = targetFiles.length;
+        const isFiltered = Boolean(searchInput?.value?.trim() || filterKelasSelect?.value || filterAssignmentSelect?.value);
+        const scopeDesc = isFiltered 
+            ? `${count} data pengumpulan tugas yang sedang ditampilkan sesuai filter` 
+            : `SELURUH ${count} data pengumpulan tugas siswa`;
+
+        const conf = await showCustomModal(
+            `PERINGATAN PENGHAPUSAN MASSAL:\n\nApakah Anda yakin ingin menghapus ${scopeDesc} secara permanen?\n\nTindakan ini akan menghapus nilai, lembar jawaban, dan berkas fisik siswa dari sistem dan tidak dapat dibatalkan.`,
+            'confirm',
+            'Konfirmasi Hapus Semua Tugas',
+            '⚠️'
+        );
+        if (!conf) return;
+
+        if (count > 1) {
+            const doubleConf = await showCustomModal(
+                `Konfirmasi Terakhir: Hapus permanen ${count} data pengumpulan tugas sekarang?`,
+                'confirm',
+                'Yakin Hapus Semua?',
+                '⛔'
+            );
+            if (!doubleConf) return;
+        }
+
+        try {
+            const idsToDelete = targetFiles.map(f => f.id);
+
+            // Hapus berkas fisik di storage untuk pengumpulan berkas nyata
+            const pathsToRemove = targetFiles
+                .filter(f => f.storage_path && !f.storage_path.startsWith('FORM:') && !f.storage_path.startsWith('TEXT:') && !f.storage_path.startsWith('LINK:'))
+                .map(f => f.storage_path);
+
+            if (pathsToRemove.length > 0) {
+                const { error: storageErr } = await supabase.storage.from('uploads').remove(pathsToRemove);
+                if (storageErr) console.warn("Storage removal warning:", storageErr);
+            }
+
+            // Hapus dari tabel files (batch 100)
+            const BATCH_SIZE = 100;
+            for (let i = 0; i < idsToDelete.length; i += BATCH_SIZE) {
+                const batchIds = idsToDelete.slice(i, i + BATCH_SIZE);
+                const { error: dbErr } = await supabase.from('files').delete().in('id', batchIds);
+                if (dbErr) throw dbErr;
+            }
+
+            await showCustomModal(`Berhasil menghapus ${count} pengumpulan tugas secara permanen.`, 'alert', 'Penghapusan Berhasil', '✅');
+            await loadFilesTable();
+            if (activeAssignmentForSubmissions) {
+                renderAssignmentSubmissionsTable(activeAssignmentForSubmissions);
+            }
+        } catch (err) {
+            console.error(err);
+            await showCustomModal("Gagal menghapus semua pengumpulan: " + err.message, 'alert', 'Gagal Menghapus', '❌');
+        }
+    };
+
+    window.deleteAllSubmissionsForCurrentAssignment = async () => {
+        if (!activeAssignmentForSubmissions) return;
+        const a = activeAssignmentForSubmissions;
+
+        const matchingSubs = pendingFiles.filter(f => 
+            (f.assignment_id && String(f.assignment_id) === String(a.id)) ||
+            (f.materi && f.materi.toLowerCase().trim() === a.judul_tugas.toLowerCase().trim())
+        );
+
+        if (matchingSubs.length === 0) {
+            await showCustomModal("Belum ada pengumpulan tugas pada penugasan ini.", 'alert', 'Data Kosong', 'ℹ️');
+            return;
+        }
+
+        const count = matchingSubs.length;
+        const conf = await showCustomModal(
+            `PERINGATAN:\n\nApakah Anda yakin ingin menghapus semua (${count} siswa) pengumpulan tugas "${a.judul_tugas}"?\n\nSemua berkas dan nilai yang telah dikumpulkan siswa pada tugas ini akan DIHAPUS PERMANEN. Siswa akan dapat mengumpulkan kembali tugas ini.`,
+            'confirm',
+            'Hapus Semua Pengumpulan Tugas Ini',
+            '⚠️'
+        );
+        if (!conf) return;
+
+        if (count > 1) {
+            const doubleConf = await showCustomModal(
+                `Konfirmasi Terakhir: Hapus permanen ${count} pengumpulan tugas "${a.judul_tugas}"?`,
+                'confirm',
+                'Yakin Hapus?',
+                '⛔'
+            );
+            if (!doubleConf) return;
+        }
+
+        try {
+            const idsToDelete = matchingSubs.map(f => f.id);
+            const pathsToRemove = matchingSubs
+                .filter(f => f.storage_path && !f.storage_path.startsWith('FORM:') && !f.storage_path.startsWith('TEXT:') && !f.storage_path.startsWith('LINK:'))
+                .map(f => f.storage_path);
+
+            if (pathsToRemove.length > 0) {
+                const { error: storageErr } = await supabase.storage.from('uploads').remove(pathsToRemove);
+                if (storageErr) console.warn("Storage removal warning:", storageErr);
+            }
+
+            const BATCH_SIZE = 100;
+            for (let i = 0; i < idsToDelete.length; i += BATCH_SIZE) {
+                const batchIds = idsToDelete.slice(i, i + BATCH_SIZE);
+                const { error: dbErr } = await supabase.from('files').delete().in('id', batchIds);
+                if (dbErr) throw dbErr;
+            }
+
+            await showCustomModal(`Seluruh ${count} pengumpulan tugas "${a.judul_tugas}" berhasil dihapus.`, 'alert', 'Berhasil', '✅');
+            await loadFilesTable();
+            renderAssignmentSubmissionsTable(a);
+        } catch (err) {
+            console.error(err);
+            await showCustomModal("Gagal menghapus: " + err.message, 'alert', 'Gagal', '❌');
+        }
     };
 
     window.printOfficialGradebook = () => {
@@ -6543,6 +6675,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================================
     let activeQuizForResults = null;
     let activeQuizSubmissions = [];
+    let currentFilteredQuizSubmissions = [];
     let resultsLiveRefreshInterval = null;
     let resultsRealtimeChannel = null;
 
@@ -6785,6 +6918,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const matchSearch = !searchQuery || studentName.includes(searchQuery) || studentNisn.includes(searchQuery);
             return matchStatus && matchSearch;
         });
+        currentFilteredQuizSubmissions = finalFiltered;
 
         const tbody = document.getElementById('quiz-submissions-tbody');
         if (!tbody) return;
@@ -7091,6 +7225,77 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             showCustomModal("Gagal reset sesi: " + err.message);
+        }
+    };
+
+    window.deleteAllQuizSubmissions = async () => {
+        if (!activeQuizForResults) return;
+        const quizId = activeQuizForResults.id;
+        const quizTitle = activeQuizForResults.judul_kuis || 'Ujian Ini';
+
+        const kelasSelect = document.getElementById('filter-results-kelas');
+        const statusSelect = document.getElementById('filter-results-status');
+        const searchInput = document.getElementById('search-results-student');
+
+        const isFiltered = Boolean(
+            (kelasSelect && kelasSelect.value !== 'all') ||
+            (statusSelect && statusSelect.value !== 'all') ||
+            (searchInput && searchInput.value.trim() !== '')
+        );
+
+        const targetList = (isFiltered && currentFilteredQuizSubmissions && currentFilteredQuizSubmissions.length > 0)
+            ? currentFilteredQuizSubmissions
+            : activeQuizSubmissions;
+
+        if (!targetList || targetList.length === 0) {
+            await showCustomModal("Tidak ada data pengerjaan ujian untuk dihapus.", 'alert', 'Data Kosong', 'ℹ️');
+            return;
+        }
+
+        const count = targetList.length;
+        const scopeText = isFiltered 
+            ? `${count} data hasil ujian siswa yang sedang ditampilkan sesuai filter` 
+            : `SELURUH ${count} data hasil ujian siswa`;
+
+        const conf = await showCustomModal(
+            `PERINGATAN PENGHAPUSAN MASSAL:\n\nApakah Anda yakin ingin menghapus ${scopeText} pada ujian "${quizTitle}"?\n\nNilai, lembar jawaban, dan riwayat anti-cheat peserta akan DIHAPUS BERSIH secara permanen. Siswa yang dihapus dapat login dan mengerjakan kembali dari awal.`,
+            'confirm',
+            'Konfirmasi Hapus Semua Hasil Ujian',
+            '⚠️'
+        );
+        if (!conf) return;
+
+        if (count > 1) {
+            const doubleConf = await showCustomModal(
+                `Konfirmasi Terakhir: Hapus permanen ${count} data ujian "${quizTitle}" sekarang? Tindakan ini tidak dapat dibatalkan.`,
+                'confirm',
+                'Yakin Hapus Bersih?',
+                '⛔'
+            );
+            if (!doubleConf) return;
+        }
+
+        try {
+            if (isFiltered) {
+                const idsToDelete = targetList.map(s => s.id);
+                const BATCH_SIZE = 100;
+                for (let i = 0; i < idsToDelete.length; i += BATCH_SIZE) {
+                    const batchIds = idsToDelete.slice(i, i + BATCH_SIZE);
+                    const { error } = await supabase.from('quiz_submissions').delete().in('id', batchIds);
+                    if (error) throw error;
+                }
+            } else {
+                const { error } = await supabase.from('quiz_submissions').delete().eq('quiz_id', quizId);
+                if (error) throw error;
+            }
+
+            await showCustomModal(`Berhasil menghapus ${count} data hasil ujian "${quizTitle}".`, 'alert', 'Berhasil Dihapus', '✅');
+            if (activeQuizForResults) {
+                await openQuizResultsModal(quizId);
+            }
+        } catch (err) {
+            console.error(err);
+            await showCustomModal("Gagal menghapus hasil ujian: " + err.message, 'alert', 'Gagal', '❌');
         }
     };
 
