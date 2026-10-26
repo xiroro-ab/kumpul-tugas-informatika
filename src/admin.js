@@ -900,9 +900,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isSuperadmin && currentTeacher?.id) {
                 const tIds = (assignmentsList || []).map(a => a.id).filter(Boolean);
                 if (tIds.length > 0) {
-                    filesQuery = filesQuery.or(`guru_id.eq.${currentTeacher.id},assignment_id.in.(${tIds.join(',')})`);
+                    filesQuery = filesQuery.or(`guru_id.eq.${currentTeacher.id},guru_id.is.null,assignment_id.in.(${tIds.join(',')})`);
                 } else {
-                    filesQuery = filesQuery.eq('guru_id', currentTeacher.id);
+                    filesQuery = filesQuery.or(`guru_id.eq.${currentTeacher.id},guru_id.is.null`);
                 }
             }
             const { data, error } = await filesQuery;
@@ -911,6 +911,8 @@ document.addEventListener('DOMContentLoaded', () => {
             pendingFiles = data || [];
             const sBadge = document.getElementById('submissions-count-badge');
             if (sBadge) sBadge.textContent = pendingFiles.length;
+            populateAssignmentFilterOptions();
+            populateFilesClassFilter();
             applyFilters();
         } catch (e) {
             console.error(e);
@@ -923,19 +925,100 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterAssignmentSelect = document.getElementById('filter-assignment-tugas');
     let currentFilteredSubmissions = [];
 
+    function populateAssignmentFilterOptions() {
+        if (!filterAssignmentSelect) return;
+        const currentVal = filterAssignmentSelect.value || '';
+
+        const taskMap = new Map();
+
+        // 1. Masukkan penugasan resmi dari assignmentsList
+        (assignmentsList || []).forEach(a => {
+            const title = (a.judul_tugas || '').trim();
+            if (!title) return;
+            const key = String(a.id);
+            const matchingCount = (pendingFiles || []).filter(f => 
+                (f.assignment_id && String(f.assignment_id) === String(a.id)) ||
+                (f.materi && f.materi.toLowerCase().trim() === title.toLowerCase())
+            ).length;
+
+            taskMap.set(key, {
+                value: key,
+                label: `${title} (Kelas ${a.kelas || 'Semua'}) - ${matchingCount} Pengumpulan`,
+                titleLower: title.toLowerCase()
+            });
+        });
+
+        // 2. Masukkan judul tugas / topik materi dari data pengumpulan siswa yang belum tercakup
+        (pendingFiles || []).forEach(f => {
+            const materi = (f.materi || '').trim();
+            if (!materi) return;
+            const materiLower = materi.toLowerCase();
+
+            let covered = false;
+            for (const item of taskMap.values()) {
+                if (item.titleLower === materiLower) {
+                    covered = true;
+                    break;
+                }
+            }
+
+            if (!covered) {
+                const count = (pendingFiles || []).filter(item => (item.materi || '').trim().toLowerCase() === materiLower).length;
+                taskMap.set(materi, {
+                    value: materi,
+                    label: `${materi} - ${count} Pengumpulan`,
+                    titleLower: materiLower
+                });
+            }
+        });
+
+        filterAssignmentSelect.innerHTML = '<option value="">Semua Penugasan / Judul Tugas</option>';
+        taskMap.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.value;
+            opt.textContent = item.label;
+            if (item.value === currentVal || item.titleLower === currentVal.toLowerCase()) opt.selected = true;
+            filterAssignmentSelect.appendChild(opt);
+        });
+    }
+
+    function populateFilesClassFilter() {
+        if (!filterKelasSelect) return;
+        const currentVal = filterKelasSelect.value || '';
+
+        const fileClasses = (pendingFiles || []).map(f => String(f.kelas || '').trim()).filter(Boolean);
+        const options = typeof getDynamicClassOptions === 'function' ? getDynamicClassOptions(stateKelas) : [];
+        const allClasses = [...new Set([...options.map(o => o.value), ...fileClasses])].filter(Boolean).sort();
+
+        filterKelasSelect.innerHTML = '<option value="">Semua Pengumpulan Kelas</option>';
+        allClasses.forEach(k => {
+            const opt = document.createElement('option');
+            opt.value = k;
+            opt.textContent = k.toLowerCase().startsWith('kelas') ? k : `Kelas ${k}`;
+            if (k === currentVal) opt.selected = true;
+            filterKelasSelect.appendChild(opt);
+        });
+    }
+
     function applyFilters() {
-        const term = searchInput ? searchInput.value.toLowerCase() : '';
+        const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
         const kelasVal = filterKelasSelect ? filterKelasSelect.value : '';
-        const assignVal = filterAssignmentSelect ? filterAssignmentSelect.value : '';
+        const assignVal = filterAssignmentSelect ? filterAssignmentSelect.value.trim() : '';
 
         const filtered = pendingFiles.filter(f => {
-            const matchTerm = (f.nama && f.nama.toLowerCase().includes(term)) ||
-                              (f.filename && f.filename.toLowerCase().includes(term));
+            const matchTerm = !term ||
+                              (f.nama && f.nama.toLowerCase().includes(term)) ||
+                              (f.filename && f.filename.toLowerCase().includes(term)) ||
+                              (f.materi && f.materi.toLowerCase().includes(term));
+
             const matchKelas = kelasVal === '' || isClassMatch(kelasVal, f.kelas);
+
             const matchAssignment = assignVal === '' || (
                 (f.assignment_id && String(f.assignment_id) === assignVal) ||
-                (assignmentsList.find(a => String(a.id) === assignVal)?.judul_tugas?.toLowerCase().trim() === (f.materi || '').toLowerCase().trim())
+                (f.materi && f.materi.toLowerCase().trim() === assignVal.toLowerCase()) ||
+                (assignmentsList.some(a => String(a.id) === assignVal && a.judul_tugas?.toLowerCase().trim() === (f.materi || '').toLowerCase().trim()))
             );
+
             return matchTerm && matchKelas && matchAssignment;
         });
         currentFilteredSubmissions = filtered;
@@ -2321,23 +2404,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const isSuperadmin = currentTeacher?.role === 'superadmin';
             let assignQuery = supabase.from('assignments').select('*').order('created_at', { ascending: false });
             if (!isSuperadmin && currentTeacher?.id) {
-                assignQuery = assignQuery.or(`guru_id.eq.${currentTeacher.id}`);
+                assignQuery = assignQuery.or(`guru_id.eq.${currentTeacher.id},guru_id.is.null`);
             }
             const { data, error } = await assignQuery;
             if (error) throw error;
             assignmentsList = data || [];
             const pBadge = document.getElementById('penugasan-count-badge');
             if (pBadge) pBadge.textContent = assignmentsList.length;
-
-            if (filterAssignmentSelect) {
-                filterAssignmentSelect.innerHTML = '<option value="">Semua Penugasan</option>';
-                assignmentsList.forEach(a => {
-                    const opt = document.createElement('option');
-                    opt.value = a.id;
-                    opt.textContent = `${a.judul_tugas} - Kelas ${a.kelas}`;
-                    filterAssignmentSelect.appendChild(opt);
-                });
-            }
 
             // Pastikan data pengumpulan siswa termutakhir tersedia untuk penghitungan
             if (!pendingFiles || pendingFiles.length === 0) {
@@ -2346,14 +2419,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!isSuperadmin && currentTeacher?.id) {
                         const tIds = assignmentsList.map(a => a.id).filter(Boolean);
                         if (tIds.length > 0) {
-                            filesQ = filesQ.or(`guru_id.eq.${currentTeacher.id},assignment_id.in.(${tIds.join(',')})`);
+                            filesQ = filesQ.or(`guru_id.eq.${currentTeacher.id},guru_id.is.null,assignment_id.in.(${tIds.join(',')})`);
                         } else {
-                            filesQ = filesQ.eq('guru_id', currentTeacher.id);
+                            filesQ = filesQ.or(`guru_id.eq.${currentTeacher.id},guru_id.is.null`);
                         }
                     }
                     const { data: fileData } = await filesQ;
                     if (fileData) pendingFiles = fileData;
                 } catch (_) {}
+            }
+
+            if (typeof populateAssignmentFilterOptions === 'function') {
+                populateAssignmentFilterOptions();
             }
 
             assignmentsList.forEach(a => {
@@ -8074,18 +8151,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (el) populateTargetClassSelect(el, el.value || 'Semua Kelas');
             });
 
-            if (filterKelasSelect) {
+            if (typeof populateFilesClassFilter === 'function') {
+                populateFilesClassFilter();
+            } else if (filterKelasSelect) {
                 populateTargetClassSelect(filterKelasSelect, '', true);
             }
 
-            if (filterAssignmentSelect) {
-                filterAssignmentSelect.innerHTML = '<option value="">Semua Penugasan</option>';
-                assignmentsList.forEach(a => {
-                    const opt = document.createElement('option');
-                    opt.value = a.id;
-                    opt.textContent = `${a.judul_tugas} - Kelas ${a.kelas}`;
-                    filterAssignmentSelect.appendChild(opt);
-                });
+            if (typeof populateAssignmentFilterOptions === 'function') {
+                populateAssignmentFilterOptions();
             }
         }
     }
