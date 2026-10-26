@@ -666,12 +666,12 @@
                                 Pilih rekan sekelas yang menjadi anggota kelompok Anda (cukup 1 perwakilan yang mengunggah berkas):
                             </p>
                             
-                            <div class="flex gap-2">
-                                <select id="sub-group-member-select" class="flex-1 h-9 px-2.5 rounded-lg border-2 border-black bg-white font-bold text-xs outline-none cursor-pointer">
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                <select id="sub-group-member-select" class="flex-1 min-w-0 w-full h-10 px-3 rounded-xl border-2 border-black bg-white font-bold text-xs outline-none cursor-pointer">
                                     <option value="">Pilih anggota kelompok...</option>
                                 </select>
-                                <button type="button" onclick="window.addGroupMember()" class="h-9 px-3 bg-black text-yellow-300 font-black text-xs uppercase rounded-lg border-2 border-black hover:bg-slate-800 transition active:scale-95 cursor-pointer shrink-0">
-                                    + Tambah
+                                <button type="button" onclick="window.addGroupMember()" class="w-full sm:w-auto h-10 px-4 bg-black text-yellow-300 font-black text-xs uppercase rounded-xl border-2 border-black hover:bg-slate-800 transition active:scale-95 cursor-pointer flex items-center justify-center gap-1 shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                    + Tambah Anggota
                                 </button>
                             </div>
 
