@@ -651,6 +651,37 @@
                         <input type="hidden" id="sub-student-id" value="">
                     </div>
 
+                    <!-- Opsi Tugas Kelompok (Fitur Kolaborasi Siswa) -->
+                    <div class="bg-amber-50 border-2 border-black rounded-xl p-3 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="sub-is-group" onchange="window.toggleGroupSubmissionMode(this.checked)" class="w-4 h-4 text-black border-2 border-black rounded accent-black cursor-pointer">
+                                <span class="text-xs font-black uppercase text-amber-950">Tugas Dikerjakan Berkelompok?</span>
+                            </label>
+                            <span class="text-[9px] font-black uppercase bg-amber-200 text-amber-900 border border-amber-400 px-1.5 py-0.5 rounded">Opsional</span>
+                        </div>
+                        
+                        <div id="sub-group-members-container" class="hidden space-y-2 pt-2 border-t border-amber-200">
+                            <p class="text-[11px] text-amber-900 font-bold leading-tight">
+                                Pilih rekan sekelas yang menjadi anggota kelompok Anda (cukup 1 perwakilan yang mengunggah berkas):
+                            </p>
+                            
+                            <div class="flex gap-2">
+                                <select id="sub-group-member-select" class="flex-1 h-9 px-2.5 rounded-lg border-2 border-black bg-white font-bold text-xs outline-none cursor-pointer">
+                                    <option value="">Pilih anggota kelompok...</option>
+                                </select>
+                                <button type="button" onclick="window.addGroupMember()" class="h-9 px-3 bg-black text-yellow-300 font-black text-xs uppercase rounded-lg border-2 border-black hover:bg-slate-800 transition active:scale-95 cursor-pointer shrink-0">
+                                    + Tambah
+                                </button>
+                            </div>
+
+                            <!-- List Chip Anggota Terpilih -->
+                            <div id="sub-group-members-chips" class="flex flex-wrap gap-1.5 pt-1">
+                                <span class="text-[11px] text-amber-800 italic">Belum ada anggota yang ditambahkan.</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="space-y-1">
                         <label for="sub-materi" class="text-xs font-black uppercase text-black ml-1">Judul / Topik Tugas</label>
                         <input type="text" id="sub-materi" placeholder="Misal: Laporan Praktikum Jaringan Komputer" class="w-full h-10 px-3 rounded-xl border-2 border-black bg-slate-50 font-bold text-xs outline-none focus:bg-white">

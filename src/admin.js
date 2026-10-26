@@ -1063,7 +1063,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         })()}
                     </div>
                 </td>
-                <td class="px-3 py-3 whitespace-nowrap font-bold text-black border-b-2 border-black border-r-2 text-xs">${escapeHtml(f.nama)}</td>
+                <td class="px-3 py-3 font-bold text-black border-b-2 border-black border-r-2 text-xs align-top">
+                    <div>${escapeHtml(f.nama)}</div>
+                    ${(() => {
+                        const isGroupSub = (f.filename && f.filename.includes('[Kelompok]')) || (f.catatan_guru && f.catatan_guru.includes('[TAG:GRP_'));
+                        if (!isGroupSub) return '';
+                        let groupInfo = '';
+                        const matchGroup = (f.catatan_guru || '').match(/Kelompok:\s*([^\[]+)/);
+                        if (matchGroup) {
+                            groupInfo = matchGroup[1].trim();
+                        }
+                        return `
+                            <div class="mt-1 flex flex-col gap-0.5">
+                                <span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-950 border border-indigo-300 text-[9px] font-black px-1.5 py-0.5 rounded w-fit uppercase">
+                                    👥 Kelompok
+                                </span>
+                                ${groupInfo ? `<span class="text-[10px] text-slate-600 font-medium whitespace-normal max-w-[200px] leading-tight" title="${escapeHtml(groupInfo)}">${escapeHtml(groupInfo)}</span>` : ''}
+                            </div>
+                        `;
+                    })()}
+                </td>
                 <td class="px-3 py-3 font-medium text-black border-b-2 border-black border-r-2 min-w-[160px]">${detailCell}</td>
                 <td class="px-3 py-3 text-center border-b-2 border-black border-r-2">${gradeBadge}</td>
                 <td class="px-3 py-3 whitespace-nowrap font-black text-xs border-b-2 border-black">
@@ -1098,6 +1117,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const diffHours = Math.round((new Date(item.created_at) - new Date(assignForGrade.deadline)) / (1000 * 60 * 60));
             const lateStr = diffHours >= 24 ? `${Math.floor(diffHours / 24)} hari` : `${Math.max(1, diffHours)} jam`;
             document.getElementById('grade-modal-meta').innerHTML += ` <span class="bg-amber-200 text-amber-950 border border-amber-400 px-2 py-0.5 rounded font-black text-[10px]">TERLAMBAT ${lateStr}</span>`;
+        }
+
+        // Tampilkan info kelompok jika tugas kelompok
+        const groupContainer = document.getElementById('grade-group-container');
+        const groupMembersList = document.getElementById('grade-group-members-list');
+        const groupCountBadge = document.getElementById('grade-group-count-badge');
+        const gradeApplyGroupCheck = document.getElementById('grade-apply-group');
+
+        const matchTag = (item.catatan_guru || '').match(/\[TAG:(GRP_[^\]]+)\]/);
+        if (matchTag && groupContainer) {
+            const groupTag = matchTag[1];
+            const groupFiles = pendingFiles.filter(f => (f.catatan_guru || '').includes(groupTag));
+            const memberNames = Array.from(new Set(groupFiles.map(f => f.nama)));
+            groupContainer.classList.remove('hidden');
+            if (groupMembersList) {
+                groupMembersList.innerHTML = memberNames.map(m => `
+                    <span class="inline-block bg-indigo-100 text-indigo-950 border border-indigo-300 px-2.5 py-0.5 rounded-lg font-bold text-xs mr-1.5 mb-1">
+                        👤 ${escapeHtml(m)}
+                    </span>
+                `).join('');
+            }
+            if (groupCountBadge) {
+                groupCountBadge.textContent = `${memberNames.length} Siswa`;
+            }
+            if (gradeApplyGroupCheck) {
+                gradeApplyGroupCheck.checked = true;
+            }
+        } else if (groupContainer) {
+            groupContainer.classList.add('hidden');
         }
         
         const formSection = document.getElementById('grade-form-responses-section');
@@ -1865,6 +1913,31 @@ document.addEventListener('DOMContentLoaded', () => {
             activeGradeItem.status_koreksi = 'sudah_dikoreksi';
             if (isForm) activeGradeItem.storage_path = updatedStoragePath;
 
+            // Sinkronisasi ke seluruh anggota kelompok jika tugas kelompok
+            const matchTag = (activeGradeItem.catatan_guru || '').match(/\[TAG:(GRP_[^\]]+)\]/);
+            const applyToGroup = Boolean(matchTag && document.getElementById('grade-apply-group')?.checked);
+            let syncedMemberCount = 1;
+
+            if (applyToGroup) {
+                const groupTag = matchTag[1];
+                const companions = pendingFiles.filter(f => f.id !== activeGradeItem.id && (f.catatan_guru || '').includes(groupTag));
+                for (const cf of companions) {
+                    const originalTagInfo = cf.catatan_guru || '';
+                    const compPayload = {
+                        nilai: scoreNum,
+                        status_koreksi: 'sudah_dikoreksi',
+                        catatan_guru: feedbackVal ? `${originalTagInfo} | Evaluasi Guru: ${feedbackVal}` : originalTagInfo
+                    };
+                    if (isForm) compPayload.storage_path = updatedStoragePath;
+                    await supabase.from('files').update(compPayload).eq('id', cf.id);
+                    cf.nilai = scoreNum;
+                    cf.status_koreksi = 'sudah_dikoreksi';
+                    cf.catatan_guru = compPayload.catatan_guru;
+                    if (isForm) cf.storage_path = updatedStoragePath;
+                }
+                syncedMemberCount += companions.length;
+            }
+
             closeGradeModal();
             applyFilters();
 
@@ -1874,7 +1947,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadAssignments();
             }
 
-            showCustomModal("Nilai dan catatan evaluasi berhasil disimpan!");
+            if (applyToGroup && syncedMemberCount > 1) {
+                showCustomModal(`Nilai ${scoreNum} dan catatan evaluasi berhasil disimpan serta disinkronkan ke seluruh ${syncedMemberCount} anggota kelompok!`, 'alert', 'Penilaian Kelompok Berhasil', '👥');
+            } else {
+                showCustomModal("Nilai dan catatan evaluasi berhasil disimpan!");
+            }
         } catch (e) {
             showCustomModal("Gagal menyimpan nilai: " + e.message);
         }

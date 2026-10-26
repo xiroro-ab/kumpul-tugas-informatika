@@ -733,6 +733,24 @@
                     </button>
                 </div>
 
+                <!-- Kontainer Khusus Tugas Kelompok -->
+                <div id="grade-group-container" class="hidden bg-indigo-50 border-2 border-indigo-300 rounded-2xl p-3.5 space-y-2">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-1.5">
+                            <span class="bg-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded uppercase">👥 Tugas Kelompok</span>
+                            <span class="text-xs font-black text-indigo-950">Daftar Anggota:</span>
+                        </div>
+                        <span id="grade-group-count-badge" class="bg-indigo-200 text-indigo-900 border border-indigo-400 text-[10px] font-black px-2 py-0.5 rounded">0 Siswa</span>
+                    </div>
+                    <div id="grade-group-members-list" class="text-xs font-bold text-slate-800 bg-white p-2.5 rounded-xl border border-indigo-200 leading-relaxed">
+                        <!-- Diisi nama anggota via JS -->
+                    </div>
+                    <label class="flex items-center gap-2 pt-1 cursor-pointer select-none">
+                        <input type="checkbox" id="grade-apply-group" checked class="w-4 h-4 text-indigo-600 border-2 border-black rounded accent-indigo-600 cursor-pointer">
+                        <span class="text-xs font-black text-indigo-950">Terapkan nilai dan catatan evaluasi ini ke seluruh anggota kelompok sekaligus</span>
+                    </label>
+                </div>
+
                 <!-- 4. Form Penilaian Guru -->
                 <div class="bg-slate-50 border-2 border-black rounded-2xl p-4 space-y-3">
                     <h4 class="font-black text-xs uppercase text-slate-800 tracking-wider">Penetapan Nilai Akhir & Catatan Guru</h4>
