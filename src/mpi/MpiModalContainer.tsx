@@ -38,10 +38,14 @@ interface MpiModalContainerProps {
 
 export function findMeetingInCurriculum(meetingId: string): { grade: number; chapter: Chapter; meeting: Meeting } | null {
   if (!meetingId) return null;
-  const cleanId = meetingId.trim().replace(/^mpi_native_/, '');
+  const cleanId = meetingId.trim().replace(/^mpi_native_/, '').toLowerCase();
+  const normalizedId = cleanId.replace(/[-_]/g, '');
   for (const g of curriculumData) {
     for (const c of g.chapters) {
-      const m = c.meetings.find(x => x.id === cleanId || x.id.toLowerCase() === cleanId.toLowerCase());
+      const m = c.meetings.find(x => {
+        const xId = x.id.toLowerCase();
+        return xId === cleanId || xId.replace(/[-_]/g, '') === normalizedId;
+      });
       if (m) return { grade: g.grade, chapter: c, meeting: m };
     }
   }
@@ -65,14 +69,34 @@ export function findChapterInCurriculum(chapterIdOrCode: string, gradeHint?: num
 }
 
 export default function MpiModalContainer({ isOpen, onClose, options }: MpiModalContainerProps) {
-  const [view, setView] = useState<"home" | "chapter" | "lesson" | "leaderboard" | "portfolio">("home");
+  const initialMeeting = options?.meetingId ? findMeetingInCurriculum(options.meetingId) : null;
+  const initialChapter = options?.chapterId ? findChapterInCurriculum(options.chapterId, options?.grade) : null;
+
+  const [view, setView] = useState<"home" | "chapter" | "lesson" | "leaderboard" | "portfolio">(() => {
+    if (initialMeeting) return "lesson";
+    if (initialChapter) return "chapter";
+    if (options?.mode === "leaderboard") return "leaderboard";
+    if (options?.mode === "portfolio") return "portfolio";
+    return "home";
+  });
   const [isMateriOpen, setIsMateriOpen] = useState(false);
   const [openGrade, setOpenGrade] = useState<number | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
-  const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
-  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
-  const [activeLmsMaterialId, setActiveLmsMaterialId] = useState<string | number | null>(null);
+  const [selectedGrade, setSelectedGrade] = useState<number | null>(() => {
+    if (initialMeeting) return initialMeeting.grade;
+    if (initialChapter) return initialChapter.grade;
+    return options?.grade ? Number(options.grade) : null;
+  });
+  const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(() => {
+    if (initialMeeting) return initialMeeting.chapter;
+    if (initialChapter) return initialChapter.chapter;
+    return null;
+  });
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(() => {
+    if (initialMeeting) return initialMeeting.meeting;
+    return null;
+  });
+  const [activeLmsMaterialId, setActiveLmsMaterialId] = useState<string | number | null>(() => options?.lmsMaterialId || null);
 
   const [completedMeetings, setCompletedMeetings] = useState<string[]>([]);
   const [completedChapters, setCompletedChapters] = useState<string[]>([]);

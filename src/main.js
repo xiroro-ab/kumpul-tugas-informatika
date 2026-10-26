@@ -4,6 +4,10 @@ import { sanitizeAndEnhanceHtml, openHtmlInNewTab } from './htmlEnhancer.js';
 import { openMpiViewer } from './mountReact.tsx';
 import { generateAllMpiMaterials } from './mpi/data/mpiMaterialsGenerator.ts';
 
+if (typeof window !== 'undefined') {
+    window.openMpiViewer = openMpiViewer;
+}
+
 let rosterStudents = [];
 let allAssignments = [];
 let allMaterials = [];
@@ -1018,29 +1022,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const studentKelas = getActiveStudentKelas();
+        const queryLower = cleanQuery.toLowerCase();
+
+        // Deteksi apakah pencarian secara spesifik menargetkan tingkat kelas tertentu
+        let queryTargetGrade = '';
+        if (/\b(?:kelas|kls)\s*(?:7|vii)\b/i.test(cleanQuery) || queryLower === '7' || queryLower === 'kelas 7') {
+            queryTargetGrade = '7';
+        } else if (/\b(?:kelas|kls)\s*(?:8|viii)\b/i.test(cleanQuery) || queryLower === '8' || queryLower === 'kelas 8') {
+            queryTargetGrade = '8';
+        } else if (/\b(?:kelas|kls)\s*(?:9|ix)\b/i.test(cleanQuery) || queryLower === '9' || queryLower === 'kelas 9') {
+            queryTargetGrade = '9';
+        }
+
+        const matchItemClass = (itemKelas) => {
+            if (queryTargetGrade) {
+                const s = String(itemKelas || '').toLowerCase();
+                if (queryTargetGrade === '7') return /\b7\b|vii/i.test(s);
+                if (queryTargetGrade === '8') return /\b8\b|viii/i.test(s);
+                if (queryTargetGrade === '9') return /\b9\b|ix/i.test(s);
+                return false;
+            }
+            if (!cleanQuery) {
+                return !studentKelas || isClassMatch(itemKelas, studentKelas);
+            }
+            return true;
+        };
+
+        const isPureClassSearch = Boolean(queryTargetGrade && cleanQuery.replace(/\b(?:kelas|kls|vii|viii|ix|[789])\b/gi, '').trim() === '');
 
         // 1. Filter Materi
         const filteredMaterials = (allMaterials || []).filter(m => {
-            const matchKelas = !studentKelas || isClassMatch(m.kelas, studentKelas);
-            if (!matchKelas) return false;
-            const meta = m.metadata || {};
-            return matchesSearchQuery([
+            if (!matchItemClass(m.kelas)) return false;
+            const meta = parseMaterialData(m);
+            const cleanDesc = meta.deskripsi || (typeof m.konten === 'string' && !m.konten.trim().startsWith('{') ? m.konten : '');
+            return isPureClassSearch || matchesSearchQuery([
                 m.judul,
-                meta.deskripsi || m.konten,
+                cleanDesc,
                 m.mapel,
                 m.kelas,
                 `Kelas ${m.kelas}`,
                 'Materi',
-                m.tipe
+                meta.tipe
             ], cleanQuery);
         });
 
         // 2. Filter Tugas
         const filteredAssignments = (allAssignments || []).filter(a => {
-            const matchKelas = !studentKelas || isClassMatch(a.kelas, studentKelas);
-            if (!matchKelas) return false;
+            if (!matchItemClass(a.kelas)) return false;
             const parsed = parseAssignmentQuestions(a);
-            return matchesSearchQuery([
+            return isPureClassSearch || matchesSearchQuery([
                 a.judul_tugas,
                 a.deskripsi,
                 parsed?.petunjuk,
@@ -1054,9 +1084,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 3. Filter Ujian
         const filteredQuizzes = (allQuizzes || []).filter(q => {
-            const matchKelas = !studentKelas || isClassMatch(q.kelas, studentKelas);
-            if (!matchKelas) return false;
-            return matchesSearchQuery([
+            if (!matchItemClass(q.kelas)) return false;
+            return isPureClassSearch || matchesSearchQuery([
                 q.judul_kuis,
                 q.petunjuk,
                 q.mapel,
@@ -1125,14 +1154,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         let html = '';
         displayItems.forEach(({ item, type }) => {
             if (type === 'materi') {
-                const meta = item.metadata || {};
-                const desc = meta.deskripsi || item.konten || 'Materi pembelajaran siap dipelajari secara interaktif.';
+                const meta = parseMaterialData(item);
+                const desc = meta.deskripsi || (typeof item.konten === 'string' && !item.konten.trim().startsWith('{') ? item.konten : '') || 'Materi pembelajaran siap dipelajari secara interaktif.';
+                const isGameOrNative = meta.tipe === 'mpi_native' || meta.mpi_meeting_id || item.is_mpi_curriculum;
+                const btnText = isGameOrNative ? '🎮 Mainkan Game & Modul' : 'Pelajari Materi';
                 html += `
                     <div class="bg-white border-2 border-black rounded-2xl p-3 sm:p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
                         <div class="flex items-center justify-between gap-2 flex-wrap">
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="px-2 py-0.5 bg-sky-100 text-sky-950 border border-sky-300 rounded font-black text-[10px] uppercase">Materi</span>
-                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">${escapeHtml(item.mapel || 'Umum')}</span>
+                                <span class="px-2 py-0.5 ${isGameOrNative ? 'bg-cyan-100 text-cyan-950 border-cyan-400 font-black' : 'bg-sky-100 text-sky-950 border-sky-300'} border rounded font-black text-[10px] uppercase">${isGameOrNative ? '🎮 Wahana Game & Modul' : 'Materi'}</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">${escapeHtml(item.mapel || 'Informatika')}</span>
                                 <span class="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-300 rounded font-bold text-[10px] uppercase">Kelas ${escapeHtml(item.kelas || 'Semua')}</span>
                             </div>
                         </div>
@@ -1141,8 +1172,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <p class="text-[11px] text-slate-600 line-clamp-2 mt-0.5 font-medium">${escapeHtml(desc)}</p>
                         </div>
                         <div class="pt-1.5 border-t border-slate-100 flex items-center justify-end">
-                            <button type="button" onclick="closeMobileSearchModal(); openStudentMaterialFocus('${item.id}')" class="px-3.5 py-1.5 bg-black hover:bg-slate-800 text-white rounded-xl font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 cursor-pointer">
-                                <span>Pelajari Materi</span>
+                            <button type="button" onclick="closeMobileSearchModal(); openStudentMaterialFocus('${item.id}')" class="px-3.5 py-1.5 bg-black hover:bg-slate-800 text-white rounded-xl font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                <span>${btnText}</span>
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
                             </button>
                         </div>
@@ -3230,7 +3261,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
         }
-        if (!mat) return;
+        if (!mat) {
+            const viewerFn = typeof openMpiViewer === 'function' ? openMpiViewer : window.openMpiViewer;
+            if (viewerFn && cleanMeetingId) {
+                viewerFn({ mode: 'lesson', meetingId: cleanMeetingId });
+            }
+            return;
+        }
         const meta = parseMaterialData(mat);
 
         if (meta.tipe === 'mpi_native' || meta.mpi_meeting_id || mat.is_mpi_curriculum) {
@@ -3239,7 +3276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 viewerFn({
                     mode: 'lesson',
                     meetingId: meta.mpi_meeting_id || cleanMeetingId,
-                    grade: meta.mpi_grade ? Number(meta.mpi_grade) : undefined,
+                    grade: meta.mpi_grade ? Number(meta.mpi_grade) : (mat.kelas ? Number(mat.kelas) : undefined),
                     chapterId: meta.mpi_chapter_id,
                     lmsMaterialId: mat.id
                 });
