@@ -328,7 +328,7 @@ export default function LandingPage({ onSelectGradeChapter, completedChapters }:
                           </div>
                           <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
                             <span className="text-xs text-slate-500 font-medium">
-                              {chapter.meetings.length} Pertemuan Belajar
+                              {chapter?.meetings?.length || 0} Pertemuan Belajar
                             </span>
                             <div className="flex items-center gap-1 text-xs font-bold text-cyan-400 group-hover:translate-x-1 transition-transform">
                               <span>Mulai Belajar</span>

@@ -658,7 +658,7 @@ export const curriculumData: GradeCurriculum[] = [
             keywords: ["Ujian", "Evaluasi Akhir", "Formal", "Teori"]
           }
         ]
-      },,
+      },
       {
         id: "sk8",
         title: "Sistem Komputer",
@@ -727,8 +727,8 @@ export const curriculumData: GradeCurriculum[] = [
             keywords: ["Ujian", "Evaluasi Akhir", "Formal", "Teori"]
           }
         ]
-      },,
-            {
+      },
+      {
         id: "jki8",
         title: "Jaringan Komputer & Internet",
         code: "JKI",

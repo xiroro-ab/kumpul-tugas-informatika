@@ -14,10 +14,13 @@ interface ChapterPageProps {
 export default function ChapterPage({
   grade,
   chapter,
-  completedMeetings,
+  completedMeetings = [],
   onSelectMeeting,
   onBackToHome,
 }: ChapterPageProps) {
+  if (!chapter) return null;
+  const meetings = Array.isArray(chapter.meetings) ? chapter.meetings : [];
+
   // Stagger animation variants for meetings list
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -82,7 +85,7 @@ export default function ChapterPage({
               <div>
                 <p className="text-xs font-mono text-slate-500 font-bold">KEMAJUAN BELAJAR</p>
                 <p className="text-sm font-extrabold text-slate-200">
-                  {completedMeetings.filter(id => chapter.meetings.some(m => m.id === id)).length} / {chapter.meetings.length} Selesai
+                  {completedMeetings.filter(id => meetings.some(m => m.id === id)).length} / {meetings.length} Selesai
                 </p>
               </div>
             </div>
@@ -101,7 +104,7 @@ export default function ChapterPage({
             animate="show"
             className="relative border-l border-white/10 pl-6 space-y-8"
           >
-            {chapter.meetings.map((meeting: Meeting, index: number) => {
+            {meetings.map((meeting: Meeting, index: number) => {
               const isCompleted = completedMeetings.includes(meeting.id);
               return (
                 <motion.div

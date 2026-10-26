@@ -38,12 +38,15 @@ interface MpiModalContainerProps {
 
 export function findMeetingInCurriculum(meetingId: string): { grade: number; chapter: Chapter; meeting: Meeting } | null {
   if (!meetingId) return null;
-  const cleanId = meetingId.trim().replace(/^mpi_native_/, '').toLowerCase();
+  const cleanId = String(meetingId).trim().replace(/^mpi_native_/, '').toLowerCase();
   const normalizedId = cleanId.replace(/[-_]/g, '');
-  for (const g of curriculumData) {
+  for (const g of (curriculumData || [])) {
+    if (!g || !Array.isArray(g.chapters)) continue;
     for (const c of g.chapters) {
+      if (!c || !Array.isArray(c.meetings)) continue;
       const m = c.meetings.find(x => {
-        const xId = x.id.toLowerCase();
+        if (!x || !x.id) return false;
+        const xId = String(x.id).toLowerCase();
         return xId === cleanId || xId.replace(/[-_]/g, '') === normalizedId;
       });
       if (m) return { grade: g.grade, chapter: c, meeting: m };
@@ -54,15 +57,17 @@ export function findMeetingInCurriculum(meetingId: string): { grade: number; cha
 
 export function findChapterInCurriculum(chapterIdOrCode: string, gradeHint?: number): { grade: number; chapter: Chapter } | null {
   if (!chapterIdOrCode) return null;
-  const query = chapterIdOrCode.trim().toLowerCase();
-  for (const g of curriculumData) {
+  const query = String(chapterIdOrCode).trim().toLowerCase();
+  for (const g of (curriculumData || [])) {
+    if (!g || !Array.isArray(g.chapters)) continue;
     if (gradeHint && g.grade !== Number(gradeHint)) continue;
-    const c = g.chapters.find(x => x.id.toLowerCase() === query || x.code.toLowerCase() === query);
+    const c = g.chapters.find(x => x && (String(x.id).toLowerCase() === query || String(x.code).toLowerCase() === query));
     if (c) return { grade: g.grade, chapter: c };
   }
   // If not found with grade hint, search without grade hint
-  for (const g of curriculumData) {
-    const c = g.chapters.find(x => x.id.toLowerCase() === query || x.code.toLowerCase() === query);
+  for (const g of (curriculumData || [])) {
+    if (!g || !Array.isArray(g.chapters)) continue;
+    const c = g.chapters.find(x => x && (String(x.id).toLowerCase() === query || String(x.code).toLowerCase() === query));
     if (c) return { grade: g.grade, chapter: c };
   }
   return null;
@@ -214,7 +219,7 @@ export default function MpiModalContainer({ isOpen, onClose, options }: MpiModal
         confirmButtonText: "Kembali ke Daftar Pertemuan",
       }).then(() => {
         if (selectedChapter) {
-          const allMeetingIds = selectedChapter.meetings.map(m => m.id);
+          const allMeetingIds = (selectedChapter?.meetings || []).map(m => m.id);
           const isChapterFinished = allMeetingIds.every(id => nextMeetings.includes(id));
 
           if (isChapterFinished && !completedChapters.includes(selectedChapter.id)) {
