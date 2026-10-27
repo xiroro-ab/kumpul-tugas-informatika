@@ -4292,6 +4292,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    window.terminateExamSessionByTeacher = (msg = "Ujian Anda telah diselesaikan oleh Guru Pengawas.") => {
+        if (!activeCbtExam) return;
+        const exam = activeCbtExam;
+        activeCbtExam = null; // Seketika hentikan semua siklus pengerjaan
+
+        if (exam.timerInterval) clearInterval(exam.timerInterval);
+        if (exam.warningCountdownInterval) clearInterval(exam.warningCountdownInterval);
+        if (lockedPollingInterval) {
+            clearInterval(lockedPollingInterval);
+            lockedPollingInterval = null;
+        }
+        if (cbtRealtimeChannel) {
+            try { supabase.removeChannel(cbtRealtimeChannel); } catch (_) {}
+            cbtRealtimeChannel = null;
+        }
+
+        removeAntiCheatListeners();
+        exitFullscreenLock();
+
+        try {
+            const key = `cbt_exam_${exam.quizData?.id}_${encodeURIComponent(exam.studentName)}`;
+            localStorage.removeItem(key);
+            sessionStorage.removeItem('cbt_active_exam_session');
+        } catch (_) {}
+
+        const warningOverlay = document.getElementById('cheat-warning-overlay');
+        if (warningOverlay) warningOverlay.classList.add('hidden');
+        const lockedOverlay = document.getElementById('cheat-locked-overlay');
+        if (lockedOverlay) lockedOverlay.classList.add('hidden');
+
+        exitExamMode();
+
+        if (typeof switchStudentPortal === 'function') {
+            switchStudentPortal('tugas');
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        showCustomModal(
+            msg || "Ujian Anda telah diselesaikan oleh Guru Pengawas. Jawaban yang telah Anda kerjakan sudah tersimpan di database.",
+            "alert",
+            "Ujian Selesai",
+            "🔒"
+        );
+
+        if (typeof loadStudentAssignments === 'function') loadStudentAssignments();
+        if (typeof renderStudentQuizzes === 'function') renderStudentQuizzes();
+    };
+
     function handleServerExamUpdate(sub) {
         if (!activeCbtExam || !sub) return;
         let jawaban = sub.jawaban_siswa;
@@ -4300,15 +4348,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const serverCheats = Number(jawaban?.cheatAttempts || 0);
 
-        // 1. Jika guru klik PAKSA SELESAI
-        if (sub.status_koreksi === 'selesai') {
-            showCustomModal("Ujian Anda telah diselesaikan oleh Guru Pengawas.", "alert", "Ujian Selesai", "");
-            window.confirmSubmitCbtExam({ skipConfirm: true, teacherForceSubmit: true });
+        // 1. Jika guru klik PAKSA SELESAI (status bukan sedang_ujian atau teacherForceFinished)
+        const sStatus = String(sub.status_koreksi || '').toLowerCase();
+        const isForceFinished = sStatus === 'selesai' || 
+                                sStatus === 'belum_dikoreksi' || 
+                                sStatus === 'perlu_dinilai' || 
+                                Boolean(jawaban?.teacherForceFinished);
+
+        if (isForceFinished) {
+            window.terminateExamSessionByTeacher("Ujian Anda telah diselesaikan oleh Guru Pengawas. Seluruh jawaban Anda telah dikumpulkan.");
             return;
         }
 
         // 2. Jika guru me-RESET PELANGGARAN atau MEMBUKA KUNCI
-        if (sub.status_koreksi === 'sedang_ujian' && (serverCheats === 0 || !!jawaban?.unlockedAt)) {
+        if (sStatus === 'sedang_ujian' && (serverCheats === 0 || !!jawaban?.unlockedAt)) {
             activeCbtExam.cheatAttempts = 0;
             activeCbtExam.cheatLogs = [];
             activeCbtExam.isLocked = false;
@@ -4503,10 +4556,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             p_is_online: isOnline,
             p_reason: reason
         }).then(({ data }) => {
+            if (!activeCbtExam) return;
             if (data && typeof data === 'object') {
-                if (data.status === 'selesai') {
-                    showCustomModal("Ujian Anda telah diselesaikan oleh Guru Pengawas.", "alert", "Ujian Selesai", "");
-                    window.confirmSubmitCbtExam({ skipConfirm: true, teacherForceSubmit: true });
+                const sStatus = String(data.status || '').toLowerCase();
+                const sError = String(data.error || '').toLowerCase();
+                const isClosed = sStatus === 'selesai' || 
+                                 sStatus === 'belum_dikoreksi' || 
+                                 sStatus === 'perlu_dinilai' || 
+                                 sError.includes('ditutup') || 
+                                 (data.ok === false && sStatus && sStatus !== 'sedang_ujian');
+                if (isClosed) {
+                    window.terminateExamSessionByTeacher("Ujian Anda telah diselesaikan oleh Guru Pengawas.");
                     return;
                 }
                 const srvCheats = Number(data.serverCheatAttempts);
@@ -4525,7 +4585,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     resumeCbtTimerIfNeeded();
                 }
             }
-        }).catch(() => {});
+        }).catch((err) => {
+            const errMsg = String(err?.message || '').toLowerCase();
+            if (errMsg.includes('ditutup') && activeCbtExam) {
+                window.terminateExamSessionByTeacher("Ujian Anda telah diselesaikan oleh Guru Pengawas.");
+            }
+        });
     }
 
     function reportExamPresence(isFocus, reason = '') {
@@ -4756,15 +4821,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .select('id, status_koreksi, jawaban_siswa')
                     .eq('id', activeCbtExam.submissionId)
                     .single();
-                if (data && data.status_koreksi === 'sedang_ujian') {
-                    let jw = data.jawaban_siswa;
-                    if (typeof jw === 'string') {
-                        try { jw = JSON.parse(jw); } catch (_) { jw = {}; }
-                    }
-                    if (jw?.cheatAttempts === 0 || !!jw?.unlockedAt) {
+                if (data) {
+                    const sSt = String(data.status_koreksi || '').toLowerCase();
+                    if (sSt !== 'sedang_ujian' && sSt !== 'terkunci_curang') {
                         if (lockedPollingInterval) clearInterval(lockedPollingInterval);
                         lockedPollingInterval = null;
                         handleServerExamUpdate(data);
+                        return;
+                    }
+                    if (sSt === 'sedang_ujian') {
+                        let jw = data.jawaban_siswa;
+                        if (typeof jw === 'string') {
+                            try { jw = JSON.parse(jw); } catch (_) { jw = {}; }
+                        }
+                        if (jw?.cheatAttempts === 0 || !!jw?.unlockedAt) {
+                            if (lockedPollingInterval) clearInterval(lockedPollingInterval);
+                            lockedPollingInterval = null;
+                            handleServerExamUpdate(data);
+                        }
                     }
                 }
             } catch (_) {}
@@ -5222,6 +5296,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             if (error) throw error;
             if (!data || !data.ok) {
+                if (String(data?.error || '').toLowerCase().includes('sudah ditutup')) {
+                    window.terminateExamSessionByTeacher("Sesi ujian telah ditutup oleh Guru Pengawas.");
+                    return;
+                }
                 throw new Error(data?.error || 'Sesi ujian sudah ditutup oleh guru pengawas.');
             }
 
@@ -5247,6 +5325,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             await showCustomModal(successMsg, 'alert', 'Ujian Selesai', '');
 
         } catch (e) {
+            const errMsg = String(e?.message || '').toLowerCase();
+            if (errMsg.includes('ditutup')) {
+                window.terminateExamSessionByTeacher("Sesi ujian telah ditutup oleh Guru Pengawas.");
+                return;
+            }
             if (activeCbtExam) activeCbtExam.isSubmitting = false;
             await showCustomModal("Gagal mengirim jawaban: " + e.message, 'alert', 'Gagal', '');
         }

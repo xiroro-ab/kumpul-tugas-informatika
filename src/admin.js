@@ -7403,11 +7403,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const finalStatus = hasSubjective ? 'belum_dikoreksi' : 'selesai';
             const finalScore = toPercent(autoScoreTotal + autoSubjectiveScore, getMaxScore(questions));
 
+            let updatedJawaban = cur.jawaban_siswa || {};
+            if (typeof updatedJawaban === 'string') {
+                try { updatedJawaban = JSON.parse(updatedJawaban); } catch (_) { updatedJawaban = {}; }
+            }
+            updatedJawaban.teacherForceFinished = true;
+            updatedJawaban.completedAt = new Date().toISOString();
+
             const { data: updatedRows, error } = await supabase.from('quiz_submissions').update({
                 skor_pg: autoScoreTotal,
                 skor_esai: autoSubjectiveScore,
                 total_nilai: finalScore,
-                status_koreksi: finalStatus
+                status_koreksi: finalStatus,
+                jawaban_siswa: updatedJawaban
             }).eq('id', subId).eq('status_koreksi', 'sedang_ujian').select('id');
             if (error) throw error;
             if (!updatedRows || updatedRows.length === 0) {
