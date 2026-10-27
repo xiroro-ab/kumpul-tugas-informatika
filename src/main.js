@@ -4151,12 +4151,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Realtime Sync Status Ujian Siswa (Buka Kembali / Reset / Nilai)
     // ==========================================
     window.showStudentToast = (message, title = 'Pemberitahuan', icon = '🔔') => {
+        // Jangan tampilkan toast jika siswa sedang berada di dalam ruang ujian
+        if (activeCbtExam) return;
+
         let toastContainer = document.getElementById('student-toast-container');
         if (!toastContainer) {
             toastContainer = document.createElement('div');
             toastContainer.id = 'student-toast-container';
             toastContainer.className = 'fixed top-4 right-4 z-[9999] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full p-2';
             document.body.appendChild(toastContainer);
+        } else {
+            // Bersihkan toast lama agar tidak menumpuk berkali-kali di layar
+            toastContainer.innerHTML = '';
         }
 
         const toast = document.createElement('div');
@@ -4180,7 +4186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             toast.classList.add('opacity-0', 'translate-y-[-10px]');
             setTimeout(() => toast.remove(), 300);
-        }, 4500);
+        }, 4000);
     };
 
     let studentPortalQuizChannel = null;
@@ -4205,6 +4211,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         table: 'quiz_submissions'
                     },
                     async (payload) => {
+                        // Jangan jalankan jika siswa sedang berada di dalam ruang ujian
+                        if (activeCbtExam) return;
+
                         const newRow = payload.new || {};
                         const oldRow = payload.old || {};
                         const newName = String(newRow.nama_siswa || '').trim().toLowerCase();
@@ -4238,14 +4247,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
 
                         if (payload.eventType === 'UPDATE') {
+                            const oldStatus = String(oldRow.status_koreksi || '').toLowerCase();
                             const newStatus = String(newRow.status_koreksi || '').toLowerCase();
-                            if (newStatus === 'sedang_ujian') {
+
+                            // HANYA tampilkan notifikasi jika status BENAR-BENAR BERUBAH (transisi)!
+                            if (oldStatus !== 'sedang_ujian' && newStatus === 'sedang_ujian') {
                                 window.showStudentToast(
                                     'Guru pengawas telah membuka kembali sesi ujian Anda. Anda dapat langsung melanjutkan pengerjaan.',
                                     'Ujian Dibuka Kembali',
                                     '🔄'
                                 );
-                            } else if (newStatus === 'selesai' || newStatus === 'belum_dikoreksi' || newStatus === 'perlu_dinilai') {
+                            } else if (oldStatus !== newStatus && (newStatus === 'selesai' || newStatus === 'belum_dikoreksi' || newStatus === 'perlu_dinilai')) {
                                 window.showStudentToast(
                                     'Nilai atau status ujian Anda telah diperbarui oleh guru.',
                                     'Status Ujian Diperbarui',
@@ -4567,6 +4579,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function enterExamMode() {
+        const toastContainer = document.getElementById('student-toast-container');
+        if (toastContainer) {
+            toastContainer.remove();
+        }
+
         const header = document.getElementById('portal-global-header');
         const profileCard = document.getElementById('portal-student-profile-card');
         const classBanner = document.getElementById('student-class-alert-banner');
