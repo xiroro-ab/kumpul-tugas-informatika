@@ -610,6 +610,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
+    // Helper Modal Konfirmasi Identitas Siswa Sebelum Kirim (Tugas / Ujian)
+    window.confirmStudentSubmissionIdentity = ({ nama, kelas, mapel = '', title = '', extraInfo = '', type = 'tugas', actionText = 'Kirim Sekarang' } = {}) => {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('submission-identity-confirm-modal');
+            if (!modal) {
+                const fallbackMsg = `Periksa Identitas Pengirim:\n\n👤 Nama Siswa: ${nama}\n🏫 Kelas: ${kelas}\n📚 Mapel: ${mapel}\n📝 Kegiatan: ${title}\n\nApakah Nama dan Kelas di atas sudah 100% benar milik Anda?`;
+                resolve(window.confirm(fallbackMsg));
+                return;
+            }
+
+            const headerEl = document.getElementById('sic-modal-header');
+            const namaEl = document.getElementById('sic-modal-nama');
+            const kelasEl = document.getElementById('sic-modal-kelas');
+            const mapelEl = document.getElementById('sic-modal-mapel');
+            const titleEl = document.getElementById('sic-modal-title');
+            const extraContainer = document.getElementById('sic-modal-extra-container');
+            const extraEl = document.getElementById('sic-modal-extra');
+            const confirmBtn = document.getElementById('sic-btn-confirm');
+            const cancelBtn = document.getElementById('sic-btn-cancel');
+
+            if (namaEl) namaEl.textContent = nama || '-';
+            if (kelasEl) kelasEl.textContent = kelas ? `Kelas ${kelas}` : '-';
+            if (mapelEl) mapelEl.textContent = mapel || '-';
+            if (titleEl) titleEl.textContent = title || '-';
+
+            if (extraContainer && extraEl) {
+                if (extraInfo) {
+                    extraContainer.classList.remove('hidden');
+                    extraEl.textContent = extraInfo;
+                } else {
+                    extraContainer.classList.add('hidden');
+                    extraEl.textContent = '-';
+                }
+            }
+
+            if (headerEl) {
+                if (type === 'ujian') {
+                    headerEl.textContent = 'Cek Identitas Peserta Ujian';
+                } else if (type === 'ujian_selesai') {
+                    headerEl.textContent = 'Kumpulkan Lembar Ujian';
+                } else {
+                    headerEl.textContent = 'Cek Identitas Pengirim Tugas';
+                }
+            }
+
+            const cleanup = (result) => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                if (confirmBtn) confirmBtn.onclick = null;
+                if (cancelBtn) cancelBtn.onclick = null;
+                modal.onclick = null;
+                resolve(result);
+            };
+
+            if (confirmBtn) {
+                confirmBtn.innerHTML = `<span>Ya, Benar (${escapeHtml(actionText)})</span> <span>🚀</span>`;
+                confirmBtn.onclick = () => cleanup(true);
+            }
+
+            if (cancelBtn) {
+                cancelBtn.onclick = () => cleanup(false);
+            }
+
+            modal.onclick = (e) => {
+                if (e.target === modal) cleanup(false);
+            };
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        });
+    };
+
     // ==========================================
     // 1. Inisialisasi Profil Siswa (Auto-Remember)
     // ==========================================
@@ -2855,13 +2927,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Konfirmasi identitas siswa sebelum submit agar tidak salah kirim atas nama siswa lain
-        const isConfirmed = await showCustomModal(
-            `Konfirmasi Pengiriman Tugas:\n\n👤 Nama Siswa: ${nama}\n🏫 Kelas: ${kelas}\n📚 Mapel: ${mapel}\n📝 Tugas: ${materi}\n\nPastikan identitas nama Anda sudah sesuai karena tanggapan tugas hanya dapat dikirim 1 kali. Lanjutkan pengiriman?`,
-            'confirm',
-            'Konfirmasi Pengiriman',
-            ''
-        );
-        if (!isConfirmed) return;
+        const isGroupChecked = document.getElementById('sub-is-group')?.checked;
+        const groupMembersText = (isGroupChecked && selectedGroupMembers && selectedGroupMembers.length > 0)
+            ? selectedGroupMembers.join(', ')
+            : '';
+
+        const isConfirmed = await window.confirmStudentSubmissionIdentity({
+            nama,
+            kelas,
+            mapel: mapel || 'Tugas',
+            title: materi,
+            extraInfo: groupMembersText,
+            type: 'tugas',
+            actionText: 'Kirim Tugas'
+        });
+        if (!isConfirmed) {
+            if (subStudentSelect) {
+                subStudentSelect.focus();
+                subStudentSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
 
         // Simpan ke localStorage siswa
         localStorage.setItem('student_nama', nama);
@@ -5100,8 +5186,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             : `Semua ${totalQ} butir soal telah terjawab!\n\nApakah Anda yakin ingin menyelesaikan dan mengumpulkan ujian ini sekarang?`;
 
         if (!options.skipConfirm) {
-            const conf = await showCustomModal(msg, 'confirm', 'Selesai Ujian', '');
-            if (!conf) return;
+            const isConfirmed = await window.confirmStudentSubmissionIdentity({
+                nama: activeCbtExam.studentName,
+                kelas: (getActiveStudentKelas() || ''),
+                mapel: activeCbtExam.quizData?.mapel || 'Ujian',
+                title: `${activeCbtExam.quizData?.judul_kuis || 'Ujian'} (${answeredCount}/${totalQ} Soal Terjawab)`,
+                type: 'ujian_selesai',
+                actionText: 'Kumpulkan Ujian'
+            });
+            if (!isConfirmed) return;
         }
 
         const exam = activeCbtExam;
@@ -5349,6 +5442,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             await showCustomModal("Silakan masukkan Token Ujian yang diberikan oleh Guru Pengawas kelas Anda!", 'alert', 'Token Wajib Diisi', '');
             const inputEl = document.getElementById('exam-token-input');
             if (inputEl) inputEl.focus();
+            return;
+        }
+
+        // Konfirmasi identitas siswa sebelum memulai ujian agar tidak mengerjakan atas nama siswa lain
+        const isConfirmed = await window.confirmStudentSubmissionIdentity({
+            nama: studentName,
+            kelas: studentKelas || '',
+            mapel: quiz.mapel || 'Ujian Online',
+            title: quiz.judul_kuis,
+            type: 'ujian',
+            actionText: 'Mulai Ujian'
+        });
+        if (!isConfirmed) {
+            const studentSelect = document.getElementById('exam-token-student-select');
+            if (studentSelect) {
+                studentSelect.focus();
+            }
             return;
         }
 

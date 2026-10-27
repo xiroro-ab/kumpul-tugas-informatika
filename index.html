@@ -34,7 +34,7 @@
           background: white !important;
           padding: 0 !important;
         }
-        #portal-page-container, #submission-modal, #materi-modal, #custom-modal, #confirm-modal, #toast, #loadingPopup {
+        #portal-page-container, #submission-modal, #materi-modal, #custom-modal, #confirm-modal, #submission-identity-confirm-modal, #toast, #loadingPopup {
           display: none !important;
         }
         #receipt-modal {
@@ -1025,6 +1025,75 @@
             </div>
             <p id="custom-modal-message" class="text-black font-bold text-xs md:text-sm leading-relaxed whitespace-pre-line"></p>
             <div id="custom-modal-actions" class="flex gap-2.5 justify-end mt-2 pt-2 border-t border-slate-200"></div>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Identitas Pengiriman (Cek Nama & Kelas Siswa) -->
+    <div id="submission-identity-confirm-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[32px] p-5 sm:p-6 md:p-7 max-w-md w-full shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-3.5 my-auto max-h-[92dvh]">
+            <!-- Header -->
+            <div class="flex items-center gap-3">
+                <span class="w-10 h-10 rounded-2xl bg-yellow-300 border-2 border-black flex items-center justify-center text-xl shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    🔍
+                </span>
+                <div>
+                    <h3 id="sic-modal-header" class="text-base sm:text-lg font-black text-black uppercase tracking-tight">Cek Identitas Pengirim</h3>
+                    <p class="text-[11px] font-bold text-slate-600">Pastikan nama dan kelas Anda sudah benar!</p>
+                </div>
+            </div>
+
+            <!-- Identity Highlight Card -->
+            <div class="bg-yellow-50 border-2 border-black rounded-2xl p-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                <div class="text-[10px] font-black uppercase tracking-wider text-amber-900 mb-2 flex items-center gap-1.5">
+                    <span>⚠️</span> <span>Jawaban akan disimpan atas nama:</span>
+                </div>
+                
+                <!-- Nama Siswa -->
+                <div class="mb-2.5">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Nama Lengkap:</span>
+                    <p id="sic-modal-nama" class="text-base sm:text-lg font-black text-black leading-tight break-words">-</p>
+                </div>
+
+                <!-- Kelas & Mapel -->
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-amber-200 text-xs">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Kelas:</span>
+                        <p id="sic-modal-kelas" class="font-black text-black text-sm">-</p>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Mata Pelajaran:</span>
+                        <p id="sic-modal-mapel" class="font-black text-black text-sm">-</p>
+                    </div>
+                </div>
+
+                <!-- Judul Tugas / Ujian -->
+                <div class="mt-2 pt-2 border-t border-amber-200">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Tugas / Ujian:</span>
+                    <p id="sic-modal-title" class="font-bold text-slate-800 text-xs leading-snug line-clamp-2">-</p>
+                </div>
+
+                <!-- Extra Info (e.g. Anggota Kelompok) -->
+                <div id="sic-modal-extra-container" class="hidden mt-2 pt-2 border-t border-amber-200">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Anggota Kelompok:</span>
+                    <p id="sic-modal-extra" class="font-bold text-amber-900 text-xs leading-snug">-</p>
+                </div>
+            </div>
+
+            <!-- Warning Question -->
+            <div class="bg-amber-100/70 border border-amber-300 rounded-xl p-2.5 text-[11px] text-amber-950 font-bold flex items-start gap-2">
+                <span class="shrink-0 text-sm">💡</span>
+                <span>Apakah Nama dan Kelas di atas sudah benar milik Anda? Jika keliru, klik "Bukan Saya" untuk mengganti identitas.</span>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-col-reverse sm:flex-row gap-2 justify-end mt-1 pt-2 border-t border-slate-200">
+                <button id="sic-btn-cancel" type="button" class="w-full sm:w-auto px-4 py-2.5 bg-white hover:bg-slate-100 text-black font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black transition text-center cursor-pointer">
+                    Bukan Saya / Ganti
+                </button>
+                <button id="sic-btn-confirm" type="button" class="w-full sm:w-auto px-5 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition text-center cursor-pointer flex items-center justify-center gap-1.5">
+                    <span>Ya, Sudah Benar (Kirim)</span> <span>🚀</span>
+                </button>
+            </div>
         </div>
     </div>
 
