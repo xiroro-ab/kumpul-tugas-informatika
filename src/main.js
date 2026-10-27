@@ -772,6 +772,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!currentKelas) {
             // Skenario A: Belum Memilih Kelas
+            bannerContainer.className = 'mb-4 sm:mb-5 transition-all duration-300';
             bannerContainer.innerHTML = `
                 <div class="bg-amber-300 border-[3px] border-black rounded-2xl md:rounded-[24px] p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
@@ -789,7 +790,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
         } else if (currentName) {
-            // Skenario B: Sudah Memilih Kelas dan Nama
+            // Skenario B: Sudah Memilih Kelas dan Nama (di HP disembunyikan agar ringkas, di tablet/desktop tetap tampil)
+            bannerContainer.className = 'hidden sm:block mb-4 sm:mb-5 transition-all duration-300';
             bannerContainer.innerHTML = `
                 <div class="bg-emerald-100 border-[3px] border-black rounded-2xl md:rounded-[24px] p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                     <div class="flex items-center gap-2.5">
@@ -810,6 +812,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
         } else {
             // Skenario C: Sudah Memilih Kelas tapi Belum Memilih Nama
+            bannerContainer.className = 'mb-4 sm:mb-5 transition-all duration-300';
             bannerContainer.innerHTML = `
                 <div class="bg-amber-100 border-[3px] border-black rounded-2xl md:rounded-[24px] p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                     <div class="flex items-center gap-2.5">
