@@ -95,30 +95,37 @@
             </button>
         </div>
         <div id="portal-student-profile-card" class="bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] md:rounded-[36px] p-4 sm:p-5 md:p-6 mb-4 sm:mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 sm:gap-4">
+            <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3.5 sm:gap-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-300 border-2 border-black rounded-xl sm:rounded-2xl flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-black" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"></path></svg>
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6 text-black" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7 0 3.75 3.75 0 017 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
                     </div>
                     <div>
                         <div class="flex items-center gap-2 flex-wrap">
-                            <h2 class="font-black text-base sm:text-lg md:text-xl text-black">Filter Konten Belajar</h2>
+                            <h2 id="student-greeting" class="font-black text-base sm:text-lg md:text-xl text-black">Identitas Siswa</h2>
                             <span id="profile-saved-badge" class="hidden text-[10px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full border border-emerald-300">Kelas Aktif</span>
+                            <span id="profile-student-badge" class="hidden text-[10px] bg-indigo-100 text-indigo-900 font-black px-2 py-0.5 rounded-full border border-indigo-300">Siswa Terhubung</span>
                         </div>
-                        <p id="student-meta" class="text-[11px] sm:text-xs font-bold text-slate-500">Pilih kelas Anda untuk menyaring tugas, materi, dan ujian secara otomatis.</p>
+                        <p id="student-meta" class="text-[11px] sm:text-xs font-bold text-slate-500">Pilih kelas &amp; nama Anda agar progres tugas dan ujian otomatis terdeteksi.</p>
                     </div>
                 </div>
 
-                <!-- Dropdown Filter Kelas Cepat Langsung Aktif -->
-                <div class="flex items-end gap-2 w-full sm:w-auto">
-                    <div class="flex-1 sm:w-52 md:w-56">
-                        <label for="global-student-kelas" class="block text-[10px] font-black uppercase text-slate-500 mb-1">Filter Kelas Siswa:</label>
+                <!-- Dropdown Filter Kelas & Nama Siswa Cepat -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:flex items-end gap-2 w-full xl:w-auto">
+                    <div class="w-full sm:w-36 xl:w-40">
+                        <label for="global-student-kelas" class="block text-[10px] font-black uppercase text-slate-500 mb-1">Kelas Siswa:</label>
                         <select id="global-student-kelas" class="w-full h-11 px-3 border-2 border-black rounded-xl font-black text-xs bg-slate-50 hover:bg-white focus:bg-white outline-none cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition">
-                            <option value="">Semua Kelas (Tampilkan Semua)</option>
+                            <option value="">Semua Kelas</option>
                         </select>
                     </div>
-                    <button type="button" onclick="window.openClassPickerModal()" class="h-11 px-3 sm:px-3.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0">
-                        Pilih Kelas
+                    <div class="w-full sm:w-48 xl:w-56">
+                        <label for="global-student-name-select" class="block text-[10px] font-black uppercase text-slate-500 mb-1">Nama Siswa:</label>
+                        <select id="global-student-name-select" class="w-full h-11 px-3 border-2 border-black rounded-xl font-black text-xs bg-slate-50 hover:bg-white focus:bg-white outline-none cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition">
+                            <option value="">-- Pilih Nama Siswa --</option>
+                        </select>
+                    </div>
+                    <button type="button" id="btn-open-identity-modal" onclick="window.openClassPickerModal()" class="h-11 px-3.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0 flex items-center justify-center gap-1.5 cursor-pointer col-span-1 sm:col-span-2 xl:col-auto mt-1 sm:mt-0" title="Atur atau ganti profil siswa">
+                        <span>Pilih Akun</span> 👤
                     </button>
                 </div>
             </div>
@@ -1018,33 +1025,61 @@
         </div>
     </div>
 
-    <!-- Modal Pemilih Kelas Cepat Siswa (Fitur 3 & Responsif) -->
+    <!-- Modal Pemilih Identitas Siswa (Kelas & Nama) -->
     <div id="class-picker-modal" onclick="if(event.target === this) window.closeClassPickerModal()" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-2.5 sm:p-4">
-        <div class="bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] md:rounded-[36px] max-w-lg w-full shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden my-auto max-h-[90dvh]">
+        <div class="bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] md:rounded-[36px] max-w-lg w-full shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden my-auto max-h-[92dvh]">
             <!-- Header Modal -->
-            <div class="p-4 sm:p-5 md:p-6 border-b-2 border-black bg-yellow-300">
+            <div class="p-4 sm:p-5 border-b-2 border-black bg-yellow-300">
                 <div class="flex items-center justify-between gap-3">
                     <div>
-                        <h3 class="text-base sm:text-lg md:text-xl font-black text-black uppercase tracking-tight">Pilih Kelas</h3>
-                        <p class="text-[10px] sm:text-[11px] md:text-xs font-bold text-slate-800">Menyaring tugas, materi, dan ujian sesuai kelas Anda.</p>
+                        <h3 class="text-base sm:text-lg md:text-xl font-black text-black uppercase tracking-tight">Pilih Identitas Siswa</h3>
+                        <p class="text-[10px] sm:text-[11px] md:text-xs font-bold text-slate-800">Pilih kelas &amp; nama agar status tugas serta ujian langsung terdeteksi otomatis.</p>
                     </div>
-                    <button type="button" onclick="window.closeClassPickerModal()" id="btn-close-class-picker" title="Tutup Modal" class="w-8 h-8 sm:w-9 sm:h-9 bg-white hover:bg-slate-100 border-2 border-black rounded-xl font-black text-sm flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0">
+                    <button type="button" onclick="window.closeClassPickerModal()" id="btn-close-class-picker" title="Tutup Modal" class="w-8 h-8 sm:w-9 sm:h-9 bg-white hover:bg-slate-100 border-2 border-black rounded-xl font-black text-sm flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition shrink-0 cursor-pointer">
                         ✕
                     </button>
                 </div>
             </div>
 
-            <!-- Body Grid Tombol Kelas -->
-            <div class="p-4 sm:p-5 md:p-6 overflow-y-auto space-y-3">
-                <p class="text-[11px] font-black text-slate-500 uppercase tracking-wider">Daftar Kelas:</p>
-                <div id="class-picker-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
-                    <!-- Diisi otomatis dari database -->
+            <!-- Body Modal -->
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-4">
+                <!-- Langkah 1: Pilih Kelas -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-4 h-4 rounded-full bg-black text-yellow-300 text-[10px] flex items-center justify-center font-black">1</span>
+                            Pilih Kelas:
+                        </label>
+                        <span id="modal-selected-kelas-badge" class="text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">Belum Dipilih</span>
+                    </div>
+                    <div id="class-picker-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
+                        <!-- Diisi otomatis dari database -->
+                    </div>
+                </div>
+
+                <!-- Langkah 2: Pilih Nama Siswa -->
+                <div id="modal-step-student" class="pt-3 border-t-2 border-slate-100 space-y-2">
+                    <label for="identity-student-select" class="text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-black text-yellow-300 text-[10px] flex items-center justify-center font-black">2</span>
+                        Pilih Nama Anda (Sesuai Roster Resmi):
+                    </label>
+                    <select id="identity-student-select" class="w-full h-11 px-3 border-2 border-black rounded-xl font-black text-xs bg-slate-50 hover:bg-white focus:bg-white outline-none cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition">
+                        <option value="">-- Pilih Kelas di Langkah 1 Dahulu --</option>
+                    </select>
+                    <p class="text-[10px] font-bold text-slate-500">
+                        💡 Data terhubung langsung ke database sekolah. Status tugas yang sudah selesai akan langsung muncul tanpa perlu masuk ke dalam tugas.
+                    </p>
                 </div>
             </div>
 
             <!-- Footer Modal -->
-            <div class="p-3 sm:p-3.5 border-t-2 border-black bg-slate-50 flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-slate-600">
-                <span>Pilihan kelas dapat diubah kapan saja.</span>
+            <div class="p-3.5 sm:p-4 border-t-2 border-black bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                <button type="button" onclick="window.continueWithoutStudentName()" class="text-[11px] font-bold text-slate-600 hover:text-black underline cursor-pointer py-1 order-2 sm:order-1">
+                    Lewati (Hanya Pilih Kelas)
+                </button>
+                <button type="button" id="btn-save-identity" onclick="window.saveSelectedStudentIdentity()" class="w-full sm:w-auto px-5 py-2.5 bg-yellow-300 hover:bg-yellow-400 text-black border-2 border-black rounded-xl font-black text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer order-1 sm:order-2 flex items-center justify-center gap-1.5">
+                    <span>🚀 Simpan &amp; Tampilkan Tugas</span>
+                </button>
             </div>
         </div>
     </div>
