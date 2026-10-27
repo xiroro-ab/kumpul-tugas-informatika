@@ -931,7 +931,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Re-fetch dan render konten otomatis seketika dari database
         await loadStudentAssignments();
         await loadStudentMaterials();
-        renderStudentQuizzes();
+        await loadStudentQuizzes();
+        if (typeof window.subscribeToStudentPortalQuizRealtime === 'function') {
+            window.subscribeToStudentPortalQuizRealtime();
+        }
         await updatePortalOverviewStats();
         if (typeof window.renderMobileSearchSuggestions === 'function') {
             window.renderMobileSearchSuggestions();
@@ -4144,6 +4147,126 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
     };
 
+    // ==========================================
+    // Realtime Sync Status Ujian Siswa (Buka Kembali / Reset / Nilai)
+    // ==========================================
+    window.showStudentToast = (message, title = 'Pemberitahuan', icon = '🔔') => {
+        let toastContainer = document.getElementById('student-toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'student-toast-container';
+            toastContainer.className = 'fixed top-4 right-4 z-[9999] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full p-2';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'pointer-events-auto bg-white border-2 border-black rounded-2xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-start gap-3 transform transition-all duration-300 translate-y-[-20px] opacity-0';
+        toast.innerHTML = `
+            <span class="w-8 h-8 rounded-xl bg-yellow-300 border-2 border-black flex items-center justify-center text-base shrink-0 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                ${icon}
+            </span>
+            <div class="flex-1 min-w-0">
+                <h5 class="font-black text-xs uppercase tracking-tight text-black">${escapeHtml(title)}</h5>
+                <p class="text-xs font-bold text-slate-700 leading-snug mt-0.5">${escapeHtml(message)}</p>
+            </div>
+        `;
+
+        toastContainer.appendChild(toast);
+        requestAnimationFrame(() => {
+            toast.classList.remove('translate-y-[-20px]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+        });
+
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-[-10px]');
+            setTimeout(() => toast.remove(), 300);
+        }, 4500);
+    };
+
+    let studentPortalQuizChannel = null;
+
+    window.subscribeToStudentPortalQuizRealtime = () => {
+        if (studentPortalQuizChannel) {
+            try { supabase.removeChannel(studentPortalQuizChannel); } catch (_) {}
+            studentPortalQuizChannel = null;
+        }
+
+        const activeName = (typeof getActiveStudentName === 'function' ? getActiveStudentName() : '').trim().toLowerCase();
+        if (!activeName) return;
+
+        try {
+            const channelId = `portal_quiz_realtime_${encodeURIComponent(activeName)}`;
+            studentPortalQuizChannel = supabase.channel(channelId)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'quiz_submissions'
+                    },
+                    async (payload) => {
+                        const newRow = payload.new || {};
+                        const oldRow = payload.old || {};
+                        const newName = String(newRow.nama_siswa || '').trim().toLowerCase();
+                        const oldName = String(oldRow.nama_siswa || '').trim().toLowerCase();
+                        const subId = String(newRow.id || oldRow.id || '');
+
+                        const isMatch = (newName && newName === activeName) ||
+                                        (oldName && oldName === activeName) ||
+                                        (studentQuizSubmissions || []).some(s => String(s.id) === subId);
+
+                        if (!isMatch) return;
+
+                        // Muat ulang riwayat ujian siswa dari database seketika
+                        await loadStudentQuizzes();
+
+                        // Perbarui overview statistik di portal
+                        await updatePortalOverviewStats();
+
+                        // Jika tab Rapor / Cek Nilai sedang terbuka, perbarui nilainya seketika
+                        const raporView = document.getElementById('view-nilai');
+                        if (raporView && !raporView.classList.contains('hidden') && typeof window.checkStudentGrades === 'function') {
+                            window.checkStudentGrades();
+                        }
+
+                        // Jika modal skor terbuka, tutup agar siswa melihat status terbaru di card ujian
+                        const customModal = document.getElementById('custom-modal');
+                        const customModalTitle = document.getElementById('custom-modal-title');
+                        if (customModal && !customModal.classList.contains('hidden') && customModalTitle?.textContent === 'Hasil Ujian Siswa') {
+                            customModal.classList.add('hidden');
+                            customModal.classList.remove('flex');
+                        }
+
+                        if (payload.eventType === 'UPDATE') {
+                            const newStatus = String(newRow.status_koreksi || '').toLowerCase();
+                            if (newStatus === 'sedang_ujian') {
+                                window.showStudentToast(
+                                    'Guru pengawas telah membuka kembali sesi ujian Anda. Anda dapat langsung melanjutkan pengerjaan.',
+                                    'Ujian Dibuka Kembali',
+                                    '🔄'
+                                );
+                            } else if (newStatus === 'selesai' || newStatus === 'belum_dikoreksi' || newStatus === 'perlu_dinilai') {
+                                window.showStudentToast(
+                                    'Nilai atau status ujian Anda telah diperbarui oleh guru.',
+                                    'Status Ujian Diperbarui',
+                                    '📊'
+                                );
+                            }
+                        } else if (payload.eventType === 'DELETE') {
+                            window.showStudentToast(
+                                'Sesi ujian Anda telah direset oleh Guru. Anda dapat mulai mengerjakan kembali dari awal.',
+                                'Ujian Direset Bersih',
+                                '✨'
+                            );
+                        }
+                    }
+                )
+                .subscribe();
+        } catch (e) {
+            console.warn('[Realtime] Gagal inisialisasi quiz portal channel:', e);
+        }
+    };
+
     function renderStudentQuizzes() {
         const container = document.getElementById('student-quizzes-list');
         const filterMapel = document.getElementById('filter-quiz-mapel')?.value || '';
@@ -4337,7 +4460,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
 
         if (typeof loadStudentAssignments === 'function') loadStudentAssignments();
-        if (typeof renderStudentQuizzes === 'function') renderStudentQuizzes();
+        if (typeof loadStudentQuizzes === 'function') loadStudentQuizzes();
+        if (typeof window.subscribeToStudentPortalQuizRealtime === 'function') {
+            window.subscribeToStudentPortalQuizRealtime();
+        }
     };
 
     function handleServerExamUpdate(sub) {
@@ -4391,12 +4517,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .on(
                     'postgres_changes',
                     {
-                        event: 'UPDATE',
+                        event: '*',
                         schema: 'public',
                         table: 'quiz_submissions',
                         filter: `id=eq.${submissionId}`
                     },
                     (payload) => {
+                        if (payload.eventType === 'DELETE') {
+                            window.terminateExamSessionByTeacher("Sesi ujian Anda telah direset oleh Guru Pengawas.");
+                            return;
+                        }
                         handleServerExamUpdate(payload.new);
                     }
                 )
@@ -5318,6 +5448,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             exitExamMode();
             switchStudentPortal('tugas');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (typeof loadStudentAssignments === 'function') loadStudentAssignments();
+            if (typeof loadStudentQuizzes === 'function') loadStudentQuizzes();
+            if (typeof window.subscribeToStudentPortalQuizRealtime === 'function') {
+                window.subscribeToStudentPortalQuizRealtime();
+            }
 
             const successMsg = hasSubjective
                 ? `Ujian berhasil dikumpulkan! Jawaban Anda telah direkam di sistem. Nilai instrumen otomatis: ${totalScore}/100. Butir soal uraian/lembar foto Anda akan diperiksa dan dinilai oleh guru.`
@@ -6295,6 +6431,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadStudentAssignments();
     loadStudentMaterials();
     await loadStudentQuizzes();
+    if (typeof window.subscribeToStudentPortalQuizRealtime === 'function') {
+        window.subscribeToStudentPortalQuizRealtime();
+    }
 
     // Auto-resume sesi ujian aktif jika siswa me-reload browser
     try {
