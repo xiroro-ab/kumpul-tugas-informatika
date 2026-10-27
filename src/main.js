@@ -2079,7 +2079,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const filtered = (rosterStudents || [])
-            .filter(s => String(s.kelas).trim().toLowerCase() === String(kelas).trim().toLowerCase())
+            .filter(s => isClassMatch(s.kelas, kelas))
             .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
 
         if (filtered.length === 0) {
@@ -2320,6 +2320,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const mySubmission = myExistingSub || null;
         const isLocked = Boolean(mySubmission);
+        const activeKelas = getActiveStudentKelas();
+        const activeNama = getActiveStudentName();
 
         if (subKelasSelect) {
             subKelasSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
@@ -2337,12 +2339,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     subKelasSelect.value = applicableClasses[0];
                     subKelasSelect.disabled = true;
                     subKelasSelect.classList.add('cursor-not-allowed', 'bg-slate-100');
+                } else if (activeKelas && applicableClasses.some(k => isClassMatch(k, activeKelas))) {
+                    const matchedK = applicableClasses.find(k => isClassMatch(k, activeKelas));
+                    subKelasSelect.value = matchedK;
+                    subKelasSelect.disabled = false;
+                    subKelasSelect.classList.remove('cursor-not-allowed', 'bg-slate-100');
                 } else {
                     subKelasSelect.disabled = false;
                     subKelasSelect.classList.remove('cursor-not-allowed', 'bg-slate-100');
                     subKelasSelect.value = '';
                 }
-                populateSubStudentSelect(subKelasSelect.value, '');
+                await populateSubStudentSelect(subKelasSelect.value, activeNama);
+                if (subStudentSelect && subStudentSelect.value) {
+                    await window.onSubStudentSelectChange(subStudentSelect);
+                }
             }
         }
 
@@ -2358,10 +2368,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } else {
             if (subNamaInput) {
-                subNamaInput.value = '';
+                if (!subNamaInput.value && activeNama) {
+                    subNamaInput.value = activeNama;
+                }
                 subNamaInput.readOnly = false;
             }
-            if (subStudentIdInput) subStudentIdInput.value = '';
             if (subStudentSelect) {
                 subStudentSelect.disabled = false;
                 subStudentSelect.classList.remove('cursor-not-allowed', 'bg-slate-100', 'border-red-500', 'ring-2', 'ring-red-300');
@@ -2598,6 +2609,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const allRosterClasses = [...new Set((rosterStudents || []).map(s => String(s.kelas).trim()))].filter(Boolean).sort();
         const allClassesList = allRosterClasses.length > 0 ? allRosterClasses : availableClasses;
 
+        const activeKelas = getActiveStudentKelas();
+        const activeNama = getActiveStudentName();
+
         if (subKelasSelect) {
             subKelasSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
             subKelasSelect.disabled = false;
@@ -2605,11 +2619,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             subKelasSelect.innerHTML = '<option value="">-- Pilih Kelas Anda --</option>' +
                 allClassesList.map(k => `<option value="${escapeHtml(k)}">Kelas ${escapeHtml(k)}</option>`).join('');
 
-            subKelasSelect.value = '';
-            populateSubStudentSelect('', '');
+            if (activeKelas && allClassesList.some(k => isClassMatch(k, activeKelas))) {
+                const matchedK = allClassesList.find(k => isClassMatch(k, activeKelas));
+                subKelasSelect.value = matchedK;
+            } else {
+                subKelasSelect.value = '';
+            }
+            await populateSubStudentSelect(subKelasSelect.value, activeNama);
+            if (subStudentSelect && subStudentSelect.value) {
+                await window.onSubStudentSelectChange(subStudentSelect);
+            }
         }
-        if (subNamaInput) subNamaInput.value = '';
-        if (subStudentIdInput) subStudentIdInput.value = '';
+        if (subNamaInput && !subNamaInput.value) {
+            subNamaInput.value = activeNama || '';
+        }
         if (subStudentSelect) {
             subStudentSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
         }
