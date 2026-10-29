@@ -561,6 +561,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const iconEl = document.getElementById('custom-modal-icon');
             const msgEl = document.getElementById('custom-modal-message');
             const actionsEl = document.getElementById('custom-modal-actions');
+            const closeXBtn = document.getElementById('custom-modal-close-x');
             if (!modal) {
                 resolve(true);
                 return;
@@ -569,38 +570,49 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (titleEl) titleEl.innerText = title;
             if (iconEl) iconEl.innerText = icon;
             if (msgEl) msgEl.innerText = message;
+
+            const cleanup = (val) => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                if (closeXBtn) closeXBtn.onclick = null;
+                modal.onclick = null;
+                window.removeEventListener('keydown', handleKeydown);
+                resolve(val);
+            };
+
+            const handleKeydown = (e) => {
+                if (e.key === 'Escape') cleanup(type === 'confirm' ? false : true);
+            };
+            window.addEventListener('keydown', handleKeydown);
+
+            if (closeXBtn) {
+                closeXBtn.onclick = () => cleanup(type === 'confirm' ? false : true);
+            }
+
+            modal.onclick = (e) => {
+                if (e.target === modal) cleanup(type === 'confirm' ? false : true);
+            };
+
             if (actionsEl) {
                 actionsEl.innerHTML = '';
                 if (type === 'confirm') {
                     const cancelBtn = document.createElement('button');
-                    cancelBtn.className = "bg-white border-2 border-black text-black font-black py-2.5 px-5 rounded-xl hover:bg-slate-100 transition text-xs uppercase tracking-wider";
+                    cancelBtn.className = "bg-white border-2 border-black text-black font-black py-2.5 px-5 rounded-xl hover:bg-slate-100 transition text-xs uppercase tracking-wider cursor-pointer";
                     cancelBtn.innerText = "Batal";
-                    cancelBtn.onclick = () => {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                        resolve(false);
-                    };
+                    cancelBtn.onclick = () => cleanup(false);
 
                     const confirmBtn = document.createElement('button');
-                    confirmBtn.className = "bg-red-500 text-white border-2 border-black font-black py-2.5 px-5 rounded-xl hover:bg-red-600 transition text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+                    confirmBtn.className = "bg-red-500 text-white border-2 border-black font-black py-2.5 px-5 rounded-xl hover:bg-red-600 transition text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer";
                     confirmBtn.innerText = "Ya, Lanjutkan";
-                    confirmBtn.onclick = () => {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                        resolve(true);
-                    };
+                    confirmBtn.onclick = () => cleanup(true);
 
                     actionsEl.appendChild(cancelBtn);
                     actionsEl.appendChild(confirmBtn);
                 } else {
                     const okBtn = document.createElement('button');
-                    okBtn.className = "bg-black text-white font-black py-2.5 px-6 rounded-xl hover:bg-slate-800 transition active:translate-y-0.5 uppercase tracking-wider text-xs border-2 border-black";
+                    okBtn.className = "bg-black text-white font-black py-2.5 px-6 rounded-xl hover:bg-slate-800 transition active:translate-y-0.5 uppercase tracking-wider text-xs border-2 border-black cursor-pointer";
                     okBtn.innerText = "OK, Mengerti";
-                    okBtn.onclick = () => {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                        resolve(true);
-                    };
+                    okBtn.onclick = () => cleanup(true);
                     actionsEl.appendChild(okBtn);
                 }
             }
@@ -629,6 +641,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const extraEl = document.getElementById('sic-modal-extra');
             const confirmBtn = document.getElementById('sic-btn-confirm');
             const cancelBtn = document.getElementById('sic-btn-cancel');
+            const closeXBtn = document.getElementById('sic-btn-close-x');
 
             if (namaEl) namaEl.textContent = nama || '-';
             if (kelasEl) kelasEl.textContent = kelas ? `Kelas ${kelas}` : '-';
@@ -660,9 +673,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 modal.classList.remove('flex');
                 if (confirmBtn) confirmBtn.onclick = null;
                 if (cancelBtn) cancelBtn.onclick = null;
+                if (closeXBtn) closeXBtn.onclick = null;
                 modal.onclick = null;
+                window.removeEventListener('keydown', handleKeydown);
                 resolve(result);
             };
+
+            const handleKeydown = (e) => {
+                if (e.key === 'Escape') cleanup(false);
+            };
+            window.addEventListener('keydown', handleKeydown);
 
             if (confirmBtn) {
                 confirmBtn.innerHTML = `<span>Ya, Benar (${escapeHtml(actionText)})</span> <span>🚀</span>`;
@@ -671,6 +691,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (cancelBtn) {
                 cancelBtn.onclick = () => cleanup(false);
+            }
+
+            if (closeXBtn) {
+                closeXBtn.onclick = () => cleanup(false);
             }
 
             modal.onclick = (e) => {
@@ -1161,6 +1185,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             window.closeClassPickerModal();
+            if (typeof window.closeReceiptModal === 'function') window.closeReceiptModal();
+            if (typeof window.closeMobileSearchModal === 'function') window.closeMobileSearchModal();
+            if (typeof window.closeExamTokenModal === 'function') window.closeExamTokenModal();
+            if (typeof window.closeStudentMaterialFocus === 'function') window.closeStudentMaterialFocus();
         }
     });
 
@@ -3383,14 +3411,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('receipt-detail').textContent = data.detail || '-';
 
         const modal = document.getElementById('receipt-modal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+        if (modal) {
+            modal.onclick = (e) => {
+                if (e.target === modal) window.closeReceiptModal();
+            };
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
     }
 
     window.closeReceiptModal = () => {
         const modal = document.getElementById('receipt-modal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+        if (modal) {
+            modal.onclick = null;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
     };
 
     // ==========================================

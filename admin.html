@@ -2548,9 +2548,14 @@
     <!-- MODAL: PROFIL GURU & MAPEL                              -->
     <!-- ======================================================= -->
     <div id="profile-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-md w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4">
-            <h3 class="text-2xl font-black text-black uppercase">Atur Profil Guru</h3>
-            <p class="text-xs font-bold text-slate-500">Sesuaikan nama lengkap Anda dan mata pelajaran yang diampu di SMPN 58.</p>
+        <div class="bg-white border-[3px] border-black rounded-[32px] p-6 md:p-8 max-w-md w-full shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 relative">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-2xl font-black text-black uppercase">Atur Profil Guru</h3>
+                    <p class="text-xs font-bold text-slate-500 mt-0.5">Sesuaikan nama lengkap Anda dan mata pelajaran yang diampu di SMPN 58.</p>
+                </div>
+                <button type="button" onclick="closeProfileModal()" class="w-8 h-8 rounded-full border-2 border-black bg-white hover:bg-red-500 hover:text-white font-black text-sm flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer shrink-0 ml-2" title="Tutup Dialog" aria-label="Tutup">✕</button>
+            </div>
             
             <div class="space-y-3">
                 <div>
@@ -2573,9 +2578,12 @@
     <!-- Custom Modal Standard Alert/Confirm -->
     <div id="custom-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
         <div class="bg-white border-[3px] border-black rounded-[28px] md:rounded-[36px] p-6 md:p-8 max-w-md w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-3 my-auto">
-            <div class="flex items-center gap-2.5">
-                <span id="custom-modal-icon" class="text-xl empty:hidden"></span>
-                <h3 id="custom-modal-title" class="text-xl font-black text-black uppercase tracking-tight">Perhatian</h3>
+            <div class="flex items-center justify-between gap-2.5">
+                <div class="flex items-center gap-2.5">
+                    <span id="custom-modal-icon" class="text-xl empty:hidden"></span>
+                    <h3 id="custom-modal-title" class="text-xl font-black text-black uppercase tracking-tight">Perhatian</h3>
+                </div>
+                <button id="custom-modal-close-x" type="button" class="w-8 h-8 rounded-full border-2 border-black bg-white hover:bg-red-500 hover:text-white font-black text-sm flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer shrink-0" title="Tutup Dialog" aria-label="Tutup">✕</button>
             </div>
             <p id="custom-modal-message" class="text-black font-bold text-xs md:text-sm leading-relaxed whitespace-pre-line"></p>
             <div id="custom-modal-actions" class="flex gap-2.5 justify-end mt-2 pt-2 border-t border-slate-200"></div>

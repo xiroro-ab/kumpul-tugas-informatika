@@ -308,6 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const iconEl = document.getElementById('custom-modal-icon');
             const msgEl = document.getElementById('custom-modal-message');
             const actionsEl = document.getElementById('custom-modal-actions');
+            const closeXBtn = document.getElementById('custom-modal-close-x');
             if (!modal) {
                 resolve(true);
                 return;
@@ -316,38 +317,49 @@ document.addEventListener('DOMContentLoaded', () => {
             if (titleEl) titleEl.innerText = title;
             if (iconEl) iconEl.innerText = icon;
             if (msgEl) msgEl.innerText = message;
+
+            const cleanup = (val) => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                if (closeXBtn) closeXBtn.onclick = null;
+                modal.onclick = null;
+                window.removeEventListener('keydown', handleKeydown);
+                resolve(val);
+            };
+
+            const handleKeydown = (e) => {
+                if (e.key === 'Escape') cleanup(type === 'confirm' ? false : true);
+            };
+            window.addEventListener('keydown', handleKeydown);
+
+            if (closeXBtn) {
+                closeXBtn.onclick = () => cleanup(type === 'confirm' ? false : true);
+            }
+
+            modal.onclick = (e) => {
+                if (e.target === modal) cleanup(type === 'confirm' ? false : true);
+            };
+
             if (actionsEl) {
                 actionsEl.innerHTML = '';
                 if (type === 'confirm') {
                     const cancelBtn = document.createElement('button');
-                    cancelBtn.className = "bg-white border-2 border-black text-black font-black py-2.5 px-5 rounded-xl hover:bg-slate-100 transition text-xs uppercase tracking-wider";
+                    cancelBtn.className = "bg-white border-2 border-black text-black font-black py-2.5 px-5 rounded-xl hover:bg-slate-100 transition text-xs uppercase tracking-wider cursor-pointer";
                     cancelBtn.innerText = "Batal";
-                    cancelBtn.onclick = () => {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                        resolve(false);
-                    };
+                    cancelBtn.onclick = () => cleanup(false);
                     
                     const confirmBtn = document.createElement('button');
-                    confirmBtn.className = "bg-red-500 text-white border-2 border-black font-black py-2.5 px-5 rounded-xl hover:bg-red-600 transition text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
+                    confirmBtn.className = "bg-red-500 text-white border-2 border-black font-black py-2.5 px-5 rounded-xl hover:bg-red-600 transition text-xs uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer";
                     confirmBtn.innerText = "Ya, Lanjutkan";
-                    confirmBtn.onclick = () => {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                        resolve(true);
-                    };
+                    confirmBtn.onclick = () => cleanup(true);
                     
                     actionsEl.appendChild(cancelBtn);
                     actionsEl.appendChild(confirmBtn);
                 } else {
                     const okBtn = document.createElement('button');
-                    okBtn.className = "bg-black text-white font-black py-2.5 px-6 rounded-xl hover:bg-slate-800 transition active:translate-y-0.5 uppercase tracking-wider text-xs border-2 border-black";
+                    okBtn.className = "bg-black text-white font-black py-2.5 px-6 rounded-xl hover:bg-slate-800 transition active:translate-y-0.5 uppercase tracking-wider text-xs border-2 border-black cursor-pointer";
                     okBtn.innerText = "OK, Mengerti";
-                    okBtn.onclick = () => {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                        resolve(true);
-                    };
+                    okBtn.onclick = () => cleanup(true);
                     actionsEl.appendChild(okBtn);
                 }
             }
@@ -779,17 +791,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.openProfileModal = () => {
+        const modal = document.getElementById('profile-modal');
+        if (!modal) return;
         const nameInput = document.getElementById('prof-nama');
         const mapelInput = document.getElementById('prof-mapel');
         if (currentTeacher) {
             nameInput.value = currentTeacher.nama_guru || '';
             mapelInput.value = currentTeacher.mapel || 'Informatika';
         }
-        document.getElementById('profile-modal').classList.remove('hidden');
+        modal.onclick = (e) => {
+            if (e.target === modal) window.closeProfileModal();
+        };
+        modal.classList.remove('hidden');
     };
 
     window.closeProfileModal = () => {
-        document.getElementById('profile-modal').classList.add('hidden');
+        const modal = document.getElementById('profile-modal');
+        if (modal) {
+            modal.onclick = null;
+            modal.classList.add('hidden');
+        }
     };
 
     window.saveTeacherProfile = async () => {
@@ -4031,6 +4052,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (typeof window.closeLegerExportModal === 'function') {
                 window.closeLegerExportModal();
+            }
+            if (typeof window.closeProfileModal === 'function') {
+                window.closeProfileModal();
             }
         }
     });
