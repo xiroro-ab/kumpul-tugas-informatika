@@ -233,6 +233,26 @@ export function parseAssignmentQuestions(assignment) {
     return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan, token, token_required: tokenRequired, lock_deadline: lockDeadline, is_archived: isArchived };
 }
 
+export function parseAssignmentDeadline(raw) {
+    if (!raw) return null;
+    const str = String(raw).trim();
+    if (!str) return null;
+    const match = str.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)/);
+    if (match) {
+        const localIso = `${match[1]}T${match[2]}`;
+        const d = new Date(localIso);
+        if (!isNaN(d.getTime())) return d;
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+export function formatAssignmentDeadlineToInput(raw) {
+    if (!raw) return '';
+    const match = String(raw).trim().match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    return match ? `${match[1]}T${match[2]}` : '';
+}
+
 export function detectPlatform(url) {
     const u = String(url || '').toLowerCase();
     if (u.includes('canva.com')) return { name: 'Canva', bg: 'bg-teal-100 text-teal-800 border-teal-300' };
@@ -1519,9 +1539,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const desc = item.deskripsi || parsed.petunjuk || 'Kerjakan tugas sekolah dan kumpulkan jawaban tepat waktu.';
                 let deadlineText = '';
                 if (item.deadline) {
-                    const dlDate = new Date(item.deadline);
-                    const formatted = dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-                    deadlineText = `<span class="px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded font-bold text-[10px]">Batas: ${formatted} WIB</span>`;
+                    const dlDate = parseAssignmentDeadline(item.deadline);
+                    if (dlDate) {
+                        const formatted = dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                        deadlineText = `<span class="px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded font-bold text-[10px]">Batas: ${formatted} WIB</span>`;
+                    }
                 }
                 html += `
                     <div class="bg-white border-2 border-black rounded-2xl p-3 sm:p-3.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
@@ -1867,19 +1889,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             let isPast = false;
             let formattedDate = '';
             if (a.deadline) {
-                const dlDate = new Date(a.deadline);
-                const now = new Date();
-                isPast = dlDate < now;
-                formattedDate = dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-                
-                if (isPast) {
-                    if (parsed.lock_deadline) {
-                        deadlineBadge = `<span class="bg-rose-100 text-rose-900 border border-rose-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Pengumpulan Ditutup (${formattedDate})</span>`;
+                const dlDate = parseAssignmentDeadline(a.deadline);
+                if (dlDate) {
+                    const now = new Date();
+                    isPast = dlDate < now;
+                    formattedDate = dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    
+                    if (isPast) {
+                        if (parsed.lock_deadline) {
+                            deadlineBadge = `<span class="bg-rose-100 text-rose-900 border border-rose-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Pengumpulan Ditutup (${formattedDate})</span>`;
+                        } else {
+                            deadlineBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Lewat Tenggat (${formattedDate})</span>`;
+                        }
                     } else {
-                        deadlineBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Lewat Tenggat (${formattedDate})</span>`;
+                        deadlineBadge = `<span class="bg-yellow-100 text-yellow-900 border border-yellow-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Batas: ${formattedDate} WIB</span>`;
                     }
                 } else {
-                    deadlineBadge = `<span class="bg-yellow-100 text-yellow-900 border border-yellow-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Batas: ${formattedDate} WIB</span>`;
+                    deadlineBadge = `<span class="bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Tanpa Batas Waktu</span>`;
                 }
             } else {
                 deadlineBadge = `<span class="bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-black px-2 py-0.5 rounded uppercase">Tanpa Batas Waktu</span>`;
@@ -2337,7 +2363,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentActiveAssignment = assignment || null;
         const parsed = parseAssignmentQuestions(assignment);
 
-        const isPastDeadline = assignment.deadline ? (new Date() > new Date(assignment.deadline)) : false;
+        const dlDate = parseAssignmentDeadline(assignment.deadline);
+        const isPastDeadline = dlDate ? (new Date() > dlDate) : false;
         const isLockDeadline = Boolean(parsed.lock_deadline);
 
         const studentName = getActiveStudentName();
@@ -2350,7 +2377,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (!myExistingSub && isPastDeadline && isLockDeadline) {
-            const deadlineStr = new Date(assignment.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+            const deadlineStr = dlDate ? dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
             showCustomModal(`Batas waktu pengumpulan tugas "${assignment.judul_tugas}" telah berakhir pada ${deadlineStr} WIB. Guru telah mengunci pengumpulan tugas ini.`, 'alert', 'Pengumpulan Ditutup', '⛔');
             return;
         }
@@ -2365,8 +2392,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const deadlineEl = document.getElementById('modal-banner-deadline');
         if (deadlineEl) {
-            deadlineEl.textContent = assignment.deadline 
-                ? `Batas: ${new Date(assignment.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` 
+            deadlineEl.textContent = dlDate 
+                ? `Batas: ${dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` 
                 : 'Tanpa Batas Waktu';
         }
 
@@ -6377,7 +6404,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                                 <span class="text-[10px] font-bold text-red-700 uppercase">${escapeHtml(t.mapel)}</span>
                                             </div>
                                             <h5 class="font-black text-sm text-red-950 mt-1">${escapeHtml(t.judul_tugas)}</h5>
-                                            ${t.deadline ? `<span class="text-[10px] font-bold text-red-600 block mt-0.5">Batas Pengumpulan: ${escapeHtml(t.deadline)}</span>` : ''}
+                                            ${t.deadline ? `<span class="text-[10px] font-bold text-red-600 block mt-0.5">Batas Pengumpulan: ${parseAssignmentDeadline(t.deadline)?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) || escapeHtml(t.deadline)} WIB</span>` : ''}
                                         </div>
                                         <div class="flex items-center gap-2 shrink-0 self-start sm:self-center">
                                             <button type="button" onclick="window.navigateToAssignment('${escapeHtml(String(t.id))}')" class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition flex items-center gap-1.5 cursor-pointer">

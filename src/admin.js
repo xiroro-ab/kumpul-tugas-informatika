@@ -298,6 +298,26 @@ export function parseAssignmentQuestions(assignment) {
     return { petunjuk, questions: qList, tipe_pengumpulan: tipePengumpulan, token, token_required: tokenRequired, lock_deadline: lockDeadline, is_archived: isArchived };
 }
 
+export function parseAssignmentDeadline(raw) {
+    if (!raw) return null;
+    const str = String(raw).trim();
+    if (!str) return null;
+    const match = str.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)/);
+    if (match) {
+        const localIso = `${match[1]}T${match[2]}`;
+        const d = new Date(localIso);
+        if (!isNaN(d.getTime())) return d;
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+export function formatAssignmentDeadlineToInput(raw) {
+    if (!raw) return '';
+    const match = String(raw).trim().match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    return match ? `${match[1]}T${match[2]}` : '';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // Helper Modal Alert/Confirm Neobrutalisme
@@ -1157,8 +1177,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             );
                             if (assign && assign.deadline && f.created_at) {
                                 const fileDate = new Date(f.created_at);
-                                const deadlineDate = new Date(assign.deadline);
-                                if (fileDate > deadlineDate) {
+                                const deadlineDate = parseAssignmentDeadline(assign.deadline);
+                                if (deadlineDate && fileDate > deadlineDate) {
                                     const diffMs = fileDate - deadlineDate;
                                     const diffHours = Math.round(diffMs / (1000 * 60 * 60));
                                     const lateStr = diffHours >= 24 ? `${Math.floor(diffHours / 24)} hari` : `${Math.max(1, diffHours)} jam`;
@@ -1219,8 +1239,9 @@ document.addEventListener('DOMContentLoaded', () => {
             (item.assignment_id && String(a.id) === String(item.assignment_id)) ||
             (item.materi && a.judul_tugas.toLowerCase().trim() === item.materi.toLowerCase().trim())
         );
-        if (assignForGrade && assignForGrade.deadline && item.created_at && new Date(item.created_at) > new Date(assignForGrade.deadline)) {
-            const diffHours = Math.round((new Date(item.created_at) - new Date(assignForGrade.deadline)) / (1000 * 60 * 60));
+        const dlForGrade = assignForGrade && assignForGrade.deadline ? parseAssignmentDeadline(assignForGrade.deadline) : null;
+        if (dlForGrade && item.created_at && new Date(item.created_at) > dlForGrade) {
+            const diffHours = Math.round((new Date(item.created_at) - dlForGrade) / (1000 * 60 * 60));
             const lateStr = diffHours >= 24 ? `${Math.floor(diffHours / 24)} hari` : `${Math.max(1, diffHours)} jam`;
             document.getElementById('grade-modal-meta').innerHTML += ` <span class="bg-amber-200 text-amber-950 border border-amber-400 px-2 py-0.5 rounded font-black text-[10px]">TERLAMBAT ${lateStr}</span>`;
         }
@@ -2498,7 +2519,8 @@ document.addEventListener('DOMContentLoaded', () => {
         displayList.forEach(a => {
             const card = document.createElement('div');
             card.className = "bg-white border-[3px] border-black rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
-            const deadlineText = a.deadline ? new Date(a.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tidak ada batas waktu';
+            const dlDate = parseAssignmentDeadline(a.deadline);
+            const deadlineText = dlDate ? dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tidak ada batas waktu';
 
             const matchingSubs = pendingFiles.filter(f => 
                 (f.assignment_id && String(f.assignment_id) === String(a.id)) ||
@@ -2614,7 +2636,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (titleEl) titleEl.textContent = a.judul_tugas;
         if (metaEl) {
-            const dlText = a.deadline ? new Date(a.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tanpa Batas Waktu';
+            const dlDate = parseAssignmentDeadline(a.deadline);
+            const dlText = dlDate ? dlDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Tanpa Batas Waktu';
             metaEl.textContent = `Kelas: ${a.kelas} • Mapel: ${a.mapel} • Tenggat: ${dlText}`;
         }
         if (descEl) {
@@ -2993,7 +3016,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (assignment) {
             document.getElementById('assign-judul').value = assignment.judul_tugas || '';
-            document.getElementById('assign-deadline').value = assignment.deadline ? assignment.deadline.slice(0, 16) : '';
+            document.getElementById('assign-deadline').value = formatAssignmentDeadlineToInput(assignment.deadline);
             const parsed = parseAssignmentQuestions(assignment);
             document.getElementById('assign-deskripsi').value = parsed.petunjuk || '';
             if (tipeSelect) {
@@ -3414,7 +3437,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const kelas = document.getElementById('assign-kelas')?.value || stateKelas[0] || 'Semua Kelas';
         const judul = document.getElementById('assign-judul').value.trim();
         const petunjuk = document.getElementById('assign-deskripsi').value.trim();
-        const deadline = document.getElementById('assign-deadline').value;
+        const deadlineRaw = document.getElementById('assign-deadline')?.value || '';
+        const deadline = deadlineRaw.trim() ? deadlineRaw.trim() : null;
         const tipePengumpulan = document.getElementById('assign-tipe-pengumpulan')?.value || 'bebas';
 
         if (!judul) {
