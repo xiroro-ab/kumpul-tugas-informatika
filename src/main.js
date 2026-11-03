@@ -2073,9 +2073,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 <div class="pt-3 border-t-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mt-auto">
                     <div class="w-full sm:w-auto shrink-0">${submissionBadge}</div>
-                    <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')}, ${mySubmission ? JSON.stringify(mySubmission).replace(/"/g, '&quot;') : 'null'})" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0 ${actionBtnClass}">
-                        ${actionBtnText}
-                    </button>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        ${mySubmission && (mySubmission.nilai === null || mySubmission.nilai === undefined || mySubmission.nilai === '') && !(isPast && parsed.lock_deadline) ? `
+                            <button type="button" onclick="event.stopPropagation(); window.deleteStudentSubmissionAction('${mySubmission.id}')" class="px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-300 active:translate-y-0.5 text-center flex items-center justify-center shrink-0 cursor-pointer" title="Hapus jawaban jika salah upload agar bisa upload ulang">
+                                🗑️ Hapus
+                            </button>
+                        ` : ''}
+                        <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')}, ${mySubmission ? JSON.stringify(mySubmission).replace(/"/g, '&quot;') : 'null'})" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0 ${actionBtnClass}">
+                            ${actionBtnText}
+                        </button>
+                    </div>
                 </div>
             `;
 
@@ -2150,20 +2157,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .maybeSingle();
 
                 if (existingSub) {
+                    const isGraded = (existingSub.nilai !== null && existingSub.nilai !== undefined && existingSub.nilai !== '');
+                    const subBtnDeleteReupload = document.getElementById('sub-btn-delete-reupload');
                     if (subSubmitBtn) {
                         subSubmitBtn.disabled = true;
                         subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                        subSubmitBtn.innerText = 'TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+                        subSubmitBtn.innerText = isGraded ? `SUDAH DINILAI (${existingSub.nilai}/100)` : 'TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+                    }
+                    if (!isGraded && subBtnDeleteReupload) {
+                        subBtnDeleteReupload.classList.remove('hidden');
+                        subBtnDeleteReupload.onclick = () => window.deleteStudentSubmissionAction(existingSub.id);
+                    } else if (subBtnDeleteReupload) {
+                        subBtnDeleteReupload.classList.add('hidden');
                     }
                     if (statusEl) {
                         statusEl.classList.remove('hidden');
                         const subDate = existingSub.created_at ? new Date(existingSub.created_at).toLocaleString('id-ID') : '';
                         statusEl.innerHTML = `
-                            <div class="flex items-center justify-between">
+                            <div class="flex items-center justify-between gap-2 flex-wrap">
                                 <span class="font-black text-emerald-900">Siswa Ini Sudah Mengumpulkan</span>
-                                <span class="text-[10px] bg-slate-200 text-slate-800 font-black px-2 py-0.5 rounded border border-slate-400">Terkunci 1x</span>
+                                ${!isGraded ? `<button type="button" onclick="window.deleteStudentSubmissionAction('${existingSub.id}')" class="px-2 py-0.5 bg-red-500 hover:bg-red-600 text-white rounded font-black text-[10px] uppercase border border-black cursor-pointer shadow-sm">🗑️ Hapus & Upload Ulang</button>` : `<span class="text-[10px] bg-slate-200 text-slate-800 font-black px-2 py-0.5 rounded border border-slate-400">Terkunci (Nilai: ${existingSub.nilai})</span>`}
                             </div>
-                            <p class="text-[11px] text-slate-700 font-bold mt-1">Siswa (${studentName}) tercatat sudah mengumpulkan tugas ini (${subDate}). Tanggapan dibatasi 1 kali.</p>
+                            <p class="text-[11px] text-slate-700 font-bold mt-1">Siswa (${escapeHtml(studentName)}) tercatat sudah mengumpulkan tugas ini (${subDate}). ${!isGraded ? 'Bisa dihapus jika salah kirim.' : ''}</p>
                         `;
                     }
                     if (currentFormQuestions && currentFormQuestions.length > 0 && existingSub.storage_path && existingSub.storage_path.startsWith('FORM:')) {
@@ -2175,6 +2190,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         } catch (_) {}
                     }
                 } else {
+                    const subBtnDeleteReupload = document.getElementById('sub-btn-delete-reupload');
+                    if (subBtnDeleteReupload) {
+                        subBtnDeleteReupload.classList.add('hidden');
+                        subBtnDeleteReupload.onclick = null;
+                    }
                     if (subSubmitBtn) {
                         subSubmitBtn.disabled = false;
                         subSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -2585,33 +2605,80 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const statusEl = document.getElementById('modal-banner-status');
+        const subBtnDeleteReupload = document.getElementById('sub-btn-delete-reupload');
+        const isGraded = mySubmission && (
+            (mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '') ||
+            mySubmission.status_koreksi === 'sudah_dikoreksi'
+        );
+        const isPastAndLocked = isPastDeadline && isLockDeadline;
+        const canDeleteReupload = Boolean(isLocked && mySubmission && !isGraded && !isPastAndLocked);
+
         if (isLocked && mySubmission) {
             if (statusEl) {
                 statusEl.classList.remove('hidden');
                 const subDateStr = mySubmission.created_at ? new Date(mySubmission.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                
+                let statusRightHtml = '';
+                if (isGraded) {
+                    statusRightHtml = `<span class="bg-emerald-300 border border-emerald-600 text-emerald-950 px-2.5 py-1 rounded-lg font-black text-xs self-start sm:self-auto">Nilai: ${mySubmission.nilai}/100</span>`;
+                } else if (canDeleteReupload) {
+                    statusRightHtml = `
+                        <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                            <span class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-lg text-[10px] font-bold">Menunggu Penilaian Guru</span>
+                            <button type="button" onclick="window.deleteStudentSubmissionAction('${mySubmission.id}')" class="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg font-black text-[11px] uppercase tracking-wider border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer flex items-center gap-1">
+                                <span>🗑️</span>
+                                <span>Hapus & Upload Ulang</span>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    statusRightHtml = `<span class="bg-rose-100 text-rose-900 border border-rose-300 px-2 py-0.5 rounded-lg text-[10px] font-bold self-start sm:self-auto">Terkunci (Lewat Batas)</span>`;
+                }
+
                 statusEl.innerHTML = `
-                    <div class="p-3 bg-emerald-50 border-2 border-emerald-400 rounded-xl text-emerald-950 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+                    <div class="p-3 bg-emerald-50 border-2 border-emerald-400 rounded-xl text-emerald-950 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
                         <div class="flex items-center gap-2">
                             <span class="text-base text-emerald-600">✓</span>
                             <div>
-                                <div class="font-black text-xs text-emerald-900">TUGAS SUDAH DIKUMPULKAN (MODE BACA)</div>
+                                <div class="font-black text-xs text-emerald-900">TUGAS SUDAH DIKUMPULKAN (${canDeleteReupload ? 'BISA UPLOAD ULANG' : (isGraded ? 'SUDAH DINILAI' : 'TERKUNCI')})</div>
                                 <div class="text-[11px] text-emerald-800">Tercatat pada: ${subDateStr} WIB</div>
                             </div>
                         </div>
-                        ${mySubmission.nilai !== null && mySubmission.nilai !== undefined && mySubmission.nilai !== '' ? `<span class="bg-emerald-300 border border-emerald-600 text-emerald-950 px-2.5 py-1 rounded-lg font-black text-xs self-start sm:self-auto">Nilai: ${mySubmission.nilai}/100</span>` : '<span class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-lg text-[10px] font-bold self-start sm:self-auto">Menunggu Penilaian Guru</span>'}
+                        ${statusRightHtml}
                     </div>
                 `;
             }
-            if (subSubmitBtn) {
-                subSubmitBtn.disabled = true;
-                subSubmitBtn.className = 'w-full py-3.5 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider bg-slate-200 text-slate-500 border-2 border-slate-300 cursor-not-allowed shadow-none';
-                subSubmitBtn.innerText = 'TUGAS SUDAH DIKUMPULKAN (TERKUNCI)';
+
+            if (canDeleteReupload) {
+                if (subBtnDeleteReupload) {
+                    subBtnDeleteReupload.classList.remove('hidden');
+                    subBtnDeleteReupload.onclick = () => window.deleteStudentSubmissionAction(mySubmission.id);
+                }
+                if (subSubmitBtn) {
+                    subSubmitBtn.disabled = true;
+                    subSubmitBtn.className = 'h-11 px-4 sm:px-6 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-200 text-slate-500 border-2 border-slate-300 cursor-not-allowed shadow-none';
+                    subSubmitBtn.innerText = 'TERKUNCI (SUDAH DIKUMPUL)';
+                }
+            } else {
+                if (subBtnDeleteReupload) {
+                    subBtnDeleteReupload.classList.add('hidden');
+                    subBtnDeleteReupload.onclick = null;
+                }
+                if (subSubmitBtn) {
+                    subSubmitBtn.disabled = true;
+                    subSubmitBtn.className = 'h-11 px-4 sm:px-6 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-200 text-slate-500 border-2 border-slate-300 cursor-not-allowed shadow-none';
+                    subSubmitBtn.innerText = isGraded ? `SUDAH DINILAI (${mySubmission.nilai}/100)` : 'PENGUMPULAN DITUTUP';
+                }
             }
         } else {
             if (statusEl) statusEl.classList.add('hidden');
+            if (subBtnDeleteReupload) {
+                subBtnDeleteReupload.classList.add('hidden');
+                subBtnDeleteReupload.onclick = null;
+            }
             if (subSubmitBtn) {
                 subSubmitBtn.disabled = false;
-                subSubmitBtn.className = 'w-full py-3.5 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider transition bg-indigo-600 hover:bg-black text-white border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer';
+                subSubmitBtn.className = 'h-11 px-4 sm:px-6 rounded-xl font-black text-xs uppercase tracking-wider transition bg-indigo-600 hover:bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer';
                 subSubmitBtn.innerText = (parsed.tipe_pengumpulan === 'form') ? 'KIRIM JAWABAN SOAL SEKARANG 🚀' : 'KUMPULKAN TUGAS SEKARANG 🚀';
             }
         }
@@ -2805,8 +2872,134 @@ document.addEventListener('DOMContentLoaded', async () => {
         const subIsGroupCheck = document.getElementById('sub-is-group');
         if (subIsGroupCheck) subIsGroupCheck.checked = false;
         window.toggleGroupSubmissionMode(false);
+        const subBtnDeleteReupload = document.getElementById('sub-btn-delete-reupload');
+        if (subBtnDeleteReupload) {
+            subBtnDeleteReupload.classList.add('hidden');
+            subBtnDeleteReupload.onclick = null;
+        }
         subModal.classList.add('hidden');
         subModal.classList.remove('flex');
+    };
+
+    // Aksi Siswa: Hapus Jawaban Sendiri agar Bisa Upload Ulang
+    window.deleteStudentSubmissionAction = async (subId) => {
+        const studentName = getActiveStudentName();
+        const sub = studentFiles.find(f => String(f.id) === String(subId));
+
+        // 1. Validasi: jika tugas sudah dinilai guru, siswa tidak boleh menghapus sepihak
+        if (sub && ((sub.nilai !== null && sub.nilai !== undefined && sub.nilai !== '') || sub.status_koreksi === 'sudah_dikoreksi')) {
+            await showCustomModal(
+                'Tugas ini sudah diperiksa dan dinilai oleh guru, sehingga tidak dapat dihapus.',
+                'alert',
+                'Tugas Sudah Dinilai',
+                '🔒'
+            );
+            return;
+        }
+
+        // 2. Validasi: jika tenggat waktu sudah lewat dan dikunci oleh guru
+        if (currentActiveAssignment) {
+            const parsed = parseAssignmentQuestions(currentActiveAssignment);
+            const dlDate = parseAssignmentDeadline(currentActiveAssignment.deadline);
+            const isPastDeadline = dlDate ? (new Date() > dlDate) : false;
+            if (isPastDeadline && parsed.lock_deadline) {
+                await showCustomModal(
+                    'Batas waktu pengumpulan tugas ini telah berakhir dan dikunci oleh guru. Tugas tidak dapat dihapus untuk diunggah ulang.',
+                    'alert',
+                    'Pengumpulan Dikunci',
+                    '⛔'
+                );
+                return;
+            }
+        }
+
+        const taskTitle = sub?.materi || currentActiveAssignment?.judul_tugas || 'tugas ini';
+        const confirmed = await showCustomModal(
+            `Apakah Anda yakin ingin menghapus pengumpulan tugas "${taskTitle}"?\n\nSetelah dihapus, jawaban lama akan dibatalkan sehingga Anda bisa mengunggah berkas atau mengisi lembar jawaban yang benar.`,
+            'confirm',
+            'Hapus & Upload Ulang',
+            '🗑️'
+        );
+        if (!confirmed) return;
+
+        const subBtnDeleteReupload = document.getElementById('sub-btn-delete-reupload');
+        const origText = subBtnDeleteReupload ? subBtnDeleteReupload.innerHTML : '';
+        if (subBtnDeleteReupload) {
+            subBtnDeleteReupload.disabled = true;
+            subBtnDeleteReupload.innerHTML = '<span>⏳</span><span>Menghapus...</span>';
+        }
+
+        try {
+            // Hapus file fisik di storage Supabase jika bukan form/text/link
+            const rawPath = sub?.storage_path || '';
+            const isPhysicalFile = rawPath && !rawPath.startsWith('FORM:') && !rawPath.startsWith('TEXT:') && !rawPath.startsWith('LINK:');
+            if (isPhysicalFile) {
+                try {
+                    await supabase.storage.from('uploads').remove([rawPath]);
+                } catch (stErr) {
+                    console.warn('Storage removal warning:', stErr);
+                }
+            }
+
+            let rpcSuccess = false;
+            try {
+                const { data: rpcRes, error: rpcErr } = await supabase.rpc('delete_student_submission', {
+                    p_submission_id: Number(subId),
+                    p_student_name: studentName || sub?.nama || ''
+                });
+                if (!rpcErr && rpcRes && rpcRes.success) {
+                    rpcSuccess = true;
+                } else if (rpcErr) {
+                    console.warn('RPC delete_student_submission failed, falling back to direct delete:', rpcErr);
+                }
+            } catch (rpcEx) {
+                console.warn('RPC call exception, fallback to direct delete:', rpcEx);
+            }
+
+            if (!rpcSuccess) {
+                const tagMatch = (sub?.catatan_guru || '').match(/\[TAG:(GRP_[^\]]+)\]/);
+                if (tagMatch) {
+                    const { error: delGrpErr } = await supabase.from('files').delete().like('catatan_guru', `%${tagMatch[0]}%`);
+                    if (delGrpErr) throw delGrpErr;
+                } else {
+                    const { error: delErr } = await supabase.from('files').delete().eq('id', subId);
+                    if (delErr) throw delErr;
+                }
+            }
+
+            // Hapus dari memori lokal studentFiles
+            studentFiles = studentFiles.filter(f => String(f.id) !== String(subId));
+            if (sub?.catatan_guru && sub.catatan_guru.includes('[TAG:GRP_')) {
+                const m = sub.catatan_guru.match(/\[TAG:(GRP_[^\]]+)\]/);
+                if (m) {
+                    studentFiles = studentFiles.filter(f => !(f.catatan_guru && f.catatan_guru.includes(m[1])));
+                }
+            }
+
+            // Refresh daftar tugas di portal siswa
+            if (typeof loadStudentAssignments === 'function') {
+                await loadStudentAssignments();
+            }
+
+            if (typeof showStudentToast === 'function') {
+                showStudentToast('Jawaban tugas lama berhasil dihapus. Silakan unggah tugas yang baru.', 'success');
+            }
+
+            // Jika modal sedang terbuka untuk tugas tertentu, langsung alihkan ke mode baru agar siswa bisa langsung upload
+            if (currentActiveAssignment) {
+                await openAssignmentSubmissionModal(currentActiveAssignment, null);
+            } else {
+                closeSubmissionModal();
+            }
+        } catch (e) {
+            console.error('Gagal menghapus tugas:', e);
+            await showCustomModal('Gagal menghapus tugas: ' + (e.message || 'Terjadi kesalahan sistem'), 'alert', 'Gagal Menghapus', '❌');
+        } finally {
+            if (subBtnDeleteReupload) {
+                subBtnDeleteReupload.disabled = false;
+                subBtnDeleteReupload.innerHTML = origText;
+            }
+        }
     };
 
     window.setSubmissionMode = (mode) => {
@@ -3028,10 +3221,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (existingSub) {
                 const subDate = existingSub.created_at ? new Date(existingSub.created_at).toLocaleString('id-ID') : '';
                 await showCustomModal(
-                    `Akses Dibatasi: Anda (${nama}) sudah tercatat mengumpulkan tugas ini sebelumnya pada ${subDate}.\n\nSesuai ketentuan, setiap siswa hanya berhak mengirimkan 1 kali tanggapan. Jawaban tidak dapat dikirim ulang.`,
+                    `Akses Dibatasi: Anda (${nama}) sudah tercatat mengumpulkan tugas ini sebelumnya pada ${subDate}.\n\nJika Anda salah mengunggah atau ingin memperbaiki jawaban, gunakan tombol "Hapus & Upload Ulang" terlebih dahulu.`,
                     'alert',
                     'Tanggapan Terkunci (1x Saja)',
-                    ''
+                    '🔒'
                 );
                 if (subSubmitBtn) {
                     subSubmitBtn.disabled = true;
@@ -3050,10 +3243,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (existingSub) {
                 await showCustomModal(
-                    `Akses Dibatasi: Anda (${nama}) sudah pernah mengumpulkan tugas "${materi}".\n\nSistem membatasi pengumpulan hanya 1 kali dan tidak dapat dikirim ulang.`,
+                    `Akses Dibatasi: Anda (${nama}) sudah pernah mengumpulkan tugas "${materi}".\n\nJika Anda salah mengunggah, silakan hubungi guru atau gunakan fitur hapus pengumpulan jika tersedia.`,
                     'alert',
                     'Tanggapan Terkunci (1x Saja)',
-                    ''
+                    '🔒'
                 );
                 if (subSubmitBtn) {
                     subSubmitBtn.disabled = true;

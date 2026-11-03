@@ -2110,10 +2110,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const taskTitle = item?.materi || 'tugas ini';
 
         const confirmed = await showCustomModal(
-            `Apakah Anda yakin ingin menghapus pengumpulan tugas "${taskTitle}" dari "${studentName}" secara permanen?`,
+            `Apakah Anda yakin ingin menghapus pengumpulan tugas "${taskTitle}" dari "${studentName}" secara permanen?\n\nSetelah dihapus, siswa akan dapat mengirimkan ulang tugasnya.`,
             'confirm',
             'Konfirmasi Hapus Tugas',
-            ''
+            '🗑️'
         );
         if (!confirmed) return;
         
@@ -2128,15 +2128,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (storageError) console.warn("Storage removal warning:", storageError);
             }
 
-            const { error: dbError } = await supabase.from('files').delete().eq('id', id);
-            if (dbError) throw dbError;
+            // Jika tugas kelompok (memiliki tag GRP), hapus seluruh baris pengumpulan anggota kelompok terkait
+            const tagMatch = (item?.catatan_guru || '').match(/\[TAG:(GRP_[^\]]+)\]/);
+            if (tagMatch) {
+                const { error: dbError } = await supabase.from('files').delete().like('catatan_guru', `%${tagMatch[0]}%`);
+                if (dbError) throw dbError;
+                pendingFiles = pendingFiles.filter(f => !(f.catatan_guru && f.catatan_guru.includes(tagMatch[1])));
+            } else {
+                const { error: dbError } = await supabase.from('files').delete().eq('id', id);
+                if (dbError) throw dbError;
+                pendingFiles = pendingFiles.filter(f => String(f.id) !== String(id));
+            }
 
-            await showCustomModal(`Tugas "${taskTitle}" dari "${studentName}" berhasil dihapus.`, 'alert', 'Tugas Dihapus', '');
+            await showCustomModal(`Tugas "${taskTitle}" dari "${studentName}" berhasil dihapus. Siswa dapat mengirimkan ulang tugasnya.`, 'alert', 'Tugas Dihapus', '✅');
             await loadFilesTable();
+
+            if (activeAssignmentForSubmissions) {
+                renderAssignmentSubmissionsTable(activeAssignmentForSubmissions);
+            }
+            if (typeof loadAssignments === 'function') {
+                loadAssignments();
+            }
         } catch (e) {
             console.error(e);
-            await showCustomModal('Gagal menghapus tugas: ' + e.message, 'alert', 'Gagal Menghapus', '');
+            await showCustomModal('Gagal menghapus tugas: ' + e.message, 'alert', 'Gagal Menghapus', '❌');
         }
+    };
+
+    window.deleteSubmissionFromAssignmentModal = async (id) => {
+        await window.deleteFile(id);
     };
 
     window.exportCSV = async () => {
@@ -2811,8 +2831,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-4 py-3 border-b-2 border-black border-r-2">${detailHtml}</td>
                 <td class="px-4 py-3 border-b-2 border-black border-r-2 text-center">${statusHtml}</td>
                 <td class="px-4 py-3 border-b-2 border-black text-center whitespace-nowrap">
-                    <button onclick="openGradeModal('${f.id}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition">
-                        Koreksi & Nilai </button>
+                    <div class="inline-flex items-center gap-1.5">
+                        <button type="button" onclick="openGradeModal('${f.id}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-black text-white font-black text-xs uppercase rounded-xl border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition cursor-pointer">
+                            Koreksi & Nilai
+                        </button>
+                        <button type="button" onclick="deleteSubmissionFromAssignmentModal('${f.id}')" class="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 font-black text-xs uppercase rounded-xl border border-red-300 active:translate-y-0.5 transition cursor-pointer" title="Hapus jawaban siswa agar siswa bisa upload ulang">
+                            Hapus
+                        </button>
+                    </div>
                 </td>
             `;
 
