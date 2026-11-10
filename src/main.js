@@ -2049,7 +2049,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const card = document.createElement('div');
-            card.className = "bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] p-4 sm:p-5 md:p-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between";
+            card.className = "bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[28px] p-3.5 sm:p-4 md:p-5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between overflow-hidden";
             card.innerHTML = `
                 <div>
                     <div class="flex items-center gap-1.5 flex-wrap mb-2.5">
@@ -2071,16 +2071,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${feedbackSectionHtml}
                 </div>
 
-                <div class="pt-3 border-t-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mt-auto">
-                    <div class="w-full sm:w-auto shrink-0">${submissionBadge}</div>
-                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                <div class="pt-3 border-t-2 border-slate-100 flex flex-col gap-2 mt-auto">
+                    <div class="w-full flex items-center">${submissionBadge}</div>
+                    <div class="flex items-center gap-2 w-full">
                         ${mySubmission && (mySubmission.nilai === null || mySubmission.nilai === undefined || mySubmission.nilai === '') && !(isPast && parsed.lock_deadline) ? `
-                            <button type="button" onclick="event.stopPropagation(); window.deleteStudentSubmissionAction('${mySubmission.id}')" class="px-3 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-300 active:translate-y-0.5 text-center flex items-center justify-center shrink-0 cursor-pointer" title="Hapus jawaban jika salah upload agar bisa upload ulang">
+                            <button type="button" onclick="event.stopPropagation(); window.deleteStudentSubmissionAction('${mySubmission.id}')" class="h-10 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition bg-red-100 hover:bg-red-200 text-red-700 border-2 border-red-300 active:translate-y-0.5 text-center flex items-center justify-center shrink-0 cursor-pointer shadow-sm" title="Hapus jawaban jika salah upload agar bisa upload ulang">
                                 🗑️ Hapus
                             </button>
                         ` : ''}
-                        <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')}, ${mySubmission ? JSON.stringify(mySubmission).replace(/"/g, '&quot;') : 'null'})" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center shrink-0 ${actionBtnClass}">
-                            ${actionBtnText}
+                        <button type="button" onclick="openAssignmentSubmissionModal(${JSON.stringify(a).replace(/"/g, '&quot;')}, ${mySubmission ? JSON.stringify(mySubmission).replace(/"/g, '&quot;') : 'null'})" class="flex-1 min-w-0 h-10 px-3.5 rounded-xl font-black text-xs uppercase tracking-wider transition shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-center flex items-center justify-center ${actionBtnClass}">
+                            <span class="truncate">${actionBtnText}</span>
                         </button>
                     </div>
                 </div>
@@ -2159,16 +2159,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (existingSub) {
                     const isGraded = (existingSub.nilai !== null && existingSub.nilai !== undefined && existingSub.nilai !== '');
                     const subBtnDeleteReupload = document.getElementById('sub-btn-delete-reupload');
-                    if (subSubmitBtn) {
-                        subSubmitBtn.disabled = true;
-                        subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                        subSubmitBtn.innerText = isGraded ? `SUDAH DINILAI (${existingSub.nilai}/100)` : 'TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
-                    }
                     if (!isGraded && subBtnDeleteReupload) {
                         subBtnDeleteReupload.classList.remove('hidden');
                         subBtnDeleteReupload.onclick = () => window.deleteStudentSubmissionAction(existingSub.id);
-                    } else if (subBtnDeleteReupload) {
-                        subBtnDeleteReupload.classList.add('hidden');
+                        if (subSubmitBtn) {
+                            subSubmitBtn.classList.add('hidden');
+                            subSubmitBtn.disabled = true;
+                        }
+                    } else {
+                        if (subBtnDeleteReupload) {
+                            subBtnDeleteReupload.classList.add('hidden');
+                            subBtnDeleteReupload.onclick = null;
+                        }
+                        if (subSubmitBtn) {
+                            subSubmitBtn.classList.remove('hidden');
+                            subSubmitBtn.disabled = true;
+                            subSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                            subSubmitBtn.innerText = isGraded ? `SUDAH DINILAI (${existingSub.nilai}/100)` : 'TANGGAPAN SUDAH TERKIRIM (TERKUNCI)';
+                        }
                     }
                     if (statusEl) {
                         statusEl.classList.remove('hidden');
@@ -2636,9 +2644,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 statusEl.innerHTML = `
-                    <div class="p-3 bg-emerald-50 border-2 border-emerald-400 rounded-xl text-emerald-950 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
+                    <div class="p-3 bg-emerald-50 border-2 border-emerald-400 rounded-xl text-emerald-950 text-xs font-bold flex flex-col md:flex-row md:items-center justify-between gap-2.5 shadow-sm">
                         <div class="flex items-center gap-2">
-                            <span class="text-base text-emerald-600">✓</span>
+                            <span class="text-base text-emerald-600 shrink-0">✓</span>
                             <div>
                                 <div class="font-black text-xs text-emerald-900">TUGAS SUDAH DIKUMPULKAN (${canDeleteReupload ? 'BISA UPLOAD ULANG' : (isGraded ? 'SUDAH DINILAI' : 'TERKUNCI')})</div>
                                 <div class="text-[11px] text-emerald-800">Tercatat pada: ${subDateStr} WIB</div>
@@ -2655,9 +2663,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     subBtnDeleteReupload.onclick = () => window.deleteStudentSubmissionAction(mySubmission.id);
                 }
                 if (subSubmitBtn) {
+                    subSubmitBtn.classList.add('hidden');
                     subSubmitBtn.disabled = true;
-                    subSubmitBtn.className = 'h-11 px-4 sm:px-6 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-200 text-slate-500 border-2 border-slate-300 cursor-not-allowed shadow-none';
-                    subSubmitBtn.innerText = 'TERKUNCI (SUDAH DIKUMPUL)';
                 }
             } else {
                 if (subBtnDeleteReupload) {
@@ -2665,8 +2672,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     subBtnDeleteReupload.onclick = null;
                 }
                 if (subSubmitBtn) {
+                    subSubmitBtn.classList.remove('hidden');
                     subSubmitBtn.disabled = true;
-                    subSubmitBtn.className = 'h-11 px-4 sm:px-6 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-200 text-slate-500 border-2 border-slate-300 cursor-not-allowed shadow-none';
+                    subSubmitBtn.className = 'h-10 sm:h-11 px-3.5 sm:px-6 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-200 text-slate-500 border-2 border-slate-300 cursor-not-allowed shadow-none truncate';
                     subSubmitBtn.innerText = isGraded ? `SUDAH DINILAI (${mySubmission.nilai}/100)` : 'PENGUMPULAN DITUTUP';
                 }
             }
@@ -2677,8 +2685,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 subBtnDeleteReupload.onclick = null;
             }
             if (subSubmitBtn) {
+                subSubmitBtn.classList.remove('hidden');
                 subSubmitBtn.disabled = false;
-                subSubmitBtn.className = 'h-11 px-4 sm:px-6 rounded-xl font-black text-xs uppercase tracking-wider transition bg-indigo-600 hover:bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer';
+                subSubmitBtn.className = 'h-10 sm:h-11 px-3.5 sm:px-6 rounded-xl font-black text-xs uppercase tracking-wider transition bg-indigo-600 hover:bg-black text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer truncate';
                 subSubmitBtn.innerText = (parsed.tipe_pengumpulan === 'form') ? 'KIRIM JAWABAN SOAL SEKARANG 🚀' : 'KUMPULKAN TUGAS SEKARANG 🚀';
             }
         }
