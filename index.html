@@ -263,25 +263,25 @@
         <!-- VIEW 2: MATERI BELAJAR SISWA                             -->
         <!-- ======================================================== -->
         <div id="view-materi" class="portal-view hidden space-y-4 sm:space-y-6">
-            <div class="bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[36px] md:rounded-[40px] p-4 sm:p-6 md:p-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 sm:mb-6">
+            <div class="bg-white border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[36px] md:rounded-[40px] p-4 sm:p-5 md:p-6 lg:p-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3.5 sm:gap-4 mb-5 sm:mb-6">
                     <div>
                         <h3 class="text-xl sm:text-2xl font-black uppercase text-black">Perpustakaan Materi Pembelajaran</h3>
                         <p class="text-[11px] sm:text-xs font-bold text-slate-500">Akses modul interaktif, presentasi, dan video pembelajaran kurikulum.</p>
                     </div>
-                    <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2">
-                        <div class="relative w-full sm:w-56">
+                    <div class="w-full xl:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div class="relative w-full sm:flex-1 xl:w-56 min-w-0">
                             <input type="text" id="search-student-materi" oninput="filterStudentMaterials()" placeholder="Cari materi..." class="h-10 pl-9 pr-3 w-full border-2 border-black rounded-xl font-bold text-xs bg-slate-50 focus:bg-white focus:outline-none transition" />
                             <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path></svg>
                         </div>
-                        <select id="filter-materi-tipe" onchange="filterStudentMaterials()" class="w-full sm:w-44 h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer">
+                        <select id="filter-materi-tipe" onchange="filterStudentMaterials()" class="w-full sm:w-44 h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer shrink-0">
                             <option value="">Semua Tipe Media</option>
                             <option value="mpi">MPI Interaktif</option>
                             <option value="presentasi">Slide Presentasi</option>
                             <option value="video">Video Pembelajaran</option>
                             <option value="modul">Modul Bacaan</option>
                         </select>
-                        <select id="filter-materi-mapel" onchange="filterStudentMaterials()" class="w-full sm:w-40 h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 cursor-pointer">
+                        <select id="filter-materi-mapel" onchange="filterStudentMaterials()" class="w-full sm:w-40 h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-slate-50 cursor-pointer shrink-0">
                             <option value="">Semua Mapel</option>
                         </select>
                     </div>
@@ -349,18 +349,18 @@
         <!-- VIEW 3: UJIAN & KUIS ONLINE SISWA                        -->
         <!-- ======================================================== -->
         <div id="view-ujian" class="portal-view hidden space-y-4 sm:space-y-6">
-            <div id="quiz-portal-landing" class="bg-amber-300 border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[36px] md:rounded-[40px] p-4 sm:p-6 md:p-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 sm:mb-6">
+            <div id="quiz-portal-landing" class="bg-amber-300 border-2 sm:border-[3px] border-black rounded-2xl sm:rounded-[36px] md:rounded-[40px] p-4 sm:p-5 md:p-6 lg:p-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3.5 sm:gap-4 mb-5 sm:mb-6">
                     <div>
                         <h3 class="text-xl sm:text-2xl font-black uppercase text-black mb-1">Ruang Ujian & Kuis Online</h3>
                         <p class="text-[11px] sm:text-xs font-bold text-black">Jawab soal pilihan ganda & esai secara mandiri dengan jujur dan teliti.</p>
                     </div>
-                    <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2">
-                        <div class="relative w-full sm:w-56">
+                    <div class="w-full md:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div class="relative w-full sm:flex-1 md:w-56 min-w-0">
                             <input type="text" id="search-student-ujian" oninput="filterStudentQuizzes()" placeholder="Cari kuis atau ujian..." class="h-10 pl-9 pr-3 w-full border-2 border-black rounded-xl font-bold text-xs bg-white focus:outline-none transition" />
                             <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"></path></svg>
                         </div>
-                        <div class="w-full sm:w-44">
+                        <div class="w-full sm:w-44 shrink-0">
                             <select id="filter-quiz-mapel" onchange="filterStudentQuizzes()" class="w-full h-10 px-3 border-2 border-black rounded-xl font-bold text-xs bg-white text-black cursor-pointer">
                                 <option value="">Semua Mapel</option>
                             </select>
